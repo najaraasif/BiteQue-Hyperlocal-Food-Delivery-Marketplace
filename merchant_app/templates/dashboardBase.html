@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Merchant Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="w-64 h-screen bg-white shadow-md">
+            <h2 class="text-xl font-bold text-center py-4 text-[#FF0B55]">Merchant Panel</h2>
+            <ul class="px-4 space-y-4">
+                <li><a href="{% url 'dashboard_home' %}" class="text-gray-700 hover:text-[#FF0B55]">Dashboard</a></li>
+                <li><a href="{% url 'inventory_management' %}" class="text-gray-700 hover:text-[#FF0B55]">Inventory</a></li>
+                <li><a href="{% url 'order_list' %}" class="text-gray-700 hover:text-[#FF0B55]">Orders</a></li>
+                <li><a href="{% url 'payment_list' %}" class="text-gray-700 hover:text-[#FF0B55]">Payments</a></li>
+                <li><a href="#" class="text-gray-700 hover:text-[#FF0B55]">Reports</a></li>
+                <li><a href="#" class="text-gray-700 hover:text-[#FF0B55]">Account</a></li>
+            </ul>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 p-6">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </div>
+</body>
+</html>

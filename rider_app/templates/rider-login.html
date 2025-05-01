@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="min-h p-10 screen flex items-center justify-center bg-gray-50">
+    <div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg">
+        <h2 class="text-3xl font-bold text-center text-[#FF0B55]">Rider Login</h2>
+
+
+        <form method="POST" class="mt-8 space-y-6">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                Invalid username or password, or account not approved
+            </div>
+            {% endif %}
+            
+            <div class="space-y-4">
+                <div>
+                    {{ form.username }}
+                    {{ form.username.errors }}
+                </div>
+                <div>
+                    {{ form.password }}
+                    {{ form.password.errors }}
+                </div>
+            </div>
+            
+            <div>
+                <button type="submit" 
+                        class="w-full bg-[#FF0B55] text-white py-3 rounded-lg hover:bg-[#D9094A] transition">
+                    Login
+                </button>
+            </div>
+            
+            <div class="text-center">
+                <p class="text-gray-600">
+                    Don't have an account? 
+                    <a href="{% url 'rider_registration' %}" class="text-[#FF0B55] hover:underline">
+                        Register here
+                    </a>
+                </p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

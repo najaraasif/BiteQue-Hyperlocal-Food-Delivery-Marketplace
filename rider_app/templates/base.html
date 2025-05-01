@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BiteQue | Food Delivery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Hero Icons -->
+    <script src="https://unpkg.com/heroicons@latest/24/outline/index.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-[#FF0B55] shadow-lg sticky top-0 z-50">
+        <nav class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-8">
+                <h1 class="text-2xl font-bold text-white">BiteQue</h1>
+                <div class="flex items-center space-x-2">
+                    <hero-icon name="map-pin" class="w-5 h-5 text-white"></hero-icon>
+                    <span class="text-white text-sm">Kupwara, Kashmir</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button class="text-white hover:text-orange-200 text-sm flex items-center">
+                    <hero-icon name="user-circle" class="w-5 h-5 mr-1"></hero-icon>
+                    Login/Signup
+                </button>
+                <button id="cartButton" class="text-white hover:text-orange-200 text-sm flex items-center">
+                    <hero-icon name="shopping-cart" class="w-5 h-5 mr-1"></hero-icon>
+                    Cart <span id="cartCount" class="ml-1">0</span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+{% block content %}
+
+{% endblock %}
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="font-bold mb-4">BiteQue</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="{% url 'about' %}" class="hover:text-orange-400">About Us</a></li>
+                        <li><a href="{% url 'careers' %}" class="hover:text-orange-400">Careers</a></li>
+                        <li><a href="{% url 'contact' %}" class="hover:text-orange-400">Contact Us</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="font-bold mb-4">Legal</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="{% url 'privacy' %}" class="hover:text-orange-400">Privacy Policy</a></li>
+                        <li><a href="{% url 'terms-and-conditions' %}" class="hover:text-orange-400">Terms & Conditions</a></li>
+                        <li><a href="{% url 'responsible-disclosure' %}" class="hover:text-orange-400">Responsible Disclosure</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-bold mb-4">Partners</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="{% url 'add-restaurant' %}" class="hover:text-orange-400">Add Restaurant</a></li>
+                        <li><a href="#" class="hover:text-orange-400">Partner With Us</a></li>
+                        <li><a href="{% url 'rider_registration' %}" class="hover:text-orange-400">Become a Delivery Partner</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-bold mb-4">Follow Us</h3>
+                    <div class="flex space-x-4">
+                        <a href="#" class="hover:text-orange-400">
+                            <hero-icon name="facebook" class="w-6 h-6"></hero-icon>
+                        </a>
+                        <a href="#" class="hover:text-orange-400">
+                            <hero-icon name="instagram" class="w-6 h-6"></hero-icon>
+                        </a>
+                        <a href="#" class="hover:text-orange-400">
+                            <hero-icon name="twitter" class="w-6 h-6"></hero-icon>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>

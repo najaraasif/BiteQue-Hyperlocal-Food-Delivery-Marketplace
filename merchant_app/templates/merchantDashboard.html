@@ -1,0 +1,15 @@
+{% extends 'merchant/dashboardBase.html' %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Welcome</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ status_form.as_p }}
+    <button type="submit" class="bg-[#FF0B55] text-white px-4 py-2 rounded">Toggle Online Status</button>
+</form>
+<p class="mt-4 text-gray-700">Current Status: 
+    <span class="{{ merchant.is_online|yesno:'text-green-600,text-red-600' }}">
+        {{ merchant.is_online|yesno:"Online,Offline" }}
+    </span>
+</p>
+{% endblock %}

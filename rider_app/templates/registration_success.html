@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+        <div class="text-6xl mb-4 text-green-500">✓</div>
+        <h1 class="text-2xl font-bold mb-4 text-[#FF0B55]">Registration Successful!</h1>
+        <p class="text-gray-600 mb-6">
+            Your application has been submitted for verification. 
+            We'll review your documents and notify you via email once approved.
+        </p>
+        <a href="{% url 'home' %}" 
+           class="inline-block bg-[#FF0B55] text-white px-6 py-2 rounded-lg hover:bg-[#D9094A] transition duration-300">
+            Return to Home
+        </a>
+    </div>
+</div>
+{% endblock %}

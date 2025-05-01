@@ -1,0 +1,46 @@
+from django.db import models
+from django.contrib.auth.models import User
+
+class Rider(models.Model):
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other'),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    phone = models.CharField(max_length=15)
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    aadhar_number = models.CharField(max_length=12, unique=True)
+    driving_license = models.CharField(max_length=20, unique=True)
+    address = models.TextField()
+    area = models.CharField(max_length=100)
+    pincode = models.CharField(max_length=6)
+    profile_photo = models.ImageField(upload_to='riders/profiles/')
+    aadhar_front = models.ImageField(upload_to='riders/aadhar/')
+    aadhar_back = models.ImageField(upload_to='riders/aadhar/')
+    license_copy = models.ImageField(upload_to='riders/license/')
+    is_approved = models.BooleanField(default=False)
+    is_available = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    current_location = models.CharField(max_length=255, blank=True, null=True)
+
+class RiderEarning(models.Model):
+    rider = models.ForeignKey(Rider, on_delete=models.CASCADE)
+    date = models.DateField()
+    total_earnings = models.DecimalField(max_digits=10, decimal_places=2)
+    orders_completed = models.PositiveIntegerField()
+
+class OrderAssignment(models.Model):
+    ORDER_STATUS_CHOICES = [
+            ('PENDING', 'Pending'),
+            ('ACCEPTED', 'Accepted'),
+            ('REJECTED', 'Rejected'),
+            ('DELIVERED', 'Delivered'),
+        ]
+    
+    rider = models.ForeignKey(Rider, on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='PENDING')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    order = models.ForeignKey('user_app.Order', on_delete=models.CASCADE)

@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-2xl font-bold">Rider Dashboard</h1>
+        <button id="availabilityToggle" 
+                class="px-4 py-2 rounded-lg {% if rider.is_available %}bg-green-500{% else %}bg-red-500{% endif %} text-white"
+                hx-post="{% url 'update_availability' %}"
+                hx-trigger="click"
+                hx-target="#availabilityToggle">
+            {% if rider.is_available %}Available{% else %}Not Available{% endif %}
+        </button>
+    </div>
+
+    <!-- Earnings Card -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4">Today's Earnings</h2>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="text-center">
+                <p class="text-2xl font-bold">₹ {{ today_earnings.total_earnings|default:"0" }}</p>
+                <p class="text-gray-600">Total Earnings</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-bold">{{ today_earnings.orders_completed|default:"0" }}</p>
+                <p class="text-gray-600">Orders Completed</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-bold">₹ {{ average_earnings|default:"0" }}</p>
+                <p class="text-gray-600">Avg. per Order</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Orders -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4">Active Orders</h2>
+        <div class="space-y-4">
+            {% for order in active_orders %}
+            <div class="border rounded-lg p-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-bold">Order #{{ order.order.id }}</p>
+                        <p class="text-gray-600">{{ order.order.delivery_address }}</p>
+                    </div>
+                    <div class="space-x-2">
+                        <a href="{% url 'accept_order' order.id %}" 
+                           class="px-4 py-2 bg-green-500 text-white rounded-lg">Accept</a>
+                        <a href="{% url 'reject_order' order.id %}" 
+                           class="px-4 py-2 bg-red-500 text-white rounded-lg">Reject</a>
+                    </div>
+                </div>
+                <div id="map-{{ order.id }}" class="mt-4 h-48"></div>
+            </div>
+            {% empty %}
+            <p class="text-gray-600">No active orders</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Earnings History -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold mb-4">Earnings History</h2>
+        <table class="w-full">
+            <thead>
+                <tr class="border-b">
+                    <th class="text-left py-2">Date</th>
+                    <th class="text-left py-2">Orders Completed</th>
+                    <th class="text-right py-2">Earnings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for earning in earnings %}
+                <tr class="border-b">
+                    <td class="py-2">{{ earning.date }}</td>
+                    <td class="py-2">{{ earning.orders_completed }}</td>
+                    <td class="py-2 text-right">₹ {{ earning.total_earnings }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script> 
+<script>
+function initMap() {
+    {% for order in active_orders %}
+    const map{{ order.id }} = new google.maps.Map(document.getElementById('map-{{ order.id }}'), {
+        center: {lat: -34.397, lng: 150.644},
+        zoom: 15
+    });
+    {% endfor %}
+}
+</script> -->
+{% endblock %}
