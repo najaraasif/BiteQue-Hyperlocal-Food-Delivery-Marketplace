@@ -25,22 +25,33 @@ class Rider(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     current_location = models.CharField(max_length=255, blank=True, null=True)
 
+    def __str__(self):
+        return f"{self.user.username} ({'Approved' if self.is_approved else 'Pending'})"
+
+
 class RiderEarning(models.Model):
     rider = models.ForeignKey(Rider, on_delete=models.CASCADE)
     date = models.DateField()
     total_earnings = models.DecimalField(max_digits=10, decimal_places=2)
     orders_completed = models.PositiveIntegerField()
 
+    def __str__(self):
+        return f"Earnings on {self.date} - ₹{self.total_earnings}"
+
+
 class OrderAssignment(models.Model):
     ORDER_STATUS_CHOICES = [
-            ('PENDING', 'Pending'),
-            ('ACCEPTED', 'Accepted'),
-            ('REJECTED', 'Rejected'),
-            ('DELIVERED', 'Delivered'),
-        ]
+        ('PENDING', 'Pending'),
+        ('ACCEPTED', 'Accepted'),
+        ('REJECTED', 'Rejected'),
+        ('DELIVERED', 'Delivered'),
+    ]
     
     rider = models.ForeignKey(Rider, on_delete=models.CASCADE)
+    order = models.ForeignKey('user_app.Order', on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='PENDING')
     assigned_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    order = models.ForeignKey('user_app.Order', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"Order #{self.order.id} → {self.rider.user.username} [{self.status}]"

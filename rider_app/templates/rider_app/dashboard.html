@@ -6,15 +6,32 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-8">
         <h1 class="text-2xl font-bold">Rider Dashboard</h1>
-        <button id="availabilityToggle" 
-                class="px-4 py-2 rounded-lg {% if rider.is_available %}bg-green-500{% else %}bg-red-500{% endif %} text-white"
-                hx-post="{% url 'update_availability' %}"
-                hx-trigger="click"
-                hx-target="#availabilityToggle">
-            {% if rider.is_available %}Available{% else %}Not Available{% endif %}
-        </button>
+        <button id="availabilityToggle"
+        class="px-4 py-2 rounded-lg text-white {% if rider.is_available %}bg-green-500{% else %}bg-red-500{% endif %}"
+        hx-post="{% url 'rider:update_availability' %}"
+        hx-trigger="click"
+        hx-swap="none"
+        onclick="updateButton(this)">
+    {% if rider.is_available %}Available{% else %}Not Available{% endif %}
+</button>
     </div>
-
+    {% for order in active_orders %}
+    <div class="border rounded-lg p-4">
+        <!-- ... other elements ... -->
+        <div class="space-x-2">
+            <button hx-post="{% url 'rider:accept_order' order.id %}"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    class="px-4 py-2 bg-green-500 text-white rounded-lg">
+                Accept
+            </button>
+            <button hx-post="{% url 'rider:reject_order' order.id %}"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    class="px-4 py-2 bg-red-500 text-white rounded-lg">
+                Reject
+            </button>
+        </div>
+    </div>
+    {% endfor %}
     <!-- Earnings Card -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 class="text-xl font-bold mb-4">Today's Earnings</h2>
@@ -96,4 +113,25 @@ function initMap() {
     {% endfor %}
 }
 </script> -->
+<script>
+    function updateButton(button) {
+        button.disabled = true;
+        fetch(button.getAttribute('hx-post'), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                button.textContent = data.button_text;
+                button.classList.toggle('bg-green-500');
+                button.classList.toggle('bg-red-500');
+            }
+            button.disabled = false;
+        });
+    }
+    </script>
 {% endblock %}

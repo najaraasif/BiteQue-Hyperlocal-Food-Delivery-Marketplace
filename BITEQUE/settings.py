@@ -52,6 +52,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_HTTPONLY = False
 
 ROOT_URLCONF = 'BITEQUE.urls'
 
@@ -131,8 +133,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 #redirect_urls
 
-LOGIN_URL = reverse_lazy('rider_login')
-LOGIN_REDIRECT_URL = reverse_lazy('rider_dashboard')
+LOGIN_URL = 'rider-login'  
+LOGIN_REDIRECT_URL = '/rider/dashboard/'  
 
 #email for verification
 
