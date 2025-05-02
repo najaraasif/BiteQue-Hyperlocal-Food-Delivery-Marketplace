@@ -2,6 +2,7 @@ from django.contrib import messages
 from venv import logger
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
+from django.db import IntegrityError
 from django.views.decorators.http import require_POST
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -11,11 +12,15 @@ from .models import Rider, OrderAssignment, RiderEarning
 from .forms import BankDetailsForm, RiderRegistrationForm, RiderLoginForm
 from django.contrib.auth.views import LoginView
 import logging
+from django.db import transaction
+
 
 logger = logging.getLogger(__name__)
 
 @login_required
 def rider_dashboard(request):
+    if request.user.is_staff:
+        return redirect('/admin/')
     try:
         # Check if user has rider profile
         rider = request.user.rider  # Using related_name access
@@ -108,25 +113,41 @@ def rider_registration(request):
     if request.method == 'POST':
         form = RiderRegistrationForm(request.POST, request.FILES)
         if form.is_valid():
-            user = form.save()
-            Rider.objects.create(
-                user=user,
-                phone=form.cleaned_data['phone'],
-                gender=form.cleaned_data['gender'],
-                aadhar_number=form.cleaned_data['aadhar_number'],
-                driving_license=form.cleaned_data['driving_license'],
-                address=form.cleaned_data['address'],
-                area=form.cleaned_data['area'],
-                pincode=form.cleaned_data['pincode'],
-                profile_photo=form.cleaned_data['profile_photo'],
-                aadhar_front=form.cleaned_data['aadhar_front'],
-                aadhar_back=form.cleaned_data['aadhar_back'],
-                license_copy=form.cleaned_data['license_copy']
-            )
-            return redirect('registration_success')
-    else:
+            try:
+                with transaction.atomic():
+                    user = form.save(commit=False)
+                    user.save()
+                    
+                    Rider.objects.create(
+                        user=user,
+                        phone=form.cleaned_data['phone'],
+                        gender=form.cleaned_data['gender'],
+                        aadhar_number=form.cleaned_data['aadhar_number'],
+                        driving_license=form.cleaned_data['driving_license'],
+                        address=form.cleaned_data['address'],
+                        area=form.cleaned_data['area'],
+                        pincode=form.cleaned_data['pincode'],
+                        profile_photo=form.cleaned_data['profile_photo'],
+                        aadhar_front=form.cleaned_data['aadhar_front'],
+                        license_copy=form.cleaned_data['license_copy'],
+                        is_approved=False
+                    )
+                
+                messages.success(request, "Registration successful! Please wait for approval.")
+                return redirect('rider:registration_success')
+                
+            except Exception as e:
+                logger.error(f"Registration error: {str(e)}", exc_info=True)
+                messages.error(request, "Registration failed. Please try again.")
+        else:
+            messages.error(request, "Please correct the errors below.")
+    
+    else:  # GET request
         form = RiderRegistrationForm()
+    
+    # This return statement was missing for GET requests
     return render(request, 'registration.html', {'form': form})
+
 
 def registration_success(request):
     return render(request, 'registration_success.html')

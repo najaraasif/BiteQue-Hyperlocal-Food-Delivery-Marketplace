@@ -129,7 +129,7 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 #redirect_urls
@@ -143,9 +143,3 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 MAILERSEND_API_KEY = '***REMOVED***' 
 MAILERSEND_DOMAIN = 'test-r83ql3ppozxgzw1j.mlsender.net'  
 DEFAULT_FROM_EMAIL = 'noreply@test-r83ql3ppozxgzw1j.mlsender.net'
-
-
-
-
-
-

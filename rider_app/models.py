@@ -18,7 +18,7 @@ class Rider(models.Model):
     pincode = models.CharField(max_length=6)
     profile_photo = models.ImageField(upload_to='riders/profiles/')
     aadhar_front = models.ImageField(upload_to='riders/aadhar/')
-    aadhar_back = models.ImageField(upload_to='riders/aadhar/')
+    aadhar_back = models.ImageField(upload_to='riders/aadhar/', blank=True, null=True)
     license_copy = models.ImageField(upload_to='riders/license/')
     is_approved = models.BooleanField(default=False)
     is_available = models.BooleanField(default=False)

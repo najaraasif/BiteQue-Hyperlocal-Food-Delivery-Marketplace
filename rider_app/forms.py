@@ -1,43 +1,82 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from .models import Rider, User
+from django.contrib.auth.models import User
+from .models import Rider
+from django.db import transaction
 
 
 class RiderRegistrationForm(UserCreationForm):
-    full_name = forms.CharField(
-        max_length=100,
-        widget=forms.TextInput(attrs={
-            'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF0B55]',
-            'placeholder': 'Enter your full name'
-        })
-    )
-    phone = forms.CharField(max_length=15)
-    gender = forms.ChoiceField(choices=Rider.GENDER_CHOICES)
-    aadhar_number = forms.CharField(max_length=12)
-    driving_license = forms.CharField(max_length=20)
-    address = forms.CharField(widget=forms.Textarea)
-    area = forms.CharField(max_length=100)
-    pincode = forms.CharField(max_length=6)
-    profile_photo = forms.ImageField()
-    aadhar_front = forms.ImageField()
-    aadhar_back = forms.ImageField()
-    license_copy = forms.ImageField()
-
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'password1', 'password2']
+        fields = ['username', 'email', 'password1', 'password2']
+    
+    full_name = forms.CharField(max_length=100, required=True)
+    phone = forms.CharField(max_length=15, required=True)
+    gender = forms.ChoiceField(choices=Rider.GENDER_CHOICES, required=True)
+    aadhar_number = forms.CharField(max_length=12, required=True)
+    driving_license = forms.CharField(max_length=20, required=True)
+    address = forms.CharField(widget=forms.Textarea, required=True)
+    area = forms.CharField(max_length=100, required=True)
+    pincode = forms.CharField(max_length=6, required=True)
+    profile_photo = forms.ImageField(required=True)
+    aadhar_front = forms.ImageField(required=True)
+    aadhar_back = forms.ImageField(required=True)
+    license_copy = forms.ImageField(required=True)
+
+    def clean_phone(self):
+        phone = self.cleaned_data['phone']
+        if not phone.isdigit() or len(phone) < 10:
+            raise forms.ValidationError("Phone number must be at least 10 digits.")
+        return phone
 
     def clean_aadhar_number(self):
         aadhar = self.cleaned_data['aadhar_number']
         if not aadhar.isdigit() or len(aadhar) != 12:
-            raise forms.ValidationError("Invalid Aadhar number")
+            raise forms.ValidationError("Aadhar number must be exactly 12 digits.")
+        if Rider.objects.filter(aadhar_number=aadhar).exists():
+            raise forms.ValidationError("This Aadhar number is already registered.")
         return aadhar
+
+    def clean_driving_license(self):
+        license = self.cleaned_data['driving_license']
+        if len(license) < 10:
+            raise forms.ValidationError("Driving license number must be at least 10 characters.")
+        if Rider.objects.filter(driving_license=license).exists():
+            raise forms.ValidationError("This driving license number is already registered.")
+        return license
 
     def clean_pincode(self):
         pincode = self.cleaned_data['pincode']
         if not pincode.isdigit() or len(pincode) != 6:
-            raise forms.ValidationError("Invalid pincode")
+            raise forms.ValidationError("Pincode must be exactly 6 digits.")
         return pincode
+
+def save(self, commit=True):
+    with transaction.atomic():
+        user = super().save(commit=False)
+        # Name handling
+        full_name = self.cleaned_data['full_name'].split()
+        user.first_name = full_name[0] if full_name else ''
+        user.last_name = ' '.join(full_name[1:]) if len(full_name) > 1 else ''
+        
+        if commit:
+            user.save()
+            Rider.objects.create(
+                user=user,
+                phone=self.cleaned_data['phone'],
+                gender=self.cleaned_data['gender'],
+                aadhar_number=self.cleaned_data['aadhar_number'],
+                driving_license=self.cleaned_data['driving_license'],
+                address=self.cleaned_data['address'],
+                area=self.cleaned_data['area'],
+                pincode=self.cleaned_data['pincode'],
+                profile_photo=self.cleaned_data['profile_photo'],
+                aadhar_front=self.cleaned_data['aadhar_front'],
+                aadhar_back=self.cleaned_data.get('aadhar_back'),  # Handle optional
+                license_copy=self.cleaned_data['license_copy'],
+                is_approved=False  # Explicitly set
+            )
+        return user
 
 
 class RiderAdminForm(forms.ModelForm):
@@ -59,15 +98,28 @@ class RiderAdminForm(forms.ModelForm):
                 'placeholder': 'you@example.com'
             })
     
-    def save(self, commit=True):
+def save(self, commit=True):
+    with transaction.atomic():
         user = super().save(commit=False)
-        # Split full name into first and last names
         full_name = self.cleaned_data['full_name'].split()
         user.first_name = full_name[0] if full_name else ''
         user.last_name = ' '.join(full_name[1:]) if len(full_name) > 1 else ''
         
         if commit:
             user.save()
+            rider = Rider.objects.create(
+                user=user,
+                phone=self.cleaned_data['phone'],
+                gender=self.cleaned_data['gender'],
+                aadhar_number=self.cleaned_data['aadhar_number'],
+                driving_license=self.cleaned_data['driving_license'],
+                address=self.cleaned_data['address'],
+                area=self.cleaned_data['area'],
+                pincode=self.cleaned_data['pincode'],
+                profile_photo=self.cleaned_data['profile_photo'],
+                aadhar_front=self.cleaned_data['aadhar_front'],
+                license_copy=self.cleaned_data['license_copy']
+            )
         return user    
         
     def clean_aadhar_number(self):
