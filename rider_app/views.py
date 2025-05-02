@@ -33,14 +33,57 @@ def rider_dashboard(request):
         return redirect('rider:dashboard')  # Try redirecting to self instead of home
     
     # Successful case
+    #get all relevant data
     orders = OrderAssignment.objects.filter(rider=rider).select_related('order')
+    earnings = RiderEarning.objects.filter(rider=rider).order_by('-date')[:7]
+    total_earnings = sum(earning.total_earnings for earning in earnings)
+    total_orders = sum(earning.orders_completed for earning in earnings)
+    acceptance_rate = _calculate_acceptance_rate(rider)
+    weekly_earnings = _get_weekly_earnings(rider)
+
     context = {
         'rider': rider,
         'active_orders': orders.filter(status__in=['ACCEPTED', 'PENDING']),
-        'completed_orders': orders.filter(status='DELIVERED'),
-        'earnings': RiderEarning.objects.filter(rider=rider).order_by('-date')[:7]
+        'completed_orders': orders.filter(status='DELIVERED')[:5],  # Last 5 completed
+        'earnings': earnings,
+        'total_earnings': total_earnings,
+        'total_orders': total_orders,
+        'acceptance_rate': acceptance_rate,
+        'weekly_earnings': weekly_earnings,
     }
     return render(request, 'rider_app/dashboard.html', context)
+
+def _calculate_acceptance_rate(rider):
+    """Helper function to calculate acceptance rate"""
+    assignments = OrderAssignment.objects.filter(rider=rider)
+    total = assignments.count()
+    if total == 0:
+        return 0
+    accepted = assignments.filter(status='ACCEPTED').count()
+    return round((accepted / total) * 100, 1)
+
+def _get_weekly_earnings(rider):
+    """Helper function to get weekly earnings data"""
+    from django.db.models import Sum
+    from datetime import datetime, timedelta
+    
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=7)
+    
+    earnings = (RiderEarning.objects
+                .filter(rider=rider, date__range=[start_date, end_date])
+                .values('date')
+                .annotate(daily_earnings=Sum('total_earnings'))
+                .order_by('date'))
+    
+    dates = [start_date + timedelta(days=i) for i in range(7)]
+    earnings_dict = {e['date']: float(e['daily_earnings']) for e in earnings}
+    
+    return [{
+        'date': date,
+        'earnings': earnings_dict.get(date, 0)
+    } for date in dates]
+
 
 @require_POST
 def update_availability(request):

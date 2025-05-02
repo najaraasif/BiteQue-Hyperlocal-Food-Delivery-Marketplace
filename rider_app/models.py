@@ -31,7 +31,25 @@ class Rider(models.Model):
 
     def __str__(self):
         return f"{self.user.username} ({'Approved' if self.is_approved else 'Pending'})"
-
+    def get_total_earnings(self):
+        from django.db.models import Sum
+        total = RiderEarning.objects.filter(rider=self).aggregate(Sum('total_earnings'))
+        return total['total_earnings__sum'] or 0
+    
+    def get_total_orders_completed(self):
+        from django.db.models import Sum
+        total = RiderEarning.objects.filter(rider=self).aggregate(Sum('orders_completed'))
+        return total['orders_completed__sum'] or 0
+    
+    def get_acceptance_rate(self):
+        from django.db.models import Count, Q
+        stats = OrderAssignment.objects.filter(rider=self).aggregate(
+            total=Count('id'),
+            accepted=Count('id', filter=Q(status='ACCEPTED'))
+        )
+        if stats['total'] == 0:
+            return 0
+        return round((stats['accepted'] / stats['total']) * 100, 1)
 
 class RiderEarning(models.Model):
     rider = models.ForeignKey(Rider, on_delete=models.CASCADE)
