@@ -1,9 +1,53 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="max-w-md mx-auto my-10 p-6 bg-white rounded-lg shadow-md text-center">
-    <h2 class="text-2xl font-bold mb-4">Registration Successful!</h2>
-    <p class="mb-4">Your rider account has been created and is pending approval.</p>
-    <a href="{% url 'rider:rider-login' %}" class="text-blue-500 hover:underline">Login here</a>
+<div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center animate-fade-in">
+
+        <!-- Glowing Tick Animation -->
+        <div class="relative w-24 h-24 mx-auto mb-6">
+            <!-- Glowing Ring -->
+            <div class="absolute inset-0 rounded-full bg-green-100 animate-ping"></div>
+
+            <!-- Center Circle with Tick -->
+            <div class="relative w-24 h-24 flex items-center justify-center bg-green-500 rounded-full shadow-lg animate-bounce">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+        </div>
+
+        <!-- Heading -->
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Registration Successful</h2>
+
+        <!-- Message -->
+        <p class="text-gray-600 mb-4 leading-relaxed text-sm">
+            Your rider account has been created and is currently <span class="font-semibold text-[#FF0B55]">pending approval</span>.
+            <br>You will receive an email notification once your account has been approved.
+        </p>
+
+        <!-- Login Button -->
+        <a href="{% url 'rider:rider-login' %}"
+           class="inline-block bg-[#FF0B55] text-white py-2 px-6 rounded-lg hover:bg-[#D9094A] transition">
+            Login to Dashboard
+        </a>
+    </div>
 </div>
+
+<style>
+  .animate-fade-in {
+    animation: fadeIn 0.7s ease-out both;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
 {% endblock %}
