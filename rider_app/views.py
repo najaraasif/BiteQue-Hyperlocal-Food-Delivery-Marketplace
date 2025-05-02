@@ -1,38 +1,41 @@
+from django.contrib import messages
+from venv import logger
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout
 from django.views.decorators.http import require_POST
-from django.shortcuts import get_object_or_404, render, redirect
+from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.http import Http404, JsonResponse
-
 from merchant_app.models import Order
 from .models import Rider, OrderAssignment, RiderEarning
-from .forms import RiderRegistrationForm, RiderLoginForm
+from .forms import BankDetailsForm, RiderRegistrationForm, RiderLoginForm
 from django.contrib.auth.views import LoginView
+import logging
+
+logger = logging.getLogger(__name__)
 
 @login_required
 def rider_dashboard(request):
     try:
-        # Get rider profile 
-        rider = Rider.objects.get(user=request.user)
-        
-        # Get orders in a single query
-        orders = OrderAssignment.objects.filter(rider=rider).select_related('order')
-        
-        context = {
-            'rider': rider,
-            'active_orders': orders.filter(status__in=['ACCEPTED', 'PENDING']),
-            'completed_orders': orders.filter(status='DELIVERED'),
-            'earnings': RiderEarning.objects.filter(rider=rider).order_by('-date')[:7]
-        }
-        return render(request, 'rider_app/dashboard.html', context)
-        
+        # Check if user has rider profile
+        rider = request.user.rider  # Using related_name access
     except Rider.DoesNotExist:
-        # Redirect to registration if rider profile doesn't exist
-        return redirect(reverse('rider:dashboard'))
+        messages.warning(request, "Please complete your rider registration")
+        return redirect('rider:registration')
     except Exception as e:
-        # Log the error
-        print(f"Error accessing dashboard: {str(e)}")
-        raise Http404("Dashboard unavailable")
+        logger.error(f"Dashboard error: {str(e)}", exc_info=True)
+        messages.error(request, "Unable to load dashboard")
+        return redirect('rider:dashboard')  # Try redirecting to self instead of home
+    
+    # Successful case
+    orders = OrderAssignment.objects.filter(rider=rider).select_related('order')
+    context = {
+        'rider': rider,
+        'active_orders': orders.filter(status__in=['ACCEPTED', 'PENDING']),
+        'completed_orders': orders.filter(status='DELIVERED'),
+        'earnings': RiderEarning.objects.filter(rider=rider).order_by('-date')[:7]
+    }
+    return render(request, 'rider_app/dashboard.html', context)
 
 @require_POST
 def update_availability(request):
@@ -134,5 +137,61 @@ class RiderLoginView(LoginView):
     form_class = RiderLoginForm
     template_name = 'rider-login.html'
     def get_success_url(self):
-        return reverse('rider_dashboard')
+        return reverse('rider:dashboard')
+    
+
+@login_required
+def bank_details(request):
+    try:
+        rider = request.user.rider
+        
+        if request.method == 'POST':
+            form = BankDetailsForm(request.POST, instance=rider)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "✅ Bank details updated successfully!")
+                return redirect('rider:bank_details')
+            else:
+                messages.error(request, "❌ Please correct the errors below")
+        else:
+            form = BankDetailsForm(instance=rider)
+        
+        return render(request, 'rider_app/bank_details.html', {
+            'form': form,
+            'rider': rider
+        })
+        
+    except Rider.DoesNotExist:
+        messages.warning(request, "Please complete your rider registration first")
+        return redirect('rider:registration')
+    except Exception as e:
+        messages.error(request, "Error updating bank details")
+        return redirect('rider:dashboard')
+
+
+def rider_logout(request):
+    logout(request)
+    return redirect('rider:rider-login')
+
+@login_required
+def rider_earnings(request):
+    try:
+        rider = request.user.rider
+        earnings = RiderEarning.objects.filter(rider=rider).order_by('-date')[:30]  # Last 30 earnings
+        
+        context = {
+            'rider': rider,
+            'earnings': earnings,
+            'total_earnings': sum(earning.total_earnings for earning in earnings),
+            'total_orders': sum(earning.orders_completed for earning in earnings)
+        }
+        return render(request, 'rider_app/earnings.html', context)
+        
+    except Rider.DoesNotExist:
+        messages.warning(request, "Please complete your rider registration first")
+        return redirect('rider_registration')
+    except Exception as e:
+        logger.error(f"Earnings view error: {str(e)}")
+        messages.error(request, "Unable to load earnings data")
+        return redirect('rider:dashboard')
       

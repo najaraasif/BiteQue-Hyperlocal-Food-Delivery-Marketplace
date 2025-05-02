@@ -98,3 +98,31 @@ class RiderLoginForm(AuthenticationForm):
             raise forms.ValidationError("This account doesn't have a rider profile.")
         if not user.rider.is_approved:
             raise forms.ValidationError("Your rider account is pending approval.")
+        
+
+class BankDetailsForm(forms.ModelForm):
+    class Meta:
+        model = Rider
+        fields = ['bank_account_name', 'bank_account_number', 'bank_name', 'ifsc_code']
+        widgets = {
+            'bank_account_number': forms.TextInput(attrs={
+                'placeholder': 'Enter 11-18 digit account number'
+            }),
+            'ifsc_code': forms.TextInput(attrs={
+                'placeholder': 'e.g. SBIN0000123'
+            }),
+        }
+    
+    def clean_bank_account_number(self):
+        account_num = self.cleaned_data['bank_account_number']
+        if account_num and not account_num.isdigit():
+            raise forms.ValidationError("Account number should contain only digits")
+        if account_num and len(account_num) < 11:
+            raise forms.ValidationError("Account number too short")
+        return account_num
+    
+    def clean_ifsc_code(self):
+        ifsc = self.cleaned_data['ifsc_code']
+        if ifsc and len(ifsc) != 11:
+            raise forms.ValidationError("IFSC code must be 11 characters long")
+        return ifsc

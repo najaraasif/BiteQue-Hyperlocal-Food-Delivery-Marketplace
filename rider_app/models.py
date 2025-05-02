@@ -24,6 +24,10 @@ class Rider(models.Model):
     is_available = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     current_location = models.CharField(max_length=255, blank=True, null=True)
+    bank_account_name = models.CharField(max_length=100, blank=True, null=True)
+    bank_account_number = models.CharField(max_length=18, blank=True, null=True)
+    bank_name = models.CharField(max_length=100, blank=True, null=True)
+    ifsc_code = models.CharField(max_length=11, blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username} ({'Approved' if self.is_approved else 'Pending'})"

@@ -3,12 +3,13 @@ from django.contrib.auth.admin import UserAdmin
 from .models import Rider, RiderEarning, OrderAssignment
 from .forms import RiderAdminForm
 
+
+@admin.register(Rider)
 class RiderAdmin(admin.ModelAdmin):
-    form = RiderAdminForm
-    list_display = ('user', 'phone', 'is_available', 'is_approved', 'created_at')
-    list_filter = ('is_available', 'is_approved', 'created_at')
-    search_fields = ('user__username', 'phone', 'aadhar_number', 'driving_license')
-    readonly_fields = ('created_at',)
+    list_display = ('user', 'phone', 'is_approved', 'is_available', 'bank_account_name')
+    list_editable = ('is_approved',)
+    search_fields = ('user__username', 'phone', 'bank_account_number')
+
     fieldsets = (
         ('Personal Info', {
             'fields': ('user', 'phone', 'gender', 'profile_photo')
@@ -20,46 +21,18 @@ class RiderAdmin(admin.ModelAdmin):
         ('Address Details', {
             'fields': ('address', 'area', 'pincode')
         }),
+        ('Bank Details', {
+            'fields': ('bank_account_name', 'bank_account_number', 'bank_name', 'ifsc_code'),
+            'classes': ('collapse',)
+        }),
         ('Status', {
             'fields': ('is_available', 'is_approved', 'current_location')
         }),
-        ('Metadata', {
-            'fields': ('created_at',),
-            'classes': ('collapse',)
-        }),
+        # Removed the Metadata fieldset since created_at is auto-generated
     )
-    actions = ['approve_riders', 'disapprove_riders']
-
-    def approve_riders(self, request, queryset):
-        queryset.update(is_approved=True)
-    approve_riders.short_description = "Approve selected riders"
-
-    def disapprove_riders(self, request, queryset):
-        queryset.update(is_approved=False)
-    disapprove_riders.short_description = "Disapprove selected riders"
-
-"""class RiderEarningAdmin(admin.ModelAdmin):
-    list_display = ('rider', 'date', 'total_earnings', 'orders_completed')
-    list_filter = ('date', 'rider')
-    search_fields = ('rider__user__username',)
-    date_hierarchy = 'date'"""
-
-"""class OrderAssignmentAdmin(admin.ModelAdmin):
-    list_display = ('order', 'rider', 'status', 'assigned_at', 'updated_at')
-    list_filter = ('status', 'assigned_at')
-    search_fields = ('order__id', 'rider__user__username')
-    readonly_fields = ('assigned_at', 'updated_at')
-    list_editable = ('status',)
-    date_hierarchy = 'assigned_at'"""
-
-
-#admin.site.register(RiderEarning, RiderEarningAdmin)
-#admin.site.register(OrderAssignment, OrderAssignmentAdmin)
-
-@admin.register(Rider)
-class RiderAdmin(admin.ModelAdmin):
-    list_display = ('user', 'phone', 'is_approved', 'is_available')
-    list_editable = ('is_approved',)
+    
+    readonly_fields = ('created_at',)  # Show as read-only if needed
+    
     actions = ['approve_riders']
 
     def approve_riders(self, request, queryset):

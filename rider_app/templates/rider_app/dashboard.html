@@ -1,137 +1,89 @@
-{% extends 'base.html' %}
-{% load static %}
+{% extends 'basedashboard.html' %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-8">
-        <h1 class="text-2xl font-bold">Rider Dashboard</h1>
-        <button id="availabilityToggle"
-        class="px-4 py-2 rounded-lg text-white {% if rider.is_available %}bg-green-500{% else %}bg-red-500{% endif %}"
-        hx-post="{% url 'rider:update_availability' %}"
-        hx-trigger="click"
-        hx-swap="none"
-        onclick="updateButton(this)">
-    {% if rider.is_available %}Available{% else %}Not Available{% endif %}
-</button>
-    </div>
-    {% for order in active_orders %}
-    <div class="border rounded-lg p-4">
-        <!-- ... other elements ... -->
-        <div class="space-x-2">
-            <button hx-post="{% url 'rider:accept_order' order.id %}"
-                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                    class="px-4 py-2 bg-green-500 text-white rounded-lg">
-                Accept
-            </button>
-            <button hx-post="{% url 'rider:reject_order' order.id %}"
-                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                    class="px-4 py-2 bg-red-500 text-white rounded-lg">
-                Reject
-            </button>
+<div class="space-y-6">
+    <!-- Active Orders Section -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-800">Active Orders</h3>
+            <span class="text-sm text-gray-500">{{ active_orders.count }} active</span>
         </div>
-    </div>
-    {% endfor %}
-    <!-- Earnings Card -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-xl font-bold mb-4">Today's Earnings</h2>
-        <div class="grid grid-cols-3 gap-4">
-            <div class="text-center">
-                <p class="text-2xl font-bold">₹ {{ today_earnings.total_earnings|default:"0" }}</p>
-                <p class="text-gray-600">Total Earnings</p>
-            </div>
-            <div class="text-center">
-                <p class="text-2xl font-bold">{{ today_earnings.orders_completed|default:"0" }}</p>
-                <p class="text-gray-600">Orders Completed</p>
-            </div>
-            <div class="text-center">
-                <p class="text-2xl font-bold">₹ {{ average_earnings|default:"0" }}</p>
-                <p class="text-gray-600">Avg. per Order</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Active Orders -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-xl font-bold mb-4">Active Orders</h2>
+        
+        {% if active_orders %}
         <div class="space-y-4">
             {% for order in active_orders %}
-            <div class="border rounded-lg p-4">
-                <div class="flex justify-between items-center">
+            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="font-bold">Order #{{ order.order.id }}</p>
-                        <p class="text-gray-600">{{ order.order.delivery_address }}</p>
+                        <h4 class="font-medium text-gray-800">Order #{{ order.order.id }}</h4>
+                        <p class="text-sm text-gray-500">{{ order.order.created_at|timesince }} ago</p>
                     </div>
-                    <div class="space-x-2">
-                        <a href="{% url 'accept_order' order.id %}" 
-                           class="px-4 py-2 bg-green-500 text-white rounded-lg">Accept</a>
-                        <a href="{% url 'reject_order' order.id %}" 
-                           class="px-4 py-2 bg-red-500 text-white rounded-lg">Reject</a>
-                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-medium 
+                        {% if order.status == 'PENDING' %}bg-yellow-100 text-yellow-800
+                        {% elif order.status == 'ACCEPTED' %}bg-blue-100 text-blue-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ order.get_status_display }}
+                    </span>
                 </div>
-                <div id="map-{{ order.id }}" class="mt-4 h-48"></div>
+                
+                {% if order.status == 'PENDING' %}
+                <div class="mt-3 flex space-x-2">
+                    <button onclick="acceptOrder({{ order.order.id }})" 
+                            class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                        Accept
+                    </button>
+                    <button onclick="rejectOrder({{ order.order.id }})" 
+                            class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                        Reject
+                    </button>
+                </div>
+                {% endif %}
             </div>
-            {% empty %}
-            <p class="text-gray-600">No active orders</p>
             {% endfor %}
         </div>
+        {% else %}
+        <div class="text-center py-8">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="mt-2 text-gray-500">No active orders right now</p>
+        </div>
+        {% endif %}
     </div>
 
-    <!-- Earnings History -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-xl font-bold mb-4">Earnings History</h2>
-        <table class="w-full">
-            <thead>
-                <tr class="border-b">
-                    <th class="text-left py-2">Date</th>
-                    <th class="text-left py-2">Orders Completed</th>
-                    <th class="text-right py-2">Earnings</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for earning in earnings %}
-                <tr class="border-b">
-                    <td class="py-2">{{ earning.date }}</td>
-                    <td class="py-2">{{ earning.orders_completed }}</td>
-                    <td class="py-2 text-right">₹ {{ earning.total_earnings }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Recent Earnings Section -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <h3 class="text-lg font-medium text-gray-800 mb-4">Recent Earnings</h3>
+        
+        {% if earnings %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orders</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Earnings</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for earning in earnings %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{{ earning.date|date:"M d, Y" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{{ earning.orders_completed }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">₹{{ earning.total_earnings }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="mt-2 text-gray-500">No earnings recorded yet</p>
+        </div>
+        {% endif %}
     </div>
 </div>
-
-<!-- 
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script> 
-<script>
-function initMap() {
-    {% for order in active_orders %}
-    const map{{ order.id }} = new google.maps.Map(document.getElementById('map-{{ order.id }}'), {
-        center: {lat: -34.397, lng: 150.644},
-        zoom: 15
-    });
-    {% endfor %}
-}
-</script> -->
-<script>
-    function updateButton(button) {
-        button.disabled = true;
-        fetch(button.getAttribute('hx-post'), {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                button.textContent = data.button_text;
-                button.classList.toggle('bg-green-500');
-                button.classList.toggle('bg-red-500');
-            }
-            button.disabled = false;
-        });
-    }
-    </script>
 {% endblock %}
