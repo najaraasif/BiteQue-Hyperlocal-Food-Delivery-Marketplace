@@ -2,56 +2,92 @@
 {% load static %}
 
 {% block content %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<style>
+
+    /* Smooth transition for button states */
+.deliver-btn {
+    transition: all 0.3s ease;
+}
+
+/* Success state */
+.bg-green-500 {
+    background-color: #48bb78;
+}
+</style>
+
+
+
+<div class="debug-info bg-gray-100 p-4 mb-4 text-sm" style="display: none;">
+    <p>Rider Status: 
+        {% if rider %}
+            Available: {{ rider.is_available|yesno }}, 
+            Approved: {{ rider.is_approved|yesno }}
+        {% else %}
+            NO RIDER PROFILE
+        {% endif %}
+    </p>
+    <p>Active Orders Query: {{ active_orders.query }}</p>
+    <p>Found {{ active_orders|length }} orders</p>
+</div>
+
+
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-8">
         <h1 class="text-3xl font-bold">Rider Dashboard</h1>
         
     </div>
-    <!-- Active Orders -->
-    <div class="bg-white p-6 rounded-lg shadow mb-8">
-        <h2 class="text-xl font-bold mb-4">Active Orders</h2>
-        {% if active_orders %}
-            <div class="overflow-x-auto">
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left py-2">Order ID</th>
-                            <th class="text-left py-2">Status</th>
-                            <th class="text-left py-2">Assigned At</th>
-                            <th class="text-left py-2">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in active_orders %}
-                        <tr class="border-b">
-                            <td class="py-2">#{{ order.order.id }}</td>
-                            <td class="py-2">{{ order.get_status_display }}</td>
-                            <td class="py-2">{{ order.assigned_at|date:"M d, H:i" }}</td>
-                            <td class="py-2">
-                                {% if order.status == 'PENDING' %}
-                                <button class="bg-green-500 text-white px-3 py-1 rounded mr-2"
-                                        hx-post="{% url 'rider:accept_order' order.order.id %}"
-                                        hx-target="closest tr"
-                                        hx-swap="outerHTML">
-                                    Accept
-                                </button>
-                                <button class="bg-red-500 text-white px-3 py-1 rounded"
-                                        hx-post="{% url 'rider:reject_order' order.order.id %}"
-                                        hx-target="closest tr"
-                                        hx-swap="outerHTML">
-                                    Reject
-                                </button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+
+<!-- Active Orders -->
+<div class="bg-white p-6 rounded-2xl shadow-xl mb-10 border border-gray-100 transition-all duration-300">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Active Orders</h2>
+
+    {% if active_orders %}
+        <div class="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {% for assignment in active_orders %}
+            <div class="bg-white rounded-xl shadow-md p-5 border border-gray-100 hover:shadow-lg transition duration-300">
+                <div class="mb-3">
+                    <p class="text-sm text-gray-500">Order ID</p>
+                    <p class="text-lg font-semibold text-gray-800">#{{ assignment.order.id }}</p>
+                </div>
+                <div class="mb-2">
+                    <p class="text-sm text-gray-500">Restaurant</p>
+                    <p class="text-base text-gray-700">{{ assignment.order.restaurant.name }}</p>
+                </div>
+                <div class="mb-2">
+                    <p class="text-sm text-gray-500">Customer Address</p>
+                    <p class="text-base text-gray-700">{{ assignment.order.order_address }}</p>
+                </div>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-500">Status</p>
+                    {% if assignment.status == 'PENDING' %}
+                        <span class="inline-block mt-1 px-3 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full">Pending Acceptance</span>
+                    {% elif assignment.status == 'ACCEPTED' %}
+                        <span class="inline-block mt-1 px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">Out for Delivery</span>
+                    {% endif %}
+                </div>
+
+                <div>
+                    {% if assignment.status == 'PENDING' %}
+                        <button class="accept-btn w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow transition-all duration-200 transform hover:scale-105 active:scale-95"
+                            data-order-id="{{ assignment.order.id }}">
+                            Accept Order
+                        </button>
+                    {% elif assignment.status == 'ACCEPTED' %}
+                        <button class="deliver-btn w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow transition-all duration-200 transform hover:scale-105 active:scale-95"
+                            data-order-id="{{ assignment.order.id }}">
+                            Mark Delivered
+                        </button>
+                    {% endif %}
+                </div>
             </div>
-        {% else %}
-            <p class="text-gray-500">No active orders</p>
-        {% endif %}
-    </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-500 text-center">No active orders available</p>
+    {% endif %}
+</div>
+
     <!-- Analytics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div class="bg-white p-6 rounded-lg shadow">
@@ -79,8 +115,6 @@
             <canvas id="earningsChart"></canvas>
         </div>
     </div>
-
-
 
     <!-- Recent Earnings -->
     <div class="bg-white p-6 rounded-lg shadow">
@@ -117,6 +151,7 @@
 
 <!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Weekly Earnings Chart
@@ -154,15 +189,113 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Availability toggle
-    document.body.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.detail.target.id === 'availability-btn') {
-            const response = JSON.parse(evt.detail.xhr.responseText);
-            const btn = document.getElementById('availability-btn');
-            btn.textContent = response.button_text;
-            btn.className = `px-4 py-2 rounded-lg text-white ${response.button_class}`;
+    // Initialize mark delivered buttons
+    setupMarkDeliveredButtons();
+});
+// accept btn
+
+document.querySelectorAll('.accept-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+        const orderId = button.dataset.orderId;
+        const response = await fetch(`{% url 'rider:accept_order' 0 %}`.replace('0', orderId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            window.location.reload();
+        } else {
+            alert('Error: ' + result.message);
+        }
+    });
+});
+
+function rejectOrder(orderId) {
+    fetch(`/rider/orders/reject/${orderId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (response.ok) window.location.reload();
+        else console.error('Failed to reject order');
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+
+document.querySelectorAll('.deliver-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+        const orderId = button.dataset.orderId;
+        button.disabled = true; // Disable button during request
+        button.textContent = 'Processing...'; // Optional: Show loading state
+        
+        try {
+            const response = await fetch(`{% url 'rider:mark_delivered' 0 %}`.replace('0', orderId), {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            });
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                // Update button appearance
+                button.textContent = '✓ Delivered Success';
+                button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                button.classList.add('bg-green-500', 'cursor-default');
+                
+                // Optional: Update the status cell in the table
+                const statusCell = button.closest('tr').querySelector('td:nth-child(4)');
+                if (statusCell) {
+                    statusCell.innerHTML = '<span class="text-green-600">Delivered</span>';
+                }
+            } else {
+                button.disabled = false;
+                button.textContent = 'Mark Delivered';
+                console.error('Error:', result.message);
+            }
+        } catch (error) {
+            button.disabled = false;
+            button.textContent = 'Mark Delivered';
+            console.error('Network error:', error);
         }
     });
 });
 </script>
+<script>
+    // Toggle debug info with Ctrl+D
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'd') {
+            document.querySelector('.debug-info').style.display = 
+                document.querySelector('.debug-info').style.display === 'none' ? 'block' : 'none';
+        }
+    });
+    </script>
+
+
+
+<script>
+    document.querySelectorAll('.deliver-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            button.disabled = true;
+            button.classList.remove('bg-green-600', 'hover:bg-green-700');
+            button.classList.add('bg-green-800');
+    
+            button.style.transition = 'all 0.3s ease';
+            button.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                button.textContent = 'Delivered Successfully';
+                button.style.transform = 'scale(1)';
+            }, 200);
+        });
+    });
+    </script>
+    
 {% endblock %}

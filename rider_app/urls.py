@@ -11,10 +11,10 @@ urlpatterns = [
     path('rider-login/', RiderLoginView.as_view(), name='rider-login'),
     path('update-availability/', views.update_availability, name='update_availability'),
     path('orders/accept/<int:order_id>/', views.accept_order, name='accept_order'),
-    path('orders/reject/<int:order_id>/', views.reject_order, name='reject_order'),
     path('bank-details/', views.bank_details, name='bank_details'),
     path('logout/', views.rider_logout, name='logout'),
     path('earnings/', views.rider_earnings, name='earnings'),
+    path('orders/deliver/<int:order_id>/', views.mark_delivered, name='mark_delivered'),
 ]
 
   

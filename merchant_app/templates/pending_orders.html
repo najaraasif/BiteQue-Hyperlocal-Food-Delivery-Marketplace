@@ -1,0 +1,15 @@
+<h2>Pending Orders</h2>
+{% for order in orders %}
+  <div>
+    <p><strong>{{ order.customer_name }}</strong> - {{ order.customer_contact }}</p>
+    <p>{{ order.order_details }}</p>
+    <p>Total: ₹{{ order.total }}</p>
+    <form method="post" action="{% url 'confirm_order' order.id %}">
+      {% csrf_token %}
+      <button type="submit">Confirm Order</button>
+    </form>
+  </div>
+  <hr>
+{% empty %}
+  <p>No pending orders.</p>
+{% endfor %}

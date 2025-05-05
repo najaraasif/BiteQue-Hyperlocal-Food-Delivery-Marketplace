@@ -1,0 +1,12 @@
+<h2>Order History</h2>
+{% for order in orders %}
+  <div>
+    <p><strong>{{ order.customer_name }}</strong></p>
+    <p>{{ order.order_details }}</p>
+    <p>Total: ₹{{ order.total }}</p>
+    <p>Ordered at: {{ order.created_at }}</p>
+  </div>
+  <hr>
+{% empty %}
+  <p>No completed orders yet.</p>
+{% endfor %}

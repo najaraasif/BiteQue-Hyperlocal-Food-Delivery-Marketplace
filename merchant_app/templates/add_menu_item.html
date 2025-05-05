@@ -1,0 +1,114 @@
+{% extends 'dashboardBase.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-white shadow rounded-lg p-6 mt-8">
+
+    <h2 class="text-2xl font-semibold text-gray-700 mb-6">Add New Menu Item</h2>
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Category Field with Add Button -->
+        <div>
+            <label for="id_category" class="block text-sm font-medium text-gray-700">Category</label>
+            <div class="flex space-x-3 mt-1">
+                {{ form.category }}
+                <button type="button"
+                        class="px-3 py-2 text-sm bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200"
+                        data-modal-target="addCategoryModal"
+                        data-modal-toggle="addCategoryModal">
+                    + Add New
+                </button>
+            </div>
+        </div>
+
+        <!-- Render Remaining Fields Normally -->
+        {% for field in form %}
+            {% if field.name != 'category' %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="text-sm text-red-500">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        <!-- Submit Button -->
+        <div>
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
+                Add Item
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Modal -->
+<div id="addCategoryModal" tabindex="-1"
+     class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto inset-0 h-modal h-full bg-black bg-opacity-50">
+    <div class="relative w-full max-w-md mx-auto my-24">
+        <div class="bg-white rounded-lg shadow-lg">
+            <form id="addCategoryForm" class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Add New Category</h3>
+                    <button type="button" class="text-gray-400 hover:text-gray-600" data-modal-hide="addCategoryModal">
+                        ✕
+                    </button>
+                </div>
+                {% csrf_token %}
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">Category Name</label>
+                    <input type="text" name="name" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Drinks" required>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
+                        Add Category
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/flowbite@1.6.5/dist/flowbite.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    $('#addCategoryForm').submit(function(e){
+        e.preventDefault();
+        const name = $(this).find('input[name="name"]').val();
+        const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+        $.ajax({
+            url: '{% url "ajax_add_category" %}',
+            type: 'POST',
+            data: { name: name, csrfmiddlewaretoken: csrfToken },
+            success: function(response){
+                const option = $('<option></option>').val(response.id).text(response.name).prop('selected', true);
+                $('#id_category').append(option);
+                $('#addCategoryModal').addClass('hidden');
+                $('#addCategoryForm')[0].reset();
+            },
+            error: function(xhr){
+                alert('Could not add category: ' + xhr.responseJSON.error);
+            }
+        });
+    });
+
+    // Modal toggling using Flowbite
+    $('[data-modal-toggle]').on('click', function () {
+        const modal = $('#' + $(this).attr('data-modal-target'));
+        modal.removeClass('hidden');
+    });
+
+    $('[data-modal-hide]').on('click', function () {
+        $(this).closest('.fixed').addClass('hidden');
+    });
+</script>
+{% endblock %}

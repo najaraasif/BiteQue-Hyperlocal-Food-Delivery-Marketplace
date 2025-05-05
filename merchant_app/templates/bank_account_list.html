@@ -1,0 +1,101 @@
+{% extends "dashboardBase.html" %}
+{% block content %}
+
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <h2 class="text-3xl font-bold text-[#1F2937]">Manage Bank Accounts</h2>
+        <a href="{% url 'add_bank_account' %}"
+        class="inline-flex items-center gap-2 text-white font-semibold px-5 py-2 rounded-lg shadow hover:bg-[#e0094a] transition duration-200"
+        style="background-color: #FF0B55 !important;">
+         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                   d="M12 4v16m8-8H4"/>
+         </svg>
+         Add Account
+     </a>
+     
+    </div>
+
+    <!-- Alert for Pending Accounts -->
+    {% if pending_accounts %}
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-lg shadow">
+        <p class="font-semibold text-yellow-800">Pending Approval</p>
+        <p class="text-sm text-yellow-700 mt-1">Your bank account(s) are currently awaiting admin approval. You’ll be notified via email upon confirmation.</p>
+    </div>
+    {% endif %}
+
+    <!-- Display Accounts -->
+    {% if accounts %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for account in accounts %}
+            <div class="bg-white rounded-xl border-l-4 shadow p-6 hover:shadow-lg transition-all duration-200 
+                {% if not account.is_approved %}
+                    border-yellow-400
+                {% else %}
+                    border-green-500
+                {% endif %}
+            ">
+                <!-- Top: Bank Info -->
+                <div class="mb-3">
+                    <p class="text-sm text-gray-500">Bank Name</p>
+                    <h3 class="text-lg font-bold text-gray-800">{{ account.bank_name }}</h3>
+                </div>
+
+                <div class="space-y-2 text-gray-700">
+                    <div>
+                        <p class="text-sm text-gray-500">Account Holder</p>
+                        <p>{{ account.account_holder_name }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Account Number</p>
+                        <p>{{ account.account_number }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">IFSC Code</p>
+                        <p>{{ account.ifsc_code }}</p>
+                    </div>
+                </div>
+
+                <!-- Status Tags -->
+                <div class="flex flex-wrap gap-2 mt-4">
+                    <span class="text-xs font-medium px-3 py-1 rounded-full
+                        {% if account.is_approved %}
+                            bg-green-100 text-green-800
+                        {% else %}
+                            bg-yellow-100 text-yellow-800
+                        {% endif %}">
+                        {% if account.is_approved %}Approved{% else %}Pending{% endif %}
+                    </span>
+
+                    {% if account.is_primary %}
+                        <span class="text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-800">
+                            Primary
+                        </span>
+                    {% endif %}
+                </div>
+
+                <!-- Actions -->
+                {% if account.is_approved %}
+                <div class="mt-6 flex justify-end gap-4 text-sm">
+                    <a href="{% url 'edit_bank_account' account.id %}"
+                       class="text-blue-600 hover:underline font-medium">Edit</a>
+                    <a href="{% url 'delete_bank_account' account.id %}"
+                       class="text-red-600 hover:underline font-medium">Delete</a>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- No Accounts Message -->
+        <div class="mt-16 text-center">
+            <p class="text-gray-500 text-lg">No bank accounts added yet.</p>
+        </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

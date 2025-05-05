@@ -1,8 +1,9 @@
 from django.db import models
 from django.urls import reverse
-from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect, get_object_or_404, render
 from django.contrib.auth.models import User
-
+from user_app.models import Order
 
 
 class merchantRegistration(models.Model):
@@ -18,59 +19,55 @@ class merchantRegistration(models.Model):
         return self.username
     
 
-class addRestaurant(models.Model):
+class Restaurant(models.Model):
     name = models.CharField(max_length=100)
-    owner_name = models.CharField(max_length=100)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
     email = models.EmailField()
-    contact_number = models.DecimalField(max_length=15,max_digits=16, decimal_places=1)
-    restaurantAddress = models.TextField()
+    contact_number = models.CharField(max_length=15)
+    area = models.CharField(max_length=100, blank=True)
+    address = models.TextField()
     city = models.CharField(max_length=50)
     pan_number = models.CharField(max_length=20, blank=True)
-    gstin_number = models.DecimalField(max_length=20,max_digits=15, decimal_places=1, blank=True)
-    fssai_number = models.DecimalField(max_length=20,max_digits=15, decimal_places=1, blank=True)
-    is_approved = models.BooleanField()
+    gstin_number = models.CharField(max_length=20, blank=True)
+    fssai_number = models.CharField(max_length=20, blank=True)
+    is_approved = models.BooleanField(default=False)
+    is_available = models.BooleanField(default=False)
+
 
     def __str__(self):
-        return self.name    
+        return f"{self.name} - {self.city}"
     
-    # DASHBOARD MODELS
 
-class MerchantProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    is_online = models.BooleanField(default=False)
-    business_name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=15)
-    address = models.TextField()
-
-    def __str__(self):
-        return self.business_name
-    
-class InventoryItem(models.Model):
-    merchant = models.ForeignKey(MerchantProfile, on_delete=models.CASCADE)
+class RestaurantMenu(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menus')
     name = models.CharField(max_length=100)
-    quantity = models.PositiveIntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    last_updated = models.DateTimeField(auto_now=True)
+    size_category = models.CharField(max_length=130)
+    description = models.TextField(blank=True)
+    image = models.ImageField(upload_to='menu_images/', null=True, blank=True)
+    price = models.DecimalField(max_digits=6, decimal_places=2)
+    available = models.BooleanField(default=True)
+    prep_time = models.PositiveIntegerField()
 
     def __str__(self):
-        return f"{self.name} ({self.quantity})"
+        return f"{self.name} - {self.restaurant.name}"
 
-class Order(models.Model):
-    merchant = models.ForeignKey(MerchantProfile, on_delete=models.CASCADE)
-    customer_name = models.CharField(max_length=100)
-    items = models.TextField()
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    date = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=50, choices=[('Pending', 'Pending'), ('Completed', 'Completed')])
+
+class BankAccount(models.Model):
+    merchant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bank_accounts')
+    bank_name = models.CharField(max_length=100)
+    account_holder_name = models.CharField(max_length=100)
+    account_number = models.CharField(max_length=50, unique=True)
+    ifsc_code = models.CharField(max_length=20)
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_approved = models.BooleanField(default=False)
+
+
+    def save(self, *args, **kwargs):
+        # If this is being marked as primary, unmark all others
+        if self.is_primary:
+            BankAccount.objects.filter(merchant=self.merchant, is_primary=True).update(is_primary=False)
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Order #{self.id} - {self.customer_name}"
-
-class Payment(models.Model):
-    merchant = models.ForeignKey(MerchantProfile, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    transaction_date = models.DateTimeField(auto_now_add=True)
-    transaction_id = models.CharField(max_length=100)
-
-    def __str__(self):
-        return f"Payment: {self.amount} on {self.transaction_date}"
+        return f"{self.bank_name} - {self.account_number}"

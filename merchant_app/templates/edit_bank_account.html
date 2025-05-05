@@ -1,0 +1,43 @@
+{% extends "dashboardBase.html" %}
+{% block content %}
+<div class="container mx-auto mt-8 px-4 max-w-xl">
+    <h2 class="text-2xl font-bold mb-6">Edit Bank Account</h2>
+    <form method="post" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <div class="mb-4">
+            {{ form.bank_name.label_tag }}<br>
+            {{ form.bank_name }}
+            {{ form.bank_name.errors }}
+        </div>
+
+        <div class="mb-4">
+            {{ form.account_holder_name.label_tag }}<br>
+            {{ form.account_holder_name }}
+            {{ form.account_holder_name.errors }}
+        </div>
+
+        <div class="mb-4">
+            {{ form.account_number.label_tag }}<br>
+            {{ form.account_number }}
+            {{ form.account_number.errors }}
+        </div>
+
+        <div class="mb-4">
+            {{ form.ifsc_code.label_tag }}<br>
+            {{ form.ifsc_code }}
+            {{ form.ifsc_code.errors }}
+        </div>
+
+        <div class="mb-4">
+            {{ form.is_primary }} {{ form.is_primary.label_tag }}
+        </div>
+
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Update Account
+        </button>
+        <a href="{% url 'bank_account_list' %}" class="ml-2 text-gray-600 hover:underline">Cancel</a>
+    </form>
+</div>
+{% endblock %}

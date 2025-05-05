@@ -1,35 +1,44 @@
 from os import __all__
 from django.contrib import admin
-from .models import merchantRegistration, addRestaurant
-from .models import MerchantProfile, InventoryItem, Order, Payment
+from .models import merchantRegistration, Restaurant, RestaurantMenu, BankAccount
+from rider_app.models import Rider, OrderAssignment
+
+
 
 class merchantRegistrationAdmin(admin.ModelAdmin):
     list_display = ['username', 'name', 'number', 'email', 'password', 'retypePassword']
     list_filter = ['username']
 
-class addRestaurantAdmin(admin.ModelAdmin):
-    list_display = ['name','owner_name','email','contact_number','restaurantAddress','city','pan_number', 'gstin_number', 'fssai_number','is_approved']
+class RestaurantAdmin(admin.ModelAdmin):
+    list_display = ['name','owner','email','contact_number','address','city','pan_number', 'gstin_number', 'fssai_number','is_approved']
     list_filter = ['name']
 
-class MerchantProfileAdmin(admin.ModelAdmin):
-    list_display = ['user', 'business_name', 'phone', 'address', 'is_online']
+class RestaurantMenuAdmin(admin.ModelAdmin):
+    list_display = ['name', 'image', 'price', 'available', 'size_category']
+    list_filter = ['name']
 
-class InventoryItemAdmin(admin.ModelAdmin):
-    list_display = ['merchant', 'name', 'quantity', 'price', 'last_updated']
-
-class OrderAdmin(admin.ModelAdmin):
-    list_display = ['merchant', 'customer_name', 'total_amount', 'date', 'status']
-
-class PaymentAdmin(admin.ModelAdmin):
-    list_display = ['merchant', 'amount', 'transaction_date', 'transaction_id']
-
-
-
-
-
+class BankAccountAdmin(admin.ModelAdmin):
+    list_display = ['merchant','bank_name', 'account_holder_name', 'account_number','ifsc_code', 'is_primary']
+    list_filter = ['account_holder_name']
 
 admin.site.register(merchantRegistration, merchantRegistrationAdmin)
-admin.site.register(InventoryItem, InventoryItemAdmin)
-admin.site.register(Order, OrderAdmin)
-admin.site.register(Payment, PaymentAdmin)
-admin.site.register(MerchantProfile, MerchantProfileAdmin)
+admin.site.register(Restaurant, RestaurantAdmin)
+admin.site.register(RestaurantMenu, RestaurantMenuAdmin)
+admin.site.register(BankAccount, BankAccountAdmin)
+
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ['id', 'restaurant', 'status', 'created_at']
+    list_editable = ['status']  # Allow status changes in admin list
+    
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        
+        # Trigger assignments only if status is 'ready'
+        if obj.status == 'ready':
+            riders = Rider.objects.filter(is_available=True, is_approved=True)
+            for rider in riders:
+                OrderAssignment.objects.get_or_create(
+                    rider=rider,
+                    order=obj,
+                    defaults={'status': 'PENDING'}
+                )

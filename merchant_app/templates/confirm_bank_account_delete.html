@@ -1,0 +1,12 @@
+{% extends "dashboardBase.html" %}
+{% block content %}
+<div class="container mx-auto mt-16 max-w-lg bg-white rounded shadow p-6">
+    <h2 class="text-xl font-bold mb-4 text-red-600">Confirm Delete</h2>
+    <p class="mb-6">Are you sure you want to delete the bank account <strong>{{ account.bank_name }}</strong> ({{ account.account_number }})?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Yes, Delete</button>
+        <a href="{% url 'bank_account_list' %}" class="ml-4 text-gray-600 hover:underline">Cancel</a>
+    </form>
+</div>
+{% endblock %}

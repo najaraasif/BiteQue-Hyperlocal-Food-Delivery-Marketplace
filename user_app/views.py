@@ -1,5 +1,5 @@
 from django.shortcuts import render
-
+from merchant_app.models import RestaurantMenu
 def home(request):
     return render(request, 'home.html')
 
@@ -29,4 +29,8 @@ def ResponsibleDisclosure(request):
 
 def userLogin(request):
     return render(request, 'login.html')
+
+def user_view_menu(request, restaurant_id):
+    menus = RestaurantMenu.objects.filter(restaurant_id=restaurant_id, available=True)
+    return render(request, 'user_app/view_menu.html', {'menus': menus})
 

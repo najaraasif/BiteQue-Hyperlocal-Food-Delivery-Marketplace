@@ -1,0 +1,57 @@
+{% extends 'dashboardBase.html' %}
+
+{% block content %}
+<div class="container mx-auto p-6">
+  
+  <!-- Header and Add Button -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+    <h3 class="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Your Menu Items</h3>
+    <a href="{% url 'add_item' %}"
+       class="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
+      ➕ Add New Item
+    </a>
+  </div>
+
+  <!-- Menu Items Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for item in items %}
+      <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition duration-300">
+        
+        {% if item.image %}
+          <img src="{{ item.image.url }}" alt="{{ item.name }}"
+               class="w-full h-48 object-cover border-b border-gray-200">
+        {% endif %}
+        
+        <div class="p-5">
+          <h4 class="text-xl font-semibold text-gray-800 mb-1">{{ item.name }}</h4>
+          <p class="text-sm text-gray-600 mb-2 font-bold">Category: {{ item.size_category }}</p>
+          <p class="text-gray-700 text-sm mb-2">{{ item.description }}</p>
+          <p class="text-sm font-semibold text-green-600 mb-1">Price: ₹{{ item.price }}</p>
+          <p class="text-sm text-gray-500 mb-1">Preparation Time: {{ item.prep_time }} min</p>
+          
+          <p class="text-sm">
+            <span class="text-gray-500">Available: </span>
+            {% if item.available %}
+              <span class="text-green-600 font-semibold">Yes</span>
+            {% else %}
+              <span class="text-red-600 font-semibold">No</span>
+            {% endif %}
+          </p>
+
+          <div class="mt-4">
+            <a href="{% url 'edit_menu_item' item.id %}"
+               class="inline-block text-sm text-blue-600 hover:text-blue-800 font-medium transition">
+              ✏️ Edit Item
+            </a>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p class="col-span-full text-gray-600 text-center text-lg mt-12">
+        No menu items found. Use the "Add New Item" button to start adding.
+      </p>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

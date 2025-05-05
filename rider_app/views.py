@@ -6,52 +6,75 @@ from django.db import IntegrityError
 from django.views.decorators.http import require_POST
 from django.shortcuts import render, redirect
 from django.urls import reverse
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from merchant_app.models import Order
 from .models import Rider, OrderAssignment, RiderEarning
 from .forms import BankDetailsForm, RiderRegistrationForm, RiderLoginForm
 from django.contrib.auth.views import LoginView
 import logging
 from django.db import transaction
+from datetime import datetime, timedelta
+from django.db.models import Sum
+from merchant_app.models import Restaurant 
+from user_app.models import Order
 
 
 logger = logging.getLogger(__name__)
 
 @login_required
 def rider_dashboard(request):
-    if request.user.is_staff:
-        return redirect('/admin/')
     try:
-        # Check if user has rider profile
-        rider = request.user.rider  # Using related_name access
+        rider = request.user.rider
+        print(f"Debug: Found rider - Available: {rider.is_available}, Approved: {rider.is_approved}")  # Debug
     except Rider.DoesNotExist:
-        messages.warning(request, "Please complete your rider registration")
-        return redirect('rider:registration')
-    except Exception as e:
-        logger.error(f"Dashboard error: {str(e)}", exc_info=True)
-        messages.error(request, "Unable to load dashboard")
-        return redirect('rider:dashboard')  # Try redirecting to self instead of home
+        print("Debug: No rider profile found")  # Debug
+        return redirect('rider:registration')  # Redirect if no rider profile
     
-    # Successful case
-    #get all relevant data
-    orders = OrderAssignment.objects.filter(rider=rider).select_related('order')
-    earnings = RiderEarning.objects.filter(rider=rider).order_by('-date')[:7]
-    total_earnings = sum(earning.total_earnings for earning in earnings)
-    total_orders = sum(earning.orders_completed for earning in earnings)
-    acceptance_rate = _calculate_acceptance_rate(rider)
-    weekly_earnings = _get_weekly_earnings(rider)
-
+    # Get active and completed orders
+    active_orders = OrderAssignment.objects.filter(
+            rider=rider,
+        status__in=['PENDING', 'ACCEPTED'],  # Only show these
+        order__status__in=['ready', 'out_for_delivery']
+    )
+        
+    print(f"Debug: Found {active_orders.count()} active orders")  # Debug
+    
+    completed_orders = OrderAssignment.objects.filter(
+        rider=rider,
+        status='DELIVERED'
+    ).order_by('-updated_at')[:5]
+    
     context = {
-        'rider': rider,
-        'active_orders': orders.filter(status__in=['ACCEPTED', 'PENDING']),
-        'completed_orders': orders.filter(status='DELIVERED')[:5],  # Last 5 completed
-        'earnings': earnings,
-        'total_earnings': total_earnings,
-        'total_orders': total_orders,
-        'acceptance_rate': acceptance_rate,
-        'weekly_earnings': weekly_earnings,
+        'rider': rider,  # Make sure this is included
+        'active_orders': active_orders,
+        'completed_orders': completed_orders,
+        'total_earnings': rider.get_total_earnings(),
+        'total_orders': rider.get_total_orders_completed(),
+        'acceptance_rate': rider.get_acceptance_rate(),
+        'weekly_earnings': get_weekly_earnings(rider),  # Implement this function
     }
     return render(request, 'rider_app/dashboard.html', context)
+
+def get_weekly_earnings(rider):
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=7)
+    
+    earnings = (RiderEarning.objects
+                .filter(rider=rider, date__range=[start_date, end_date])
+                .values('date')
+                .annotate(daily_earnings=Sum('total_earnings'))
+                .order_by('date'))
+    
+    # Create a list of all dates in the period
+    dates = [start_date + timedelta(days=i) for i in range(7)]
+    
+    # Map earnings to dates
+    earnings_dict = {e['date']: float(e['daily_earnings']) for e in earnings}
+    
+    return [{
+        'date': date,
+        'earnings': earnings_dict.get(date, 0)
+    } for date in dates]
 
 def _calculate_acceptance_rate(rider):
     """Helper function to calculate acceptance rate"""
@@ -110,47 +133,35 @@ def update_availability(request):
         'button_text': 'Available' if rider.is_available else 'Not Available',
         'button_class': 'bg-green-500' if rider.is_available else 'bg-red-500'
     })
+
+
 @require_POST
 @login_required
 def accept_order(request, order_id):
     try:
-        order = Order.objects.get(id=order_id)
-        assignment = OrderAssignment.objects.get(order=order, rider=request.user.rider)
-        
-        if assignment.status != 'PENDING':
-            return JsonResponse({'status': 'error', 'message': 'Order not in pending state'}, status=400)
-            
+        rider = request.user.rider
+        assignment = OrderAssignment.objects.get(
+            order_id=order_id,
+            rider=rider,
+            status='PENDING'
+        )
         assignment.status = 'ACCEPTED'
         assignment.save()
-        
-        return JsonResponse({'status': 'success'})
-    except (Order.DoesNotExist, OrderAssignment.DoesNotExist):
-        return JsonResponse({'status': 'error', 'message': 'Order not found'}, status=404)
-    except OrderAssignment.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Order not found'}, status=404)
 
-@require_POST
-def reject_order(request, order_id):
-    if not request.user.is_authenticated:
-        return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
-    
-    try:
-        rider = request.user.rider
-        assignment = OrderAssignment.objects.get(order_id=order_id, rider=rider)
-        
-        if assignment.status != 'PENDING':
-            return JsonResponse({'status': 'error', 'message': 'Order cannot be rejected'}, status=400)
-        
-        assignment.status = 'REJECTED'
-        assignment.save()
-        
-        return JsonResponse({
-            'status': 'success', 
-            'message': f'Order #{order_id} rejected',
-            'order_id': order_id
-        })
-    except OrderAssignment.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Order not found'}, status=404)
+        # Reject all other assignments for this order
+        OrderAssignment.objects.filter(
+            order_id=order_id
+        ).exclude(rider=rider).update(status='REJECTED')  # <-- Key change
+
+        # Update order status
+        order = assignment.order
+        order.status = 'out_for_delivery'
+        order.save()
+
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        logger.error(f"Error accepting order: {str(e)}")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 def rider_registration(request):
     if request.method == 'POST':
@@ -259,3 +270,28 @@ def rider_earnings(request):
         messages.error(request, "Unable to load earnings data")
         return redirect('rider:dashboard')
       
+
+@require_POST
+@login_required
+def mark_delivered(request, order_id):
+    try:
+        rider = request.user.rider
+        assignment = OrderAssignment.objects.get(
+            order_id=order_id,
+            rider=rider,
+            status='ACCEPTED'
+        )
+        
+        assignment.status = 'DELIVERED'
+        assignment.save()
+        
+        order = assignment.order
+        order.status = 'delivered'
+        order.save()
+        
+        return JsonResponse({'status': 'success'})
+        
+    except OrderAssignment.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Order not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Restaurant Menu</h2>
+    <div class="row">
+        {% for item in menus %}
+        <div class="col-md-4">
+            <div class="card mb-3">
+                {% if item.image %}
+                    <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.name }}">
+                {% else %}
+                    <img src="{% static 'default_dish.jpg' %}" class="card-img-top" alt="No image">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ item.name }}</h5>
+                    <p class="card-text"><strong>Category:</strong> {{ item.category }}</p>
+                    <p class="card-text">{{ item.description }}</p>
+                    <p class="card-text"><strong>Prep Time:</strong> {{ item.prep_time }} mins</p>
+                    <p class="card-text"><strong>Price:</strong> ₹{{ item.price }}</p>
+                    <p class="card-text"><strong>Ingredients:</strong> {{ item.ingredients }}</p>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p>No menu items available for this restaurant.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

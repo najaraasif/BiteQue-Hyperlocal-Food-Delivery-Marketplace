@@ -1,29 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Merchant Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <title>Merchant Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Tailwind CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <style>
+    .toggle-checkbox:checked {
+        right: 0;
+        border-color: #FF0B55;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+        background-color: #FF0B55;
+        }
+        .toggle-checkbox {
+        right: 0.25rem;
+        transition: all 0.3s ease-in-out;
+}
+  </style>
 </head>
-<body class="bg-gray-100">
-    <div class="flex">
-        <!-- Sidebar -->
-        <div class="w-64 h-screen bg-white shadow-md">
-            <h2 class="text-xl font-bold text-center py-4 text-[#FF0B55]">Merchant Panel</h2>
-            <ul class="px-4 space-y-4">
-                <li><a href="{% url 'dashboard_home' %}" class="text-gray-700 hover:text-[#FF0B55]">Dashboard</a></li>
-                <li><a href="{% url 'inventory_management' %}" class="text-gray-700 hover:text-[#FF0B55]">Inventory</a></li>
-                <li><a href="{% url 'order_list' %}" class="text-gray-700 hover:text-[#FF0B55]">Orders</a></li>
-                <li><a href="{% url 'payment_list' %}" class="text-gray-700 hover:text-[#FF0B55]">Payments</a></li>
-                <li><a href="#" class="text-gray-700 hover:text-[#FF0B55]">Reports</a></li>
-                <li><a href="#" class="text-gray-700 hover:text-[#FF0B55]">Account</a></li>
-            </ul>
+<body class="bg-gray-100 font-sans">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 bg-gradient-to-b from-pink-100 to-white shadow-lg flex flex-col border-r border-gray-200">
+    <!-- Sidebar Header -->
+    <div class="h-20 flex items-center justify-center border-b border-gray-200">
+      <h1 class="text-2xl font-bold text-[#FF0B55] tracking-wide">Merchant Panel</h1>
+    </div>
+
+    <!-- Sidebar Nav -->
+    <nav class="flex-1 px-6 py-6 space-y-4 text-sm font-medium">
+      <a href="{% url 'merchant_dashboard' %}" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="home" class="mr-3"></span> Dashboard
+      </a>
+      <a href="{% url 'merchant_orders' %}" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="box" class="mr-3"></span> Orders
+      </a>
+      <a href="{% url 'menu_dashboard' %}" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="credit-card" class="mr-3"></span> Restaurant Menu
+      </a>
+      <a href="#" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="bar-chart-2" class="mr-3"></span> Payments
+      </a>
+      <a href="#" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="user" class="mr-3"></span> Reports
+      </a>
+      <a href="{% url 'bank_account_list' %}" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="user" class="mr-3"></span> Account
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Area -->
+  <div class="flex-1 flex flex-col bg-gray-50 ">
+
+    <!-- Top Navbar -->
+    <header class="h-20 bg-white shadow flex items-center justify-between px-8 border-b border-gray-200">
+      <!-- Left side -->
+      <div class="text-xl font-semibold text-gray-800">
+        Welcome back, <span class="text-[#FF0B55]">Merchant</span>!
+      </div>
+
+      <!-- Right side -->
+      <div class="flex items-center space-x-6">
+        <!-- Notification Icon -->
+        <div class="relative">
+          <button class="relative text-gray-500 hover:text-[#FF0B55] focus:outline-none transition">
+            <span data-feather="bell" class="w-6 h-6"></span>
+            <span class="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-[#FF0B55] rounded-full animate-pulse">
+              3
+            </span>
+          </button>
         </div>
 
-        <!-- Content -->
-        <div class="flex-1 p-6">
-            {% block content %}
-            {% endblock %}
-        </div>
-    </div>
+        <div class="relative w-10 h-10 bg-[#FF0B55] rounded-full flex items-center justify-center text-white shadow-lg border-2 border-white overflow-hidden">
+            <img src="https://cdn-icons-png.flaticon.com/512/2922/2922510.png" alt="Male Avatar" class="w-10 h-10 object-cover" />
+          </div>
+          
+          
+
+        <!-- Logout Button -->
+        <form method="post" action="{% url 'merchant_logout' %}">
+          {% csrf_token %}
+          <button type="submit"
+          style="background-color: #FF0B55"
+          class="text-white px-4 py-2 rounded-lg transition duration-200 font-medium hover:opacity-90">
+          Logout
+        </button>
+        </form>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="flex-1 overflow-y-auto p-8 bg-gray-100">
+      {% block content %}
+      <!-- Dynamic content goes here -->
+      {% endblock %}
+    </main>
+  </div>
+</div>
+
+<!-- Feather icons init -->
+<script>
+  feather.replace()
+</script>
+
 </body>
 </html>
