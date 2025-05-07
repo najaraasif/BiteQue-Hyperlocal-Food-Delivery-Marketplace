@@ -29,6 +29,7 @@ class Rider(models.Model):
     current_location = models.CharField(max_length=255, blank=True, null=True)
     total_assignments = models.PositiveIntegerField(default=0)
     accepted_assignments = models.PositiveIntegerField(default=0)
+    assigned_at = models.DateTimeField(auto_now_add=True)
     
 
     class Meta:
@@ -60,43 +61,16 @@ class Rider(models.Model):
 
     #ACCEPTANCE RATE
    
-
     def get_acceptance_rate(self):
-        today = timezone.now().date()
-        
-        # Get only today's assigned orders
-        todays_assignments = self.orderassignment_set.filter(
-            assigned_at__date=today,
-            status='ACCEPTED',
-            updated_at__isnull=False
-        )
-
-        total_accepted = todays_assignments.count()
-        if total_accepted == 0:
+        """Calculate lifetime acceptance percentage using stored values"""
+        if self.total_assignments == 0:
             return 0
-
-        total_rate = 0
-        for assignment in todays_assignments:
-            time_diff_minutes = (assignment.updated_at - assignment.assigned_at).total_seconds() / 60
-            if time_diff_minutes > 0:
-                rate = (1 / time_diff_minutes) * 100
-            else:
-                rate = 100  # accepted instantly (fallback)
-
-            total_rate += rate
-
-        average_rate = total_rate / total_accepted
-        return round(min(average_rate, 100), 1)  # optional cap at 100
-
-
-
+        return round((self.accepted_assignments / self.total_assignments) * 100, 1)
 
     @property
     def acceptance_rate_display(self):
-        """Formatted for admin display"""
-        rate = self.get_acceptance_rate()
-        return f"{rate}%" if rate is not None else "N/A"
-    
+        """Formatted acceptance rate for admin"""
+        return f"{self.get_acceptance_rate()}%"
     
 
 
