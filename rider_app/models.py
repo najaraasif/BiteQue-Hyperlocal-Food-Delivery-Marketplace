@@ -31,6 +31,8 @@ class Rider(models.Model):
     accepted_assignments = models.PositiveIntegerField(default=0)
     assigned_at = models.DateTimeField(auto_now_add=True)
     
+    
+    
 
     class Meta:
         ordering = ['-created_at']

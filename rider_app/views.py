@@ -374,3 +374,19 @@ def set_primary_bank_account(request, account_id):
     #     messages.error(request, f"An error occurred: {str(e)}")
         
     return redirect('rider:bank_details_list')
+
+@login_required
+def get_customer_location(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+        if not order.delivery_latitude or not order.delivery_longitude:
+            return JsonResponse({'status': 'error', 'message': 'Location not available'}, status=404)
+            
+        return JsonResponse({
+            'status': 'success',
+            'latitude': float(order.delivery_latitude),
+            'longitude': float(order.delivery_longitude),
+            'address': order.delivery_address
+        })
+    except Order.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Order not found'}, status=404)

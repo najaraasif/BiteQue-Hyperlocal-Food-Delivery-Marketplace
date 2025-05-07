@@ -87,6 +87,130 @@
         <p class="text-gray-500 text-center">No active orders available</p>
     {% endif %}
 </div>
+<!-- MAP IMPLEMENTATION-->
+<div class="active-orders">
+    {% for assignment in active_orders %}
+    <div class="order-card" data-order-id="{{ assignment.order.id }}">
+        <h3>Order #{{ assignment.order.id }}</h3>
+        <p><strong>Customer:</strong> {{ assignment.order.customer_name }}</p>
+        <p><strong>Address:</strong> {{ assignment.order.delivery_address }}</p>
+        
+        <!-- Map Container -->
+        <div id="map-{{ assignment.order.id }}" class="order-map"></div>
+        
+        <button class="btn btn-primary view-route" 
+                data-order-id="{{ assignment.order.id }}"
+                data-lat="{{ assignment.order.delivery_latitude|default:'' }}"
+                data-lng="{{ assignment.order.delivery_longitude|default:'' }}">
+            Show Route
+        </button>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Include Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+<style>
+    .order-map {
+        height: 300px;
+        width: 100%;
+        margin: 15px 0;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    .view-route {
+        margin-top: 10px;
+        padding: 8px 15px;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .view-route:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
+    }
+    .order-card {
+        margin-bottom: 30px;
+        padding: 15px;
+        border: 1px solid #eee;
+        border-radius: 5px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all maps
+    document.querySelectorAll('.order-card').forEach(card => {
+        const orderId = card.dataset.orderId;
+        const btn = card.querySelector('.view-route');
+        const lat = parseFloat(btn.dataset.lat);
+        const lng = parseFloat(btn.dataset.lng);
+        
+        // Only proceed if we have coordinates
+        if (isNaN(lat) || isNaN(lng)) {
+            btn.disabled = true;
+            btn.textContent = 'Location unavailable';
+            return;
+        }
+        
+        // Initialize map centered on customer location
+        const map = L.map(`map-${orderId}`).setView([lat, lng], 15);
+        
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Add customer marker
+        const customerMarker = L.marker([lat, lng]).addTo(map)
+            .bindPopup("Customer Location");
+        
+        // Handle route button click
+        btn.addEventListener('click', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const riderLat = position.coords.latitude;
+                        const riderLng = position.coords.longitude;
+                        
+                        // Add rider marker
+                        const riderMarker = L.marker([riderLat, riderLng]).addTo(map)
+                            .bindPopup("Your Location");
+                        
+                        // Draw route line
+                        const routeLine = L.polyline(
+                            [[riderLat, riderLng], [lat, lng]],
+                            {color: 'blue'}
+                        ).addTo(map);
+                        
+                        // Fit map to show both locations
+                        map.fitBounds([
+                            [riderLat, riderLng],
+                            [lat, lng]
+                        ]);
+                        
+                        // Open in Google Maps
+                        window.open(
+                            `https://www.google.com/maps/dir/?api=1&origin=${riderLat},${riderLng}&destination=${lat},${lng}&travelmode=driving`,
+                            '_blank'
+                        );
+                    },
+                    function(error) {
+                        alert("Error getting your location: " + error.message);
+                    }
+                );
+            } else {
+                alert("Geolocation is not supported by your browser");
+            }
+        });
+    });
+});
+</script>
+
 
     <!-- Analytics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -298,5 +422,72 @@ document.querySelectorAll('.deliver-btn').forEach(button => {
         });
     });
     </script>
-    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize maps for each order
+            document.querySelectorAll('.order-card').forEach(card => {
+                const orderId = card.dataset.orderId;
+                const mapElement = document.getElementById(`map-${orderId}`);
+                const btn = card.querySelector('.view-route-btn');
+                
+                // Only initialize if coordinates are available
+                if (btn.dataset.lat && btn.dataset.lng) {
+                    const customerLat = parseFloat(btn.dataset.lat);
+                    const customerLng = parseFloat(btn.dataset.lng);
+                    
+                    // Initialize map
+                    const map = L.map(mapElement).setView([customerLat, customerLng], 15);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(map);
+                    
+                    // Add customer marker
+                    L.marker([customerLat, customerLng]).addTo(map)
+                        .bindPopup('Customer Location');
+                    
+                    // Button to show route
+                    btn.addEventListener('click', function() {
+                        if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                                (position) => {
+                                    const riderLat = position.coords.latitude;
+                                    const riderLng = position.coords.longitude;
+                                    
+                                    // Add rider marker
+                                    L.marker([riderLat, riderLng]).addTo(map)
+                                        .bindPopup('Your Location');
+                                    
+                                    // Draw a line between rider and customer
+                                    L.polyline(
+                                        [[riderLat, riderLng], [customerLat, customerLng]],
+                                        {color: 'blue'}
+                                    ).addTo(map);
+                                    
+                                    // Fit map to show both points
+                                    map.fitBounds([
+                                        [riderLat, riderLng],
+                                        [customerLat, customerLng]
+                                    ]);
+                                    
+                                    // Open Google Maps in new tab with directions
+                                    window.open(
+                                        `https://www.google.com/maps/dir/?api=1&origin=${riderLat},${riderLng}&destination=${customerLat},${customerLng}&travelmode=driving`,
+                                        '_blank'
+                                    );
+                                },
+                                (error) => {
+                                    alert('Could not get your current location: ' + error.message);
+                                }
+                            );
+                        } else {
+                            alert('Geolocation is not supported by your browser');
+                        }
+                    });
+                } else {
+                    btn.disabled = true;
+                    btn.textContent = 'Location not available';
+                }
+            });
+        });
+        </script>
 {% endblock %}
