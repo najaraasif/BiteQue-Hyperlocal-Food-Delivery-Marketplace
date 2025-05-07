@@ -65,7 +65,7 @@
                 <span>Dashboard</span>
             </a>
             
-            <a href="{% url 'rider:bank_details' %}" class="nav-item relative flex items-center space-x-3 p-3 rounded-lg {% if request.resolver_match.url_name == 'bank_details' %}active{% endif %}">
+            <a href="{% url 'rider:bank_details_list' %}" class="nav-item relative flex items-center space-x-3 p-3 rounded-lg {% if request.resolver_match.url_name == 'bank_details' %}active{% endif %}">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
                     <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd" />
@@ -179,6 +179,29 @@
 
     </script>
 
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('earningsChart').getContext('2d');
+    const earningsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [{% for week in weekly_earnings %}"{{ week.date|date:'M d' }}",{% endfor %}],
+            datasets: [{
+                label: 'Daily Earnings',
+                data: [{% for week in weekly_earnings %}{{ week.earnings }},{% endfor %}],
+                borderColor: '#4CAF50',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            }
+        }
+    });
+</script>
 </body>
 </html>

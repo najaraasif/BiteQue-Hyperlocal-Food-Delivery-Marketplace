@@ -95,13 +95,14 @@
             <p class="text-2xl font-bold">₹{{ total_earnings|floatformat:2 }}</p>
         </div>
         <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-gray-500">Total Orders</h3>
+            <h3 class="text-gray-500">Total Successful Deliveries</h3>
             <p class="text-2xl font-bold">{{ total_orders }}</p>
         </div>
         <div class="bg-white p-6 rounded-lg shadow">
             <h3 class="text-gray-500">Acceptance Rate</h3>
             <p class="text-2xl font-bold">{{ acceptance_rate }}%</p>
         </div>
+        
         <div class="bg-white p-6 rounded-lg shadow">
             <h3 class="text-gray-500">Status</h3>
             <p class="text-2xl font-bold">{% if rider.is_approved %}Approved{% else %}Pending Approval{% endif %}</p>

@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models import Sum, Count, Q
+from datetime import timedelta
+from django.utils import timezone
 
 class Rider(models.Model):
     GENDER_CHOICES = [
@@ -25,10 +27,9 @@ class Rider(models.Model):
     is_available = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     current_location = models.CharField(max_length=255, blank=True, null=True)
-    bank_account_name = models.CharField(max_length=100, blank=True, null=True)
-    bank_account_number = models.CharField(max_length=18, blank=True, null=True)
-    bank_name = models.CharField(max_length=100, blank=True, null=True)
-    ifsc_code = models.CharField(max_length=11, blank=True, null=True)
+    total_assignments = models.PositiveIntegerField(default=0)
+    accepted_assignments = models.PositiveIntegerField(default=0)
+    
 
     class Meta:
         ordering = ['-created_at']
@@ -51,20 +52,54 @@ class Rider(models.Model):
             status='DELIVERED'
         ).count()
     
+
+
+
+
+
+
+    #ACCEPTANCE RATE
+   
+
     def get_acceptance_rate(self):
-        """Calculate order acceptance percentage"""
-        stats = self.orderassignment_set.aggregate(
-            total=Count('id'),
-            accepted=Count('id', filter=Q(status='ACCEPTED'))
+        today = timezone.now().date()
+        
+        # Get only today's assigned orders
+        todays_assignments = self.orderassignment_set.filter(
+            assigned_at__date=today,
+            status='ACCEPTED',
+            updated_at__isnull=False
         )
-        if stats['total'] == 0:
+
+        total_accepted = todays_assignments.count()
+        if total_accepted == 0:
             return 0
-        return round((stats['accepted'] / stats['total']) * 100, 1)
-    
+
+        total_rate = 0
+        for assignment in todays_assignments:
+            time_diff_minutes = (assignment.updated_at - assignment.assigned_at).total_seconds() / 60
+            if time_diff_minutes > 0:
+                rate = (1 / time_diff_minutes) * 100
+            else:
+                rate = 100  # accepted instantly (fallback)
+
+            total_rate += rate
+
+        average_rate = total_rate / total_accepted
+        return round(min(average_rate, 100), 1)  # optional cap at 100
+
+
+
+
     @property
     def acceptance_rate_display(self):
-        """Formatted acceptance rate for admin"""
-        return f"{self.get_acceptance_rate()}%"
+        """Formatted for admin display"""
+        rate = self.get_acceptance_rate()
+        return f"{rate}%" if rate is not None else "N/A"
+    
+    
+
+
 
 
 class RiderEarning(models.Model):
@@ -94,6 +129,7 @@ class OrderAssignment(models.Model):
     order = models.ForeignKey('user_app.Order', on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='PENDING')
     assigned_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -107,6 +143,34 @@ class OrderAssignment(models.Model):
                 name='unique_accepted_assignment'
             )
         ]
-
+    pass
     def __str__(self):
         return f"Order #{self.order.id} → {self.rider.user.username} [{self.status}]"
+    
+
+class RiderBankAccount(models.Model):
+    rider = models.ForeignKey(Rider, on_delete=models.CASCADE, related_name='bank_accounts')
+    account_holder_name = models.CharField(max_length=100)
+    account_number = models.CharField(max_length=18)
+    bank_name = models.CharField(max_length=100)
+    ifsc_code = models.CharField(max_length=11)
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_primary', '-created_at']
+        verbose_name = 'Rider Bank Account'
+        verbose_name_plural = 'Rider Bank Accounts'
+        # Ensure only one primary account per rider
+        constraints = [
+            models.UniqueConstraint(fields=['rider', 'is_primary'], condition=models.Q(is_primary=True), name='unique_primary_bank_account_per_rider')
+        ]
+
+    def __str__(self):
+        return f"{self.rider.user.username} - {self.account_number} ({'Primary' if self.is_primary else 'Secondary'})"
+
+    def save(self, *args, **kwargs):
+        # If this account is being set as primary, ensure other accounts for the same rider are not primary.
+        if self.is_primary:
+            RiderBankAccount.objects.filter(rider=self.rider, is_primary=True).exclude(pk=self.pk).update(is_primary=False)
+        super().save(*args, **kwargs)

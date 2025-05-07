@@ -1,7 +1,9 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
-from .models import Rider
+
+from merchant_app.models import BankAccount
+from .models import Rider, RiderBankAccount
 from django.db import transaction
 
 
@@ -152,29 +154,50 @@ class RiderLoginForm(AuthenticationForm):
             raise forms.ValidationError("Your rider account is pending approval.")
         
 
-class BankDetailsForm(forms.ModelForm):
+class BankDetailsForm(forms.ModelForm): # This can now be RiderBankAccountForm
     class Meta:
-        model = Rider
-        fields = ['bank_account_name', 'bank_account_number', 'bank_name', 'ifsc_code']
+        model = RiderBankAccount
+        fields = ['account_holder_name', 'account_number', 'bank_name', 'ifsc_code', 'is_primary']
         widgets = {
-            'bank_account_number': forms.TextInput(attrs={
+            'account_number': forms.TextInput(attrs={
                 'placeholder': 'Enter 11-18 digit account number'
             }),
             'ifsc_code': forms.TextInput(attrs={
                 'placeholder': 'e.g. SBIN0000123'
             }),
         }
-    
-    def clean_bank_account_number(self):
-        account_num = self.cleaned_data['bank_account_number']
+
+    def __init__(self, *args, **kwargs):
+        self.rider = kwargs.pop('rider', None) # Pass rider to the form
+        super().__init__(*args, **kwargs)
+
+    def clean_account_number(self): # Renamed from clean_bank_account_number
+        account_num = self.cleaned_data['account_number']
         if account_num and not account_num.isdigit():
             raise forms.ValidationError("Account number should contain only digits")
-        if account_num and len(account_num) < 11:
+        if account_num and len(account_num) < 11: # Or your specific validation
             raise forms.ValidationError("Account number too short")
         return account_num
-    
+
     def clean_ifsc_code(self):
         ifsc = self.cleaned_data['ifsc_code']
         if ifsc and len(ifsc) != 11:
             raise forms.ValidationError("IFSC code must be 11 characters long")
         return ifsc
+
+    def clean(self):
+        cleaned_data = super().clean()
+        is_primary = cleaned_data.get("is_primary")
+
+        if self.rider and is_primary:
+            # If setting as primary, check if other accounts are primary
+            # This logic is also in the model's save method, but good to have in form too
+            if RiderBankAccount.objects.filter(rider=self.rider, is_primary=True).exclude(pk=self.instance.pk).exists():
+                # If editing an existing account and marking it primary while another is already primary
+                # Or adding a new primary when one already exists.
+                # The model's save method will handle demoting others.
+                pass
+        elif self.rider and not self.instance.pk and not RiderBankAccount.objects.filter(rider=self.rider).exists():
+            # If this is the first bank account being added for the rider, make it primary by default
+            cleaned_data['is_primary'] = True
+        return cleaned_data

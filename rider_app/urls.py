@@ -15,6 +15,10 @@ urlpatterns = [
     path('logout/', views.rider_logout, name='logout'),
     path('earnings/', views.rider_earnings, name='earnings'),
     path('orders/deliver/<int:order_id>/', views.mark_delivered, name='mark_delivered'),
+
+    path('bank-details/', views.bank_details_list, name='bank_details_list'), # Renamed
+    path('bank-details/delete/<int:account_id>/', views.delete_bank_account, name='delete_bank_account'),
+    path('bank-details/set-primary/<int:account_id>/', views.set_primary_bank_account, name='set_primary_bank_account'),
 ]
 
   
