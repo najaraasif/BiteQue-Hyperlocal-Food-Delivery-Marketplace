@@ -5,12 +5,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 def geocode_address(address):
-    """
-    Convert a physical address to latitude/longitude using Nominatim
-    Returns: (latitude, longitude) or (None, None) if failed
-    """
+
     try:
-        # Nominatim requires a user agent
         headers = {'User-Agent': 'BiteQueApp/1.0 (contact@yourdomain.com)'}
         
         response = requests.get(

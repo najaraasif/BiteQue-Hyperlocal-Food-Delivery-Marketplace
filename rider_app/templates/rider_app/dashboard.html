@@ -3,491 +3,242 @@
 
 {% block content %}
 <meta name="csrf-token" content="{{ csrf_token }}">
+
 <style>
-
-    /* Smooth transition for button states */
-.deliver-btn {
-    transition: all 0.3s ease;
-}
-
-/* Success state */
-.bg-green-500 {
-    background-color: #48bb78;
-}
+    .card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .card:hover {
+        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    .badge-pending {
+        background-color: #FEF3C7;
+        color: #92400E;
+    }
+    .badge-accepted {
+        background-color: #D1FAE5;
+        color: #065F46;
+    }
+    .btn {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    .btn-primary {
+        background-color: #3B82F6;
+        color: white;
+    }
+    .btn-primary:hover {
+        background-color: #2563EB;
+    }
 </style>
 
-
-
-<div class="debug-info bg-gray-100 p-4 mb-4 text-sm" style="display: none;">
-    <p>Rider Status: 
-        {% if rider %}
-            Available: {{ rider.is_available|yesno }}, 
-            Approved: {{ rider.is_approved|yesno }}
-        {% else %}
-            NO RIDER PROFILE
-        {% endif %}
-    </p>
-    <p>Active Orders Query: {{ active_orders.query }}</p>
-    <p>Found {{ active_orders|length }} orders</p>
-</div>
-
-
 <div class="container mx-auto px-4 py-8">
+    <!-- Header Section -->
     <div class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold">Rider Dashboard</h1>
-        
+        <h1 class="text-3xl font-bold text-gray-800">Rider Dashboard</h1>
+        <div class="text-right">
+            
+            
+            <div id="toast" class="hidden fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50">
+                Availability Updated
+            </div>
+            
+        </div>
     </div>
 
-<!-- Active Orders -->
-<div class="bg-white p-6 rounded-2xl shadow-xl mb-10 border border-gray-100 transition-all duration-300">
-    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Active Orders</h2>
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="card">
+            <h3 class="text-sm text-gray-500">Total Earnings</h3>
+            <p class="text-2xl font-bold">₹{{ total_earnings|floatformat:2 }}</p>
+        </div>
+        <div class="card">
+            <h3 class="text-sm text-gray-500">Completed Deliveries</h3>
+            <p class="text-2xl font-bold">{{ total_orders }}</p>
+        </div>
+        <div class="card bg-yellow-50">
+            <h3 class="text-sm text-gray-500">Acceptance Rate</h3>
+            <p class="text-2xl font-bold">
+                {% if acceptance_rate is not None %}
+                    {{ acceptance_rate }}%
+                {% else %}
+                    0%
+                {% endif %}
+            </p>
+            {% if acceptance_rate is None %}
+            <p class="text-xs text-red-500 mt-1">
+                Rate calculation unavailable
+            </p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <h3 class="text-sm text-gray-500">Active Orders</h3>
+            <p class="text-2xl font-bold">{{ active_orders|length }}</p>
+        </div>
+    </div>
 
-    {% if active_orders %}
-        <div class="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+    <!-- Active Orders Section -->
+    <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Active Orders</h2>
+        
+        {% if active_orders %}
+        <div class="space-y-4">
             {% for assignment in active_orders %}
-            <div class="bg-white rounded-xl shadow-md p-5 border border-gray-100 hover:shadow-lg transition duration-300">
-                <div class="mb-3">
-                    <p class="text-sm text-gray-500">Order ID</p>
-                    <p class="text-lg font-semibold text-gray-800">#{{ assignment.order.id }}</p>
+            <div class="border rounded-lg p-4 hover:bg-gray-50">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs text-gray-500">Order #{{ assignment.order.id }}</p>
+                        <h3 class="text-lg font-semibold">{{ assignment.order.restaurant.name }}</h3>
+                        <h3 class="text-lg font-semibold">{{ assignment.order.restaurant.address }}</h3>
+                        <p class="text-sm text-gray-600 mt-1">{{ assignment.order.customer_name }}</p>
+                        <p class="text-sm text-gray-600 mt-1">{{ assignment.order.customer_contact }}</p>
+                        <p class="text-sm text-gray-600 mt-1">{{ assignment.order.order_address }}</p>
+                    </div>
+                    <span class="status-badge {% if assignment.status == 'pending' %}badge-pending{% else %}badge-accepted{% endif %}">
+                        {{ assignment.status|title }}
+                    </span>
                 </div>
-                <div class="mb-2">
-                    <p class="text-sm text-gray-500">Restaurant</p>
-                    <p class="text-base text-gray-700">{{ assignment.order.restaurant.name }}</p>
-                </div>
-                <div class="mb-2">
-                    <p class="text-sm text-gray-500">Customer Address</p>
-                    <p class="text-base text-gray-700">{{ assignment.order.order_address }}</p>
-                </div>
-                <div class="mb-4">
-                    <p class="text-sm text-gray-500">Status</p>
-                    {% if assignment.status == 'PENDING' %}
-                        <span class="inline-block mt-1 px-3 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full">Pending Acceptance</span>
-                    {% elif assignment.status == 'ACCEPTED' %}
-                        <span class="inline-block mt-1 px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">Out for Delivery</span>
-                    {% endif %}
-                </div>
-
-                <div>
-                    {% if assignment.status == 'PENDING' %}
-                        <button class="accept-btn w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow transition-all duration-200 transform hover:scale-105 active:scale-95"
-                            data-order-id="{{ assignment.order.id }}">
-                            Accept Order
-                        </button>
-                    {% elif assignment.status == 'ACCEPTED' %}
-                        <button class="deliver-btn w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow transition-all duration-200 transform hover:scale-105 active:scale-95"
-                            data-order-id="{{ assignment.order.id }}">
-                            Mark Delivered
-                        </button>
-                    {% endif %}
-                </div>
+                
+                {% if assignment.status == 'pending' %}
+                <form method="POST" 
+                      action="{% url 'rider:accept_order_assignment_action' order_id=assignment.order.id %}"
+                      class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary w-full">
+                        Accept Order
+                    </button>
+                </form>
+                {% endif %}
+                {% if assignment.status == 'accepted' %}
+                <form method="POST" 
+                      action="{% url 'rider:rider_order_detail' order_id=assignment.order.id %}"
+                      class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary w-full">
+                        Continue
+                    </button>
+                </form>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
-    {% else %}
-        <p class="text-gray-500 text-center">No active orders available</p>
-    {% endif %}
-</div>
-<!-- MAP IMPLEMENTATION-->
-<div class="active-orders">
-    {% for assignment in active_orders %}
-    <div class="order-card" data-order-id="{{ assignment.order.id }}">
-        <h3>Order #{{ assignment.order.id }}</h3>
-        <p><strong>Customer:</strong> {{ assignment.order.customer_name }}</p>
-        <p><strong>Address:</strong> {{ assignment.order.delivery_address }}</p>
-        
-        <!-- Map Container -->
-        <div id="map-{{ assignment.order.id }}" class="order-map"></div>
-        
-        <button class="btn btn-primary view-route" 
-                data-order-id="{{ assignment.order.id }}"
-                data-lat="{{ assignment.order.delivery_latitude|default:'' }}"
-                data-lng="{{ assignment.order.delivery_longitude|default:'' }}">
-            Show Route
-        </button>
-    </div>
-    {% endfor %}
-</div>
-
-<!-- Include Leaflet CSS & JS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-
-<style>
-    .order-map {
-        height: 300px;
-        width: 100%;
-        margin: 15px 0;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-    }
-    .view-route {
-        margin-top: 10px;
-        padding: 8px 15px;
-        background: #4CAF50;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-    .view-route:disabled {
-        background: #cccccc;
-        cursor: not-allowed;
-    }
-    .order-card {
-        margin-bottom: 30px;
-        padding: 15px;
-        border: 1px solid #eee;
-        border-radius: 5px;
-    }
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize all maps
-    document.querySelectorAll('.order-card').forEach(card => {
-        const orderId = card.dataset.orderId;
-        const btn = card.querySelector('.view-route');
-        const lat = parseFloat(btn.dataset.lat);
-        const lng = parseFloat(btn.dataset.lng);
-        
-        // Only proceed if we have coordinates
-        if (isNaN(lat) || isNaN(lng)) {
-            btn.disabled = true;
-            btn.textContent = 'Location unavailable';
-            return;
-        }
-        
-        // Initialize map centered on customer location
-        const map = L.map(`map-${orderId}`).setView([lat, lng], 15);
-        
-        // Add tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-        
-        // Add customer marker
-        const customerMarker = L.marker([lat, lng]).addTo(map)
-            .bindPopup("Customer Location");
-        
-        // Handle route button click
-        btn.addEventListener('click', function() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        const riderLat = position.coords.latitude;
-                        const riderLng = position.coords.longitude;
-                        
-                        // Add rider marker
-                        const riderMarker = L.marker([riderLat, riderLng]).addTo(map)
-                            .bindPopup("Your Location");
-                        
-                        // Draw route line
-                        const routeLine = L.polyline(
-                            [[riderLat, riderLng], [lat, lng]],
-                            {color: 'blue'}
-                        ).addTo(map);
-                        
-                        // Fit map to show both locations
-                        map.fitBounds([
-                            [riderLat, riderLng],
-                            [lat, lng]
-                        ]);
-                        
-                        // Open in Google Maps
-                        window.open(
-                            `https://www.google.com/maps/dir/?api=1&origin=${riderLat},${riderLng}&destination=${lat},${lng}&travelmode=driving`,
-                            '_blank'
-                        );
-                    },
-                    function(error) {
-                        alert("Error getting your location: " + error.message);
-                    }
-                );
-            } else {
-                alert("Geolocation is not supported by your browser");
-            }
-        });
-    });
-});
-</script>
-
-
-    <!-- Analytics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-gray-500">Total Earnings</h3>
-            <p class="text-2xl font-bold">₹{{ total_earnings|floatformat:2 }}</p>
+        {% else %}
+        <div class="text-center py-8">
+            <p class="text-gray-500">No active orders available</p>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-gray-500">Total Successful Deliveries</h3>
-            <p class="text-2xl font-bold">{{ total_orders }}</p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-gray-500">Acceptance Rate</h3>
-            <p class="text-2xl font-bold">{{ acceptance_rate }}%</p>
-        </div>
-        
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-gray-500">Status</h3>
-            <p class="text-2xl font-bold">{% if rider.is_approved %}Approved{% else %}Pending Approval{% endif %}</p>
-        </div>
+        {% endif %}
     </div>
 
-    <!-- Weekly Earnings Chart -->
-    <div class="bg-white p-6 rounded-lg shadow mb-8">
-        <h2 class="text-xl font-bold mb-4">Weekly Earnings</h2>
-        <div class="h-64">
-            <canvas id="earningsChart"></canvas>
+    <!-- Earnings Sections -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Weekly Earnings -->
+        <div class="card">
+            <h2 class="text-xl font-semibold mb-4">Weekly Earnings</h2>
+            <div style="height: 300px;">
+                <canvas id="earningsChart"></canvas>
+            </div>
         </div>
-    </div>
 
-    <!-- Recent Earnings -->
-    <div class="bg-white p-6 rounded-lg shadow">
-        <h2 class="text-xl font-bold mb-4">Recent Earnings</h2>
-        {% if earnings %}
+        <!-- Recent Earnings -->
+        <div class="card">
+            <h2 class="text-xl font-semibold mb-4">Recent Earnings</h2>
+            {% if earnings %}
             <div class="overflow-x-auto">
-                <table class="min-w-full">
+                <table class="w-full">
                     <thead>
-                        <tr class="border-b">
-                            <th class="text-left py-2">Date</th>
-                            <th class="text-left py-2">Earnings</th>
-                            <th class="text-left py-2">Orders Completed</th>
+                        <tr class="text-left border-b">
+                            <th class="pb-2 text-sm font-medium text-gray-500">Date</th>
+                            <th class="pb-2 text-sm font-medium text-gray-500">Earnings</th>
+                            <th class="pb-2 text-sm font-medium text-gray-500">Orders</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for earning in earnings %}
                         <tr class="border-b">
-                            <td class="py-2">{{ earning.date|date:"M d, Y" }}</td>
-                            <td class="py-2">₹{{ earning.total_earnings|floatformat:2 }}</td>
-                            <td class="py-2">{{ earning.orders_completed }}</td>
+                            <td class="py-3 text-sm">{{ earning.date|date:"M d, Y" }}</td>
+                            <td class="py-3 text-sm font-medium">₹{{ earning.total_earnings|floatformat:2 }}</td>
+                            <td class="py-3 text-sm">{{ earning.orders_completed }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             <div class="mt-4 text-right">
-                <a href="{% url 'rider:earnings' %}" class="text-blue-500 hover:underline">View All Earnings</a>
+                <a href="{% url 'rider:earnings' %}" class="text-blue-500 hover:underline text-sm">
+                    View All Earnings →
+                </a>
             </div>
-        {% else %}
-            <p class="text-gray-500">No earnings recorded yet</p>
-        {% endif %}
+            {% else %}
+            <div class="text-center py-8">
+                <p class="text-gray-500">No earnings recorded yet</p>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 
-<!-- Include Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<!-- JavaScript Section -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Weekly Earnings Chart
-    const ctx = document.getElementById('earningsChart').getContext('2d');
-    const weeklyEarnings = [
-        {% for day in weekly_earnings %}
-            {{ day.earnings }}{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-    const labels = [
-        {% for day in weekly_earnings %}
-            '{{ day.date|date:"D" }}'{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-    
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Daily Earnings (₹)',
-                data: weeklyEarnings,
-                backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                borderColor: 'rgba(59, 130, 246, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-
-    // Initialize mark delivered buttons
-    setupMarkDeliveredButtons();
-});
-// accept btn
-
-document.querySelectorAll('.accept-btn').forEach(button => {
-    button.addEventListener('click', async () => {
-        const orderId = button.dataset.orderId;
-        const response = await fetch(`{% url 'rider:accept_order' 0 %}`.replace('0', orderId), {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json',
-            },
-        });
-        const result = await response.json();
-        if (result.status === 'success') {
-            window.location.reload();
-        } else {
-            alert('Error: ' + result.message);
-        }
-    });
-});
-
-function rejectOrder(orderId) {
-    fetch(`/rider/orders/reject/${orderId}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCSRFToken(),
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => {
-        if (response.ok) window.location.reload();
-        else console.error('Failed to reject order');
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-
-document.querySelectorAll('.deliver-btn').forEach(button => {
-    button.addEventListener('click', async () => {
-        const orderId = button.dataset.orderId;
-        button.disabled = true; // Disable button during request
-        button.textContent = 'Processing...'; // Optional: Show loading state
-        
-        try {
-            const response = await fetch(`{% url 'rider:mark_delivered' 0 %}`.replace('0', orderId), {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json',
-                },
-            });
-            const result = await response.json();
-            
-            if (result.status === 'success') {
-                // Update button appearance
-                button.textContent = '✓ Delivered Success';
-                button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-                button.classList.add('bg-green-500', 'cursor-default');
-                
-                // Optional: Update the status cell in the table
-                const statusCell = button.closest('tr').querySelector('td:nth-child(4)');
-                if (statusCell) {
-                    statusCell.innerHTML = '<span class="text-green-600">Delivered</span>';
-                }
-            } else {
-                button.disabled = false;
-                button.textContent = 'Mark Delivered';
-                console.error('Error:', result.message);
-            }
-        } catch (error) {
-            button.disabled = false;
-            button.textContent = 'Mark Delivered';
-            console.error('Network error:', error);
-        }
-    });
-});
-</script>
-<script>
-    // Toggle debug info with Ctrl+D
-    document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'd') {
-            document.querySelector('.debug-info').style.display = 
-                document.querySelector('.debug-info').style.display === 'none' ? 'block' : 'none';
-        }
-    });
-    </script>
-
-
-
-<script>
+    // Mark Delivered functionality
     document.querySelectorAll('.deliver-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            button.disabled = true;
-            button.classList.remove('bg-green-600', 'hover:bg-green-700');
-            button.classList.add('bg-green-800');
-    
-            button.style.transition = 'all 0.3s ease';
-            button.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                button.textContent = 'Delivered Successfully';
-                button.style.transform = 'scale(1)';
-            }, 200);
+        button.addEventListener('click', async function() {
+            const orderId = this.dataset.orderId;
+            this.disabled = true;
+            this.textContent = 'Processing...';
+            
+            try {
+                const response = await fetch(`{% url 'rider:mark_delivered' 0 %}`.replace('0', orderId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    this.textContent = '✓ Delivered';
+                    this.classList.add('bg-green-500');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    alert('Error: ' + (result.message || 'Failed to mark as delivered'));
+                    this.disabled = false;
+                    this.textContent = 'Mark Delivered';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.disabled = false;
+                this.textContent = 'Mark Delivered';
+            }
         });
     });
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize maps for each order
-            document.querySelectorAll('.order-card').forEach(card => {
-                const orderId = card.dataset.orderId;
-                const mapElement = document.getElementById(`map-${orderId}`);
-                const btn = card.querySelector('.view-route-btn');
-                
-                // Only initialize if coordinates are available
-                if (btn.dataset.lat && btn.dataset.lng) {
-                    const customerLat = parseFloat(btn.dataset.lat);
-                    const customerLng = parseFloat(btn.dataset.lng);
-                    
-                    // Initialize map
-                    const map = L.map(mapElement).setView([customerLat, customerLng], 15);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    }).addTo(map);
-                    
-                    // Add customer marker
-                    L.marker([customerLat, customerLng]).addTo(map)
-                        .bindPopup('Customer Location');
-                    
-                    // Button to show route
-                    btn.addEventListener('click', function() {
-                        if (navigator.geolocation) {
-                            navigator.geolocation.getCurrentPosition(
-                                (position) => {
-                                    const riderLat = position.coords.latitude;
-                                    const riderLng = position.coords.longitude;
-                                    
-                                    // Add rider marker
-                                    L.marker([riderLat, riderLng]).addTo(map)
-                                        .bindPopup('Your Location');
-                                    
-                                    // Draw a line between rider and customer
-                                    L.polyline(
-                                        [[riderLat, riderLng], [customerLat, customerLng]],
-                                        {color: 'blue'}
-                                    ).addTo(map);
-                                    
-                                    // Fit map to show both points
-                                    map.fitBounds([
-                                        [riderLat, riderLng],
-                                        [customerLat, customerLng]
-                                    ]);
-                                    
-                                    // Open Google Maps in new tab with directions
-                                    window.open(
-                                        `https://www.google.com/maps/dir/?api=1&origin=${riderLat},${riderLng}&destination=${customerLat},${customerLng}&travelmode=driving`,
-                                        '_blank'
-                                    );
-                                },
-                                (error) => {
-                                    alert('Could not get your current location: ' + error.message);
-                                }
-                            );
-                        } else {
-                            alert('Geolocation is not supported by your browser');
-                        }
-                    });
-                } else {
-                    btn.disabled = true;
-                    btn.textContent = 'Location not available';
-                }
-            });
-        });
-        </script>
+});
+
+
+
+// Availability Toggle Functionality
+
+
+
+</script>
 {% endblock %}

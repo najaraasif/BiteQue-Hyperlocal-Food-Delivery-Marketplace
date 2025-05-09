@@ -2,206 +2,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rider Dashboard - BiteQue</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
-    <meta name="csrf-token" content="{{ csrf_token }}">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-        }
-        .nav-item {
-            transition: all 0.2s;
-        }
-        .nav-item.active {
-            background-color: #fef2f2;
-            color: #ef4444;
-        }
-        .nav-item.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background-color: #ef4444;
-        }
-        .availability-btn {
-            transition: all 0.3s ease;
-        }
-
-
-    .message-animation {
-        animation: fadeInOut 3s ease-in-out;
-        opacity: 0;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rider Dashboard - BiteQue</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f1f5f9;
     }
-    
-    @keyframes fadeInOut {
-        0% { opacity: 0; transform: translateY(10px); }
-        10% { opacity: 1; transform: translateY(0); }
-        90% { opacity: 1; transform: translateY(0); }
-        100% { opacity: 0; transform: translateY(-10px); }
+    .nav-item.active {
+      background-color: #e0f2fe;
+      color: #0284c7;
     }
-    </style>
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: #0284c7;
+    }
+    .card {
+      background-color: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      padding: 1rem;
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+  </style>
 </head>
-<body class="h-screen flex overflow-hidden bg-gray-50">
-    <!-- Sidebar Navigation -->
-    <div class="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
-        <!-- Header -->
-        <div class="p-5 border-b border-gray-200">
-            <h1 class="text-xl font-bold text-gray-800">Rider Panel</h1>
-            <p class="text-sm text-gray-500">Kupwara, Kashmir</p>
-        </div>
-        
-        <!-- Navigation -->
-        <nav class="flex-1 p-4 space-y-1">
-            <a href="{% url 'rider:dashboard' %}" class="nav-item relative flex items-center space-x-3 p-3 rounded-lg {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                </svg>
-                <span>Dashboard</span>
-            </a>
-            
-            <a href="{% url 'rider:bank_details_list' %}" class="nav-item relative flex items-center space-x-3 p-3 rounded-lg {% if request.resolver_match.url_name == 'bank_details' %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
-                    <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd" />
-                </svg>
-                <span>Bank Details</span>
-            </a>
-            
-            <a href="{% url 'rider:earnings' %}" class="nav-item relative flex items-center space-x-3 p-3 rounded-lg {% if request.resolver_match.url_name == 'earnings' %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-                </svg>
-                <span>Earnings</span>
-            </a>
-        </nav>
-        
-        <!-- Account Section -->
-        <div class="p-4 border-t border-gray-200">
-            <div class="flex items-center justify-between px-3 py-2">
-                <span class="text-sm text-gray-600">ID: R{{ rider.id|stringformat:"04d" }}</span>
-                <a href="{% url 'rider:logout' %}" class="text-sm text-red-600 hover:text-red-800">Logout</a>
-            </div>
-        </div>
+<body class="min-h-screen flex flex-col md:flex-row bg-slate-50">
+
+  <!-- Sidebar -->
+  <aside class="w-full md:w-64 bg-white border-r border-gray-200 flex-shrink-0">
+    <div class="p-5 border-b border-gray-100">
+      <h1 class="text-2xl font-bold text-gray-800">Rider Panel</h1>
+      <p class="text-sm text-gray-500">Kupwara, Kashmir</p>
     </div>
-
-    <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Content Header -->
-        <header class="bg-white border-b border-gray-200 p-4">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="text-xl font-semibold text-gray-800">
-                        {% block header %}
-                        Welcome, {{ rider.user.first_name|default:rider.user.username }}
-                        {% endblock %}
-                    </h2>
-                    <p class="text-sm text-gray-500 mt-1">
-                        {% block subheader %}
-                        Manage your deliveries and earnings
-                        {% endblock %}
-                    </p>
-                </div>
-                <button id="availability-btn" onclick="toggleAvailability()" 
-                        class="availability-btn px-4 py-2 rounded-lg text-white font-medium {% if rider.is_available %}bg-green-500 hover:bg-green-600{% else %}bg-gray-400 hover:bg-gray-500{% endif %}">
-                    {% if rider.is_available %}Available{% else %}Not Available{% endif %}
-                </button>
-            </div>
-        </header>
-        
-        <!-- Main Content -->
-        <main class="flex-1 overflow-y-auto p-6">
-            {% block content %}
-            <!-- Default content will be overridden by child templates -->
-            {% endblock %}
-        </main>
+    <nav class="p-4 space-y-3">
+      <a href="{% url 'rider:dashboard' %}" class="nav-item relative flex items-center space-x-3 p-3 rounded-lg card {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="{% url 'rider:bank_details_list' %}" class="nav-item relative flex items-center space-x-3 p-3 rounded-lg card {% if request.resolver_match.url_name == 'bank_details' %}active{% endif %}">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd" /></svg>
+        <span>Bank Details</span>
+      </a>
+      <a href="{% url 'rider:earnings' %}" class="nav-item relative flex items-center space-x-3 p-3 rounded-lg card {% if request.resolver_match.url_name == 'earnings' %}active{% endif %}">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
+        <span>Earnings</span>
+      </a>
+    </nav>
+    <div class="p-4 border-t border-gray-100">
+      <div class="flex justify-between text-sm text-gray-600">
+        <span>ID: R{{ rider.id|stringformat:"04d" }}</span>
+        <a href="{% url 'rider:logout' %}" class="text-red-500 hover:text-red-600">Logout</a>
+      </div>
     </div>
+  </aside>
 
-    <script>
-    // Toggle availability
-    function toggleAvailability() {
-        const btn = document.getElementById('availability-btn');
-        btn.disabled = true;
-        btn.classList.add('opacity-75');
-        
-        fetch("{% url 'rider:update_availability' %}", {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            btn.innerText = data.button_text;
-            btn.className = `availability-btn px-4 py-2 rounded-lg text-white font-medium ${data.button_class.includes('green') ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 hover:bg-gray-500'}`;
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.classList.remove('opacity-75');
-        });
-    }
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col">
+    <header class="bg-white border-b border-gray-200 p-4 relative">
+  <div class="flex justify-between items-start sm:items-center">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">
+        Welcome, {{ rider.user.first_name|default:rider.user.username }}
+      </h2>
+      <p class="text-sm text-gray-500 mt-1">
+        Manage your deliveries and earnings
+      </p>
+    </div>
+    <label class="inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="availabilityToggle" class="sr-only"
+               {% if rider.is_available %}checked{% endif %}>
+        <div id="toggleBg"
+             class="w-14 h-8 rounded-full relative transition-colors duration-300
+             {% if rider.is_available %}bg-green-500{% else %}bg-red-500{% endif %}">
+            <span id="toggleCircle"
+                  class="absolute left-1 top-1 bg-white w-6 h-6 rounded-full shadow-md transform transition
+                  {% if rider.is_available %}translate-x-6{% endif %}"></span>
+        </div>
+        <span id="availabilityStatus" class="ml-3 font-medium text-gray-800 text-sm">
+            {% if rider.is_available %}Available{% else %}Not Available{% endif %}
+        </span>
+    </label>
+  </div>
+</header>
 
-    // Order actions
-    function acceptOrder(orderId) {
-        fetch(`rider:accept_order${orderId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if(data.status === 'success') location.reload();
-        });
-    }
+      
 
-    function rejectOrder(orderId) {
-        fetch(`rider:reject_order/${orderId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if(data.status === 'success') location.reload();
-        });
-    }
+    <main class="flex-1 p-4 overflow-y-auto">
+      {% block content %}
+      <!-- Dynamic content goes here -->
+      {% endblock %}
+    </main>
+  </div>
 
-
-    </script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    const ctx = document.getElementById('earningsChart').getContext('2d');
-    const earningsChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [{% for week in weekly_earnings %}"{{ week.date|date:'M d' }}",{% endfor %}],
-            datasets: [{
-                label: 'Daily Earnings',
-                data: [{% for week in weekly_earnings %}{{ week.earnings }},{% endfor %}],
-                borderColor: '#4CAF50',
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                }
-            }
+  <script>
+    document.getElementById('availabilityToggle').addEventListener('change', function () {
+    fetch("{% url 'rider:update_availability' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}"
         }
-    });
-</script>
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const toggleBg = document.getElementById('toggleBg');
+            const toggleCircle = document.getElementById('toggleCircle');
+            const availabilityStatus = document.getElementById('availabilityStatus');
+
+            toggleBg.className = `w-14 h-8 rounded-full relative transition-colors duration-300 ${data.button_class}`;
+            toggleCircle.className = `absolute left-1 top-1 bg-white w-6 h-6 rounded-full shadow-md transform transition ${data.is_available ? 'translate-x-6' : ''}`;
+            availabilityStatus.textContent = data.button_text;
+
+            showToast("Availability Updated");
+        } else {
+            showToast("Update failed");
+        }
+    })
+    .catch(() => showToast("Server error"));
+});
+
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 2000);
+}
+  </script>
 </body>
 </html>

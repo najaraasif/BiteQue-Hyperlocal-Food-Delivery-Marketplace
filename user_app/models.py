@@ -19,9 +19,15 @@ class Order(models.Model):
     menu_items = models.ManyToManyField('merchant_app.RestaurantMenu', related_name='orders')
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
-    delivery_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    delivery_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    delivery_address = models.TextField(default='Default Address')
+    delivery_address = models.CharField(max_length=512)
+    dest_lat = models.DecimalField(
+        max_digits=9, decimal_places=6, blank=True, null=True,
+        help_text="Geocoded latitude of delivery address"
+    )
+    dest_lon = models.DecimalField(
+        max_digits=9, decimal_places=6, blank=True, null=True,
+        help_text="Geocoded longitude of delivery address"
+    )
     
     
     STATUS_CHOICES = [
@@ -56,16 +62,7 @@ class Order(models.Model):
     def __str__(self):
         return f"Order #{self.id} - {self.customer_name}"
     
-    def save(self, *args, **kwargs):
-        if self.delivery_address and not (self.delivery_latitude and self.delivery_longitude):
-            lat, lng = geocode_address(self.delivery_address)
-            if lat and lng:
-                self.delivery_latitude = lat
-                self.delivery_longitude = lng
-            else:
-                logger.warning(f"Failed to geocode address: {self.delivery_address}")
-        
-        super().save(*args, **kwargs)
+    
 
     
 class userLogin(models.Model):

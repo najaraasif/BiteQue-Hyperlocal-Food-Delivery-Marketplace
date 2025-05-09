@@ -5,11 +5,11 @@ from django.contrib.auth import logout
 from django.db import IntegrityError
 from django.views.decorators.http import require_POST
 from django.shortcuts import render, redirect,get_object_or_404
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.http import Http404, HttpResponse, JsonResponse
 from merchant_app.models import Order
 from .models import Rider, OrderAssignment, RiderBankAccount, RiderEarning
-from .forms import BankDetailsForm, RiderRegistrationForm, RiderLoginForm
+from .forms import BankDetailsForm, RiderPasswordResetForm, RiderRegistrationForm, RiderLoginForm
 from django.contrib.auth.views import LoginView
 import logging
 from django.db import transaction
@@ -18,44 +18,60 @@ from django.db.models import Sum
 from merchant_app.models import Restaurant 
 from user_app.models import Order
 from django.utils import timezone
+from django.views.generic import TemplateView
+from django.contrib.auth.views import (
+    PasswordResetView as BasePasswordResetView,
+    PasswordResetDoneView as BasePasswordResetDoneView,
+    PasswordResetConfirmView as BasePasswordResetConfirmView,
+    PasswordResetCompleteView as BasePasswordResetCompleteView
+)
 
 logger = logging.getLogger(__name__)
+
 
 @login_required
 def rider_dashboard(request):
     try:
         rider = request.user.rider
-        print(f"Debug: Found rider - Available: {rider.is_available}, Approved: {rider.is_approved}")  # Debug
+        if not hasattr(rider, 'total_assignments'):
+            rider.total_assignments = 0
+        if not hasattr(rider, 'accepted_assignments'):
+            rider.accepted_assignments = 0
+            
+        acceptance_rate = rider.get_acceptance_rate()
+
+        print(f"Debug: Found rider - Rider ID: {rider.id}, Available: {rider.is_available}, Approved: {rider.is_approved}")
     except Rider.DoesNotExist:
-        print("Debug: No rider profile found")  # Debug
-        return redirect('rider:registration')  # Redirect if no rider profile
-    
-    # Get active and completed orders
+        print("Debug: No rider profile found for the logged-in user.")
+        messages.error(request, "Rider profile not found. Please register or contact support.")
+        return redirect('rider:registration') 
+
     active_orders = OrderAssignment.objects.filter(
-            rider=rider,
-        status__in=['PENDING', 'ACCEPTED'],  # Only show these
+        rider=rider,
+        status__in=['pending', 'accepted'],  
         order__status__in=['ready', 'out_for_delivery']
-    )
-        
-    print(f"Debug: Found {active_orders.count()} active orders")  # Debug
+    ).select_related('order', 'order__restaurant') 
+
+    print(f"Debug: Found {active_orders.count()} active orders for rider {rider.id} with status in ['pending', 'accepted'] and order status in ['ready', 'out_for_delivery'].")
     
+
     completed_orders = OrderAssignment.objects.filter(
         rider=rider,
-        status='DELIVERED'
-    ).order_by('-updated_at')[:5]
-    
+        status='delivered' 
+    ).order_by('-updated_at')[:5].select_related('order', 'order__restaurant')
+
     context = {
-        'rider': rider,  # Make sure this is included
+        'rider': rider,
         'active_orders': active_orders,
         'completed_orders': completed_orders,
         'total_earnings': rider.get_total_earnings(),
         'total_orders': rider.get_total_orders_completed(),
         'acceptance_rate': rider.get_acceptance_rate(),
-        'weekly_earnings': get_weekly_earnings(rider),  # Implement this function
+        'weekly_earnings': get_weekly_earnings(rider),
         'acceptance_stats': {
-                'accepted': rider.accepted_assignments,
-                'total': rider.total_assignments
-            }
+            'accepted': rider.accepted_assignments,
+            'total': rider.total_assignments
+        }
     }
     return render(request, 'rider_app/dashboard.html', context)
 
@@ -69,10 +85,8 @@ def get_weekly_earnings(rider):
                 .annotate(daily_earnings=Sum('total_earnings'))
                 .order_by('date'))
     
-    # Create a list of all dates in the period
     dates = [start_date + timedelta(days=i) for i in range(7)]
     
-    # Map earnings to dates
     earnings_dict = {e['date']: float(e['daily_earnings']) for e in earnings}
     
     return [{
@@ -80,31 +94,6 @@ def get_weekly_earnings(rider):
         'earnings': earnings_dict.get(date, 0)
     } for date in dates]
 
-@login_required
-def rider_earnings(request):
-    try:
-        rider = request.user.rider
-        earnings = RiderEarning.objects.filter(rider=rider).order_by('-date')
-        
-        # Calculate summary stats
-        total_earnings = earnings.aggregate(total=Sum('total_earnings'))['total'] or 0
-        total_orders = earnings.aggregate(total=Sum('orders_completed'))['total'] or 0
-        
-        # Weekly breakdown
-        weekly_earnings = get_weekly_earnings(rider)  # Reuse your existing function
-        
-        context = {
-            'earnings': earnings,
-            'total_earnings': total_earnings,
-            'total_orders': total_orders,
-            'weekly_earnings': weekly_earnings,
-            'current_balance': rider.get_total_earnings(),  # From your model
-        }
-        return render(request, 'rider_app/earnings.html', context)
-        
-    except Rider.DoesNotExist:
-        messages.warning(request, "Please complete your rider registration")
-        return redirect('rider:registration')
 
 
 
@@ -143,18 +132,16 @@ def accept_order(request, order_id):
         assignment = OrderAssignment.objects.get(
             order_id=order_id,
             rider=rider,
-            status='PENDING'
+            status='pending'
         )
-        assignment.status = 'ACCEPTED'
+        assignment.status = 'accepted'
         assignment.accepted_at = timezone.now()
         assignment.save()
 
-        # Reject all other assignments for this order
         OrderAssignment.objects.filter(
             order_id=order_id
-        ).exclude(rider=rider).update(status='REJECTED')  # <-- Key change
+        ).exclude(rider=rider).update(status='rejected')  # <-- Key change
 
-        # Update order status
         order = assignment.order
         order.status = 'out_for_delivery'
         order.save()
@@ -197,10 +184,9 @@ def rider_registration(request):
         else:
             messages.error(request, "Please correct the errors below.")
     
-    else:  # GET request
+    else:  
         form = RiderRegistrationForm()
     
-    # This return statement was missing for GET requests
     return render(request, 'registration.html', {'form': form})
 
 
@@ -275,10 +261,10 @@ def mark_delivered(request, order_id):
         assignment = OrderAssignment.objects.get(
             order_id=order_id,
             rider=rider,
-            status='ACCEPTED'
+            status='accepted'
         )
         
-        assignment.status = 'DELIVERED'
+        assignment.status = 'delivered'
         assignment.save()
         
         order = assignment.order
@@ -295,30 +281,28 @@ def mark_delivered(request, order_id):
 
 
 @login_required
-def bank_details_list(request): # Renamed from bank_details
+def bank_details_list(request): 
     try:
         rider = request.user.rider
         bank_accounts = RiderBankAccount.objects.filter(rider=rider)
         
         if request.method == 'POST':
-            # This view will now primarily handle adding new accounts
-            # Setting primary and deleting will be separate actions/views
+           
             form = BankDetailsForm(request.POST, rider=rider)
             if form.is_valid():
                 bank_account = form.save(commit=False)
                 bank_account.rider = rider
-                # If no other bank accounts exist, make this one primary
                 if not bank_accounts.exists():
                     bank_account.is_primary = True
                 bank_account.save()
                 messages.success(request, "✅ Bank account added successfully!")
-                return redirect('rider:bank_details_list') # Updated redirect
+                return redirect('rider:bank_details_list') 
             else:
                 messages.error(request, "❌ Please correct the errors below.")
         else:
             form = BankDetailsForm(rider=rider)
         
-        return render(request, 'rider_app/bank_details_list.html', { # New template name suggested
+        return render(request, 'rider_app/bank_details_list.html', { 
             'form': form,
             'rider': rider,
             'bank_accounts': bank_accounts
@@ -327,12 +311,10 @@ def bank_details_list(request): # Renamed from bank_details
     except Rider.DoesNotExist:
         messages.warning(request, "Please complete your rider registration first")
         return redirect('rider:registration')
-    # except Exception as e: # Generic exception handling might hide specific issues
-    #     messages.error(request, "Error managing bank details")
-    #     return redirect('rider:dashboard')
+    
 
 @login_required
-@require_POST # Ensure this view is only accessed via POST
+@require_POST 
 def delete_bank_account(request, account_id):
     try:
         rider = request.user.rider
@@ -348,10 +330,9 @@ def delete_bank_account(request, account_id):
         messages.error(request, "Rider profile not found.")
     except RiderBankAccount.DoesNotExist:
         messages.error(request, "Bank account not found.")
-    # except Exception as e:
-    #     messages.error(request, f"An error occurred: {str(e)}")
+    
         
-    return redirect('rider:bank_details_list') # Redirect back to the list
+    return redirect('rider:bank_details_list') 
 
 @login_required
 @require_POST
@@ -360,7 +341,6 @@ def set_primary_bank_account(request, account_id):
         rider = request.user.rider
         bank_account_to_set_primary = get_object_or_404(RiderBankAccount, id=account_id, rider=rider)
         
-        # The model's save method handles unsetting other primary accounts
         bank_account_to_set_primary.is_primary = True
         bank_account_to_set_primary.save()
         
@@ -370,23 +350,125 @@ def set_primary_bank_account(request, account_id):
         messages.error(request, "Rider profile not found.")
     except RiderBankAccount.DoesNotExist:
         messages.error(request, "Bank account not found.")
-    # except Exception as e:
-    #     messages.error(request, f"An error occurred: {str(e)}")
         
     return redirect('rider:bank_details_list')
 
+
 @login_required
-def get_customer_location(request, order_id):
+def rider_order_detail(request, order_id):
     try:
-        order = Order.objects.get(id=order_id)
-        if not order.delivery_latitude or not order.delivery_longitude:
-            return JsonResponse({'status': 'error', 'message': 'Location not available'}, status=404)
-            
-        return JsonResponse({
-            'status': 'success',
-            'latitude': float(order.delivery_latitude),
-            'longitude': float(order.delivery_longitude),
-            'address': order.delivery_address
+        rider = request.user.rider  
+        assignment = get_object_or_404(OrderAssignment, order_id=order_id, rider=rider)
+        order = assignment.order
+
+        if assignment.status != "accepted":
+            return render(request, "rider_app/accept_order_prompt.html", {
+                "assignment": assignment,
+                "order": order,
+                "rider": rider  
+            })
+
+        return render(request, "rider_app/order_detail.html", {
+            "order": order,
+            "assignment": assignment,
+            "dest_lat": order.dest_lat,
+            "dest_lon": order.dest_lon,
+            "rider": rider  
         })
-    except Order.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Order not found'}, status=404)
+        
+    except Rider.DoesNotExist:
+        messages.error(request, "Rider profile not found")
+        return redirect('rider:dashboard')
+
+
+@require_POST
+@login_required
+def accept_order_assignment(request, order_id):
+    assignment = get_object_or_404(OrderAssignment, order_id=order_id, rider=request.user.rider)
+
+    if assignment.status == "pending": 
+        assignment.status = "accepted" 
+        assignment.accepted_at = timezone.now() 
+        assignment.save() 
+        messages.success(request, "Order accepted successfully!")
+    elif assignment.status == "accepted":
+        messages.info(request, "Order was already accepted.")
+    else:
+        messages.error(request, f"Order cannot be accepted. Current status: {assignment.status}")
+
+    return redirect('rider:rider_order_detail', order_id=order_id)
+
+
+
+
+
+
+#password reset
+
+from mailersend import emails
+from django.conf import settings
+from django.template.loader import render_to_string
+
+class RiderPasswordResetView(BasePasswordResetView):
+    template_name = 'rider_app/password_reset.html'
+    email_template_name = 'rider_app/password_reset_email.html'
+    subject_template_name = 'rider_app/password_reset_subject.txt'
+    success_url = reverse_lazy('rider:password_reset_done')
+    form_class = RiderPasswordResetForm
+
+    def form_valid(self, form):
+        return super().form_valid(form)
+
+    def send_mail(self, subject_template_name, email_template_name,
+                  context, from_email, to_email, html_email_template_name=None):
+        subject = render_to_string(subject_template_name, context)
+        subject = ''.join(subject.splitlines())
+        body = render_to_string(email_template_name, context)
+
+        mailer = emails.NewEmail(settings.MAILERSEND_API_KEY)
+        
+        mail_body = {
+            "personalization": [
+                {
+                    "email": to_email,
+                    "data": {
+                        "username": context['user'].username,
+                        "reset_link": f"{context['protocol']}://{context['domain']}{context['reset_url']}"
+                    }
+                }
+            ]
+        }
+
+        mail_from = {
+            "email": settings.DEFAULT_FROM_EMAIL,
+            "name": "BiteQue Rider Support"
+        }
+
+        recipients = [
+            {
+                "email": to_email,
+                "name": context['user'].username
+            }
+        ]
+
+        mailer.set_mail_from(mail_from, mail_body)
+        mailer.set_mail_to(recipients, mail_body)
+        mailer.set_subject(subject, mail_body)
+        mailer.set_html_content(body, mail_body)
+
+        mailer.send(mail_body)
+
+class RiderPasswordResetDoneView(BasePasswordResetDoneView):
+    template_name = 'rider_app/password_reset_done.html'
+
+class RiderPasswordResetConfirmView(BasePasswordResetConfirmView):
+    template_name = 'rider_app/password_reset_confirm.html'
+    success_url = reverse_lazy('rider:password_reset_complete')
+
+class RiderPasswordResetCompleteView(TemplateView):
+    template_name = 'rider_app/password_reset_complete.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['login_url'] = '/rider-login/' 
+        return context

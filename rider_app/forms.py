@@ -74,9 +74,9 @@ def save(self, commit=True):
                 pincode=self.cleaned_data['pincode'],
                 profile_photo=self.cleaned_data['profile_photo'],
                 aadhar_front=self.cleaned_data['aadhar_front'],
-                aadhar_back=self.cleaned_data.get('aadhar_back'),  # Handle optional
+                aadhar_back=self.cleaned_data.get('aadhar_back'),  
                 license_copy=self.cleaned_data['license_copy'],
-                is_approved=False  # Explicitly set
+                is_approved=False  
             )
         return user
 
@@ -89,7 +89,6 @@ class RiderAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Apply class styling to the fields if they exist
         if 'username' in self.fields:
             self.fields['username'].widget.attrs.update({
                 'class': 'form-input'
@@ -153,8 +152,25 @@ class RiderLoginForm(AuthenticationForm):
         if not user.rider.is_approved:
             raise forms.ValidationError("Your rider account is pending approval.")
         
+from django.contrib.auth.forms import PasswordResetForm
 
-class BankDetailsForm(forms.ModelForm): # This can now be RiderBankAccountForm
+class RiderPasswordResetForm(PasswordResetForm):
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'w-full px-4 py-2 border rounded-lg',
+            'placeholder': 'Enter your email address'
+        }),
+        max_length=254,
+        required=True
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        if not User.objects.filter(email=email, rider__isnull=False).exists():
+            raise forms.ValidationError("This email is not registered as a rider.")
+        return email
+
+class BankDetailsForm(forms.ModelForm): 
     class Meta:
         model = RiderBankAccount
         fields = ['account_holder_name', 'account_number', 'bank_name', 'ifsc_code', 'is_primary']
@@ -168,14 +184,14 @@ class BankDetailsForm(forms.ModelForm): # This can now be RiderBankAccountForm
         }
 
     def __init__(self, *args, **kwargs):
-        self.rider = kwargs.pop('rider', None) # Pass rider to the form
+        self.rider = kwargs.pop('rider', None) 
         super().__init__(*args, **kwargs)
 
-    def clean_account_number(self): # Renamed from clean_bank_account_number
+    def clean_account_number(self): 
         account_num = self.cleaned_data['account_number']
         if account_num and not account_num.isdigit():
             raise forms.ValidationError("Account number should contain only digits")
-        if account_num and len(account_num) < 11: # Or your specific validation
+        if account_num and len(account_num) < 11: 
             raise forms.ValidationError("Account number too short")
         return account_num
 
@@ -190,14 +206,10 @@ class BankDetailsForm(forms.ModelForm): # This can now be RiderBankAccountForm
         is_primary = cleaned_data.get("is_primary")
 
         if self.rider and is_primary:
-            # If setting as primary, check if other accounts are primary
-            # This logic is also in the model's save method, but good to have in form too
+            
             if RiderBankAccount.objects.filter(rider=self.rider, is_primary=True).exclude(pk=self.instance.pk).exists():
-                # If editing an existing account and marking it primary while another is already primary
-                # Or adding a new primary when one already exists.
-                # The model's save method will handle demoting others.
+                
                 pass
         elif self.rider and not self.instance.pk and not RiderBankAccount.objects.filter(rider=self.rider).exists():
-            # If this is the first bank account being added for the rider, make it primary by default
             cleaned_data['is_primary'] = True
         return cleaned_data

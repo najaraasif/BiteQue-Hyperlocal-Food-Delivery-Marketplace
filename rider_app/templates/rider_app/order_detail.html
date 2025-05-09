@@ -1,0 +1,124 @@
+{% extends "basedashboard.html" %}
+{% load static %}
+{% block content %}
+<div class="mb-6">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-4 rounded-lg text-sm font-medium {% if message.tags == 'error' %} bg-red-100 text-red-700 {% elif message.tags == 'success' %} bg-green-100 text-green-700 {% else %} bg-blue-100 text-blue-700 {% endif %}" role="alert">
+                {% if message.tags == 'success' %}✅ {% elif message.tags == 'error' %}❌ {% endif %} {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    </div>
+<h1>Order Details</h1>
+<p>Order ID: {{ order.id }}</p>
+<p>Customer Address: {{ order.delivery_address }}</p>
+<h2>Customer Location</h2>
+
+<!-- Map Container -->
+<div id="googleMap" style="height: 500px; width: 100%; border: 1px solid #ddd; border-radius: 8px; margin: 20px 0;"></div>
+
+<!-- Redirect Button -->
+{% if dest_lat and dest_lon %}
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="https://www.google.com/maps/search/?api=1&query={{ dest_lat }},{{ dest_lon }}" 
+           target="_blank" 
+           style="display: inline-block; background: #28a745; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px;">
+            Open in Google Maps
+        </a>
+    </div>
+{% endif %}
+
+<!-- Add this after the map container -->
+{% if assignment.status == 'accepted' %}
+<div class="mt-6 text-center">
+    <button 
+        id="markDeliveredBtn"
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg"
+    >
+        Mark as Delivered
+    </button>
+</div>
+{% endif %}
+<!-- Google Maps Implementation -->
+<script>
+function initGoogleMap() {
+    const customerLat = {{ dest_lat|default:"null" }};
+    const customerLon = {{ dest_lon|default:"null" }};
+    
+    if (customerLat && customerLon) {
+        const location = { lat: customerLat, lng: customerLon };
+        
+        const map = new google.maps.Map(document.getElementById("googleMap"), {
+            zoom: 15,
+            center: location,
+            mapTypeId: google.maps.MapTypeId.ROADMAP
+        });
+        
+        new google.maps.Marker({
+            position: location,
+            map: map,
+            title: "Delivery Location"
+        });
+    } else {
+        document.getElementById('googleMap').innerHTML = 
+            '<div style="padding: 20px; text-align: center; color: #666;">Location coordinates not available</div>';
+    }
+}
+</script>
+
+<!-- Load Google Maps API (replace YOUR_API_KEY) -->
+<script src="https://maps.googleapis.com/maps/api/js?key=***REMOVED***&callback=initGoogleMap" async defer></script>
+<!-- Add this script at the end of your template -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const markDeliveredBtn = document.getElementById('markDeliveredBtn');
+        
+        if (markDeliveredBtn) {
+            markDeliveredBtn.addEventListener('click', async () => {
+                const orderId = {{ order.id }};
+                
+                // Disable button during processing
+                markDeliveredBtn.disabled = true;
+                markDeliveredBtn.textContent = 'Processing...';
+                markDeliveredBtn.classList.add('opacity-50');
+    
+                try {
+                    const response = await fetch(`{% url 'rider:mark_delivered' order_id=0 %}`.replace('0', orderId), {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+    
+                    const result = await response.json();
+    
+                    if (result.status === 'success') {
+                        // Update UI on success
+                        markDeliveredBtn.textContent = '✓ Delivered';
+                        markDeliveredBtn.classList.remove('bg-blue-500', 'hover:bg-blue-700');
+                        markDeliveredBtn.classList.add('bg-green-500', 'cursor-default');
+                        
+                        // Optional: Redirect after delay
+                        setTimeout(() => {
+                            window.location.href = "{% url 'rider:dashboard' %}";
+                        }, 1500);
+                    } else {
+                        // Handle error
+                        alert('Error: ' + result.message);
+                        markDeliveredBtn.disabled = false;
+                        markDeliveredBtn.textContent = 'Mark as Delivered';
+                        markDeliveredBtn.classList.remove('opacity-50');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    markDeliveredBtn.disabled = false;
+                    markDeliveredBtn.textContent = 'Mark as Delivered';
+                    markDeliveredBtn.classList.remove('opacity-50');
+                }
+            });
+        }
+    });
+    </script>
+{% endblock %}

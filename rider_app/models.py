@@ -43,35 +43,27 @@ class Rider(models.Model):
         return f"{self.user.username} ({'Approved' if self.is_approved else 'Pending'})"
     
     def get_total_earnings(self):
-        """Calculate total earnings from RiderEarning records"""
         total = self.riderearning_set.aggregate(
             total_earnings=Sum('total_earnings')
         )['total_earnings']
         return total or 0
     
     def get_total_orders_completed(self):
-        """Count completed order assignments"""
         return self.orderassignment_set.filter(
-            status='DELIVERED'
+            status='delivered'
         ).count()
     
-
-
-
-
-
-
-    #ACCEPTANCE RATE
-   
     def get_acceptance_rate(self):
-        """Calculate lifetime acceptance percentage using stored values"""
+        self.total_assignments = self.orderassignment_set.count()
+        self.accepted_assignments = self.orderassignment_set.filter(status='accepted').count()
+        self.save()
+        
         if self.total_assignments == 0:
-            return 0
+            return 0.0
         return round((self.accepted_assignments / self.total_assignments) * 100, 1)
 
     @property
     def acceptance_rate_display(self):
-        """Formatted acceptance rate for admin"""
         return f"{self.get_acceptance_rate()}%"
     
 
@@ -95,15 +87,18 @@ class RiderEarning(models.Model):
 
 class OrderAssignment(models.Model):
     ORDER_STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('ACCEPTED', 'Accepted'),
-        ('REJECTED', 'Rejected'),
-        ('DELIVERED', 'Delivered'),
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+        ('delivered', 'Delivered'),
     ]
-    
     rider = models.ForeignKey(Rider, on_delete=models.CASCADE)
-    order = models.ForeignKey('user_app.Order', on_delete=models.CASCADE)
-    status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='PENDING')
+    order = models.ForeignKey('user_app.Order', on_delete=models.CASCADE) # Assuming Order is in user_app
+    status = models.CharField(
+        max_length=20,
+        choices=ORDER_STATUS_CHOICES,
+        default='pending'  
+    )
     assigned_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -115,8 +110,8 @@ class OrderAssignment(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['order'],
-                condition=models.Q(status='ACCEPTED'),
-                name='unique_accepted_assignment'
+                condition=models.Q(status='accepted'),
+                name='unique_accepted_assignment_for_order' 
             )
         ]
     pass
@@ -137,7 +132,6 @@ class RiderBankAccount(models.Model):
         ordering = ['-is_primary', '-created_at']
         verbose_name = 'Rider Bank Account'
         verbose_name_plural = 'Rider Bank Accounts'
-        # Ensure only one primary account per rider
         constraints = [
             models.UniqueConstraint(fields=['rider', 'is_primary'], condition=models.Q(is_primary=True), name='unique_primary_bank_account_per_rider')
         ]
@@ -146,7 +140,6 @@ class RiderBankAccount(models.Model):
         return f"{self.rider.user.username} - {self.account_number} ({'Primary' if self.is_primary else 'Secondary'})"
 
     def save(self, *args, **kwargs):
-        # If this account is being set as primary, ensure other accounts for the same rider are not primary.
         if self.is_primary:
             RiderBankAccount.objects.filter(rider=self.rider, is_primary=True).exclude(pk=self.pk).update(is_primary=False)
         super().save(*args, **kwargs)

@@ -24,7 +24,7 @@ class OrderAdmin(admin.ModelAdmin):
                 OrderAssignment.objects.get_or_create(
                     rider=rider,
                     order=obj,
-                    defaults={'status': 'PENDING'}
+                    defaults={'status': 'pending'}
                 )
 
 admin.site.register(userLogin, userLoginAdmin)

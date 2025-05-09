@@ -140,7 +140,13 @@ LOGIN_REDIRECT_URL = '/rider/dashboard/'
 
 #email for verification
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend' 
-MAILERSEND_API_KEY = '***REMOVED***' 
-MAILERSEND_DOMAIN = 'test-r83ql3ppozxgzw1j.mlsender.net'  
+EMAIL_BACKEND = 'rider_app.mailersend_backend.MailerSendBackend'
+MAILERSEND_API_KEY = '***REMOVED***'
+MAILERSEND_DOMAIN = 'test-r83ql3ppozxgzw1j.mlsender.net'
 DEFAULT_FROM_EMAIL = 'noreply@test-r83ql3ppozxgzw1j.mlsender.net'
+
+EMAIL_HOST = 'smtp.mailersend.net'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'MS_6pOOGd@test-r83ql3ppozxgzw1j.mlsender.net'
+EMAIL_HOST_PASSWORD = '***REMOVED***'

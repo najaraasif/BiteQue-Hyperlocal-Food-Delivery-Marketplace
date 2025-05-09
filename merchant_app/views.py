@@ -168,7 +168,7 @@ def mark_order_ready(request, order_id):
             OrderAssignment.objects.create(
                 rider=rider,
                 order=order,
-                status='PENDING'
+                status='pending'
             )
             logger.info(f"Created assignment for rider {rider.id}")  # Debug line
         
