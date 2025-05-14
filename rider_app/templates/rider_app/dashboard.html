@@ -2,209 +2,174 @@
 {% load static %}
 
 {% block content %}
-
-
 <meta name="csrf-token" content="{{ csrf_token }}">
 
-<style>
-    .card {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        transition: all 0.3s ease;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .card:hover {
-        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
-    }
-    .status-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-    .badge-pending {
-        background-color: #FEF3C7;
-        color: #92400E;
-    }
-    .badge-accepted {
-        background-color: #D1FAE5;
-        color: #065F46;
-    }
-    .btn {
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        font-weight: 500;
-        text-align: center;
-        transition: all 0.2s;
-    }
-    .btn-primary {
-        background-color: #3B82F6;
-        color: white;
-    }
-    .btn-primary:hover {
-        background-color: #2563EB;
-    }
-</style>
-
 <div class="container mx-auto px-4 py-8">
-    <!-- Header Section -->
-    <div class="flex justify-between items-center mb-8">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h1 class="text-3xl font-bold text-gray-800">Rider Dashboard</h1>
-        <div class="text-right">
-            
-            
-            <div id="toast" class="hidden fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50">
-                Availability Updated
-            </div>
-            
+        <div id="toast" class="hidden fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50">
+            Availability Updated
         </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="card">
-            <h3 class="text-sm text-gray-500">Total Earnings</h3>
-            <p class="text-2xl font-bold">₹{{ total_earnings|floatformat:2 }}</p>
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-2xl shadow-md p-6">
+            <h3 class="text-sm text-gray-500 mb-1">Total Earnings</h3>
+            <p class="text-2xl font-semibold text-gray-800">₹{{ total_earnings|floatformat:2 }}</p>
         </div>
-        <div class="card">
-            <h3 class="text-sm text-gray-500">Completed Deliveries</h3>
-            <p class="text-2xl font-bold">{{ total_orders }}</p>
+        <div class="bg-white rounded-2xl shadow-md p-6">
+            <h3 class="text-sm text-gray-500 mb-1">Completed Deliveries</h3>
+            <p class="text-2xl font-semibold text-gray-800">{{ total_orders }}</p>
         </div>
-        <div class="card bg-yellow-50">
-            <h3 class="text-sm text-gray-500">Acceptance Rate</h3>
-            <p class="text-2xl font-bold">
-                {% if acceptance_rate is not None %}
-                    {{ acceptance_rate }}%
-                {% else %}
-                    0%
-                {% endif %}
-            </p>
-            {% if acceptance_rate is None %}
-            <p class="text-xs text-red-500 mt-1">
-                Rate calculation unavailable
-            </p>
-            {% endif %}
+        <div class="bg-white rounded-2xl shadow-md p-6">
+            <h3 class="text-sm text-gray-500 mb-2">Acceptance Rate</h3>
+            <div class="text-2xl font-semibold text-gray-800">{{ acceptance_stats.score }}%</div>
         </div>
-        <div class="card">
-            <h3 class="text-sm text-gray-500">Active Orders</h3>
-            <p class="text-2xl font-bold">{{ active_orders|length }}</p>
+        <div class="bg-white rounded-2xl shadow-md p-6">
+            <h3 class="text-sm text-gray-500 mb-1">Active Orders</h3>
+            <p class="text-2xl font-semibold text-gray-800">{{ active_orders|length }}</p>
         </div>
     </div>
 
-    <!-- Active Orders Section -->
-    <div class="card">
+    <!-- Active Orders -->
+    <div class="bg-white rounded-2xl shadow-md p-6 mb-8">
         <h2 class="text-xl font-semibold mb-4">Active Orders</h2>
-        
         {% if active_orders %}
         <div class="space-y-4">
             {% for assignment in active_orders %}
-            <div class="border rounded-lg p-4 hover:bg-gray-50">
-                <div class="flex justify-between items-start">
+            <div class="border rounded-xl p-4 hover:bg-gray-50 transition">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-start gap-3">
                     <div>
                         <p class="text-xs text-gray-500">Order #{{ assignment.order.id }}</p>
-                        <h3 class="text-lg font-semibold">{{ assignment.order.restaurant.name }}</h3>
-                        <h3 class="text-lg font-semibold">{{ assignment.order.restaurant.address }}</h3>
+                        <h3 class="text-md font-semibold text-gray-800">{{ assignment.order.restaurant.name }}</h3>
+                        <p class="text-sm text-gray-600">{{ assignment.order.restaurant.address }}</p>
                         <p class="text-sm text-gray-600 mt-1">{{ assignment.order.customer_name }}</p>
-                        <p class="text-sm text-gray-600 mt-1">{{ assignment.order.customer_contact }}</p>
-                        <p class="text-sm text-gray-600 mt-1">{{ assignment.order.order_address }}</p>
+                        <p class="text-sm text-gray-600">{{ assignment.order.customer_contact }}</p>
+                        <p class="text-sm text-gray-600">{{ assignment.order.order_address }}</p>
                     </div>
-                    <span class="status-badge {% if assignment.status == 'pending' %}badge-pending{% else %}badge-accepted{% endif %}">
-                        {{ assignment.status|title }}
-                    </span>
+                    <div>
+                        <span class="inline-block px-3 py-1 rounded-full text-sm font-medium
+                            {% if assignment.status == 'pending' %}
+                                bg-yellow-100 text-yellow-700
+                            {% else %}
+                                bg-green-100 text-green-700
+                            {% endif %}">
+                            {{ assignment.status|title }}
+                        </span>
+                    </div>
                 </div>
-                
-                {% if assignment.status == 'pending' %}
                 <form method="POST" 
-                      action="{% url 'rider:accept_order_assignment_action' order_id=assignment.order.id %}"
-                      class="mt-3">
+                      action="{% if assignment.status == 'pending' %}
+                                  {% url 'rider:accept_order_assignment_action' order_id=assignment.order.id %}
+                              {% else %}
+                                  {% url 'rider:rider_order_detail' order_id=assignment.order.id %}
+                              {% endif %}"
+                      class="mt-4">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-primary w-full">
-                        Accept Order
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition">
+                        {% if assignment.status == 'pending' %}Accept Order{% else %}Continue{% endif %}
                     </button>
                 </form>
-                {% endif %}
-                {% if assignment.status == 'accepted' %}
-                <form method="POST" 
-                      action="{% url 'rider:rider_order_detail' order_id=assignment.order.id %}"
-                      class="mt-3">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-primary w-full">
-                        Continue
-                    </button>
-                </form>
-                {% endif %}
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <div class="text-center py-8">
-            <p class="text-gray-500">No active orders available</p>
-        </div>
+        <div class="text-center text-gray-500 py-8">No active orders available</div>
         {% endif %}
     </div>
 
-    <!-- Earnings Sections
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        Weekly Earnings
-        <div class="card">
-            <h2 class="text-xl font-semibold mb-4">Weekly Earnings</h2>
-            <div style="height: 300px;">
-                <canvas id="earningsChart"></canvas>
-            </div>
-        </div>-->
-
-        <!-- Recent Earnings -->
-        <div class="card">
-            <h2 class="text-xl font-semibold mb-4">Recent Earnings</h2>
-            {% if earnings %}
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr class="text-left border-b">
-                            <th class="pb-2 text-sm font-medium text-gray-500">Date</th>
-                            <th class="pb-2 text-sm font-medium text-gray-500">Earnings</th>
-                            <th class="pb-2 text-sm font-medium text-gray-500">Orders</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for earning in earnings %}
-                        <tr class="border-b">
-                            <td class="py-3 text-sm">{{ earning.date|date:"M d, Y" }}</td>
-                            <td class="py-3 text-sm font-medium">₹{{ earning.total_earnings|floatformat:2 }}</td>
-                            <td class="py-3 text-sm">{{ earning.orders_completed }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-4 text-right">
-                <a href="{% url 'rider:earnings' %}" class="text-blue-500 hover:underline text-sm">
-                    View All Earnings →
-                </a>
-            </div>
-            {% else %}
-            <div class="text-center py-8">
-                <p class="text-gray-500">No earnings recorded yet</p>
-            </div>
-            {% endif %}
+    <!-- Weekly Earnings Chart -->
+    <div class="bg-white rounded-2xl shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Weekly Earnings</h2>
+        <div class="w-full overflow-x-auto">
+            <canvas id="earningsChart" class="w-full max-w-full h-64"></canvas>
         </div>
+    </div>
+
+    <!-- Recent Earnings Table -->
+    <div class="bg-white rounded-2xl shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Recent Earnings</h2>
+        {% if earnings %}
+        <div class="overflow-x-auto">
+            <table class="w-full table-auto">
+                <thead>
+                    <tr class="text-left border-b">
+                        <th class="pb-2 text-sm font-medium text-gray-500">Date</th>
+                        <th class="pb-2 text-sm font-medium text-gray-500">Earnings</th>
+                        <th class="pb-2 text-sm font-medium text-gray-500">Orders</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for earning in earnings %}
+                    <tr class="border-b">
+                        <td class="py-3 text-sm text-gray-700">{{ earning.date|date:"M d, Y" }}</td>
+                        <td class="py-3 text-sm font-medium text-gray-800">₹{{ earning.total_earnings|floatformat:2 }}</td>
+                        <td class="py-3 text-sm text-gray-700">{{ earning.orders_completed }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4 text-right">
+            <a href="{% url 'rider:earnings' %}" class="text-blue-500 hover:underline text-sm">View All Earnings →</a>
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-500">No earnings recorded yet</div>
+        {% endif %}
     </div>
 </div>
 
-<!-- JavaScript Section -->
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Mark Delivered functionality
+document.addEventListener('DOMContentLoaded', function () {
+    // Chart.js Setup
+    const ctx = document.getElementById('earningsChart').getContext('2d');
+    const earningsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [{% for e in earnings %}"{{ e.date|date:'D' }}",{% endfor %}],
+            datasets: [{
+                label: 'Earnings (₹)',
+                data: [{% for e in earnings %}{{ e.total_earnings }},{% endfor %}],
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderColor: '#3B82F6',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#6B7280' }
+                },
+                x: {
+                    ticks: { color: '#6B7280' }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // Mark Delivered Logic
     document.querySelectorAll('.deliver-btn').forEach(button => {
-        button.addEventListener('click', async function() {
+        button.addEventListener('click', async function () {
             const orderId = this.dataset.orderId;
             this.disabled = true;
             this.textContent = 'Processing...';
-            
+
             try {
                 const response = await fetch(`{% url 'rider:mark_delivered' 0 %}`.replace('0', orderId), {
                     method: 'POST',
@@ -213,9 +178,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         'Content-Type': 'application/json',
                     },
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.status === 'success') {
                     this.textContent = '✓ Delivered';
                     this.classList.add('bg-green-500');
@@ -235,12 +200,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
-
-
-
-// Availability Toggle Functionality
-
-
-
 </script>
 {% endblock %}

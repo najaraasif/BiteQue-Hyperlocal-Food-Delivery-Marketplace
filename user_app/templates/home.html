@@ -1,7 +1,17 @@
 {% extends 'base.html' %}
 
 {% block content %}
+{% load static %}
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900">
+
+    
 <!-- Main Content -->
 <main class="container mx-auto px-4 py-6">
     <!-- Search & Filters -->
@@ -15,385 +25,118 @@
             </button>
         </div>
 
-    <!-- Food Categories Gallery -->
-    <div class="mb-10 animate-slide-up">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">Explore Categories</h2>
-        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
-            <!-- Dummy Categories -->
-            <div class="group relative cursor-pointer transform transition-all duration-300 hover:-translate-y-1">
-                <div class="w-full aspect-square rounded-2xl bg-white p-2 shadow-md hover:shadow-xl transition-shadow duration-300">
-                    <img src="https://www.maggiarabia.com/sites/default/files/styles/srh_recipes/public/srh_recipes/30c29da8aec1403f42e82552d927abab.png?h=4f5b30f1&itok=7l1fu_HB" 
-                         class="w-full h-full object-cover rounded-xl transform transition-all duration-300 group-hover:scale-105">
-                </div>
-                <span class="block mt-3 text-center text-sm font-medium text-gray-700 group-hover:text-[#FF0B55] transition-colors">
-                    Biryani
-                </span>
-            </div>
-            <div class="group relative cursor-pointer transform transition-all duration-300 hover:-translate-y-1">
-                <div class="w-full aspect-square rounded-2xl bg-white p-2 shadow-md hover:shadow-xl transition-shadow duration-300">
-                    <img src="https://media.istockphoto.com/id/1442417585/photo/person-getting-a-piece-of-cheesy-pepperoni-pizza.jpg?s=612x612&w=0&k=20&c=k60TjxKIOIxJpd4F4yLMVjsniB4W1BpEV4Mi_nb4uJU=" 
-                         class="w-full h-full object-cover rounded-xl transform transition-all duration-300 group-hover:scale-105">
-                </div>
-                <span class="block mt-3 text-center text-sm font-medium text-gray-700 group-hover:text-[#FF0B55] transition-colors">
-                    Pizza
-                </span>
-            </div>
-            <div class="group relative cursor-pointer transform transition-all duration-300 hover:-translate-y-1">
-                <div class="w-full aspect-square rounded-2xl bg-white p-2 shadow-md hover:shadow-xl transition-shadow duration-300">
-                    <img src="https://www.chicken.ca/wp-content/uploads/2013/05/Moist-Chicken-Burgers-1180x580.jpg" 
-                         class="w-full h-full object-cover rounded-xl transform transition-all duration-300 group-hover:scale-105">
-                </div>
-                <span class="block mt-3 text-center text-sm font-medium text-gray-700 group-hover:text-[#FF0B55] transition-colors">
-                    Burgers
-                </span>
-            </div>
-            <div class="group relative cursor-pointer transform transition-all duration-300 hover:-translate-y-1">
-                <div class="w-full aspect-square rounded-2xl bg-white p-2 shadow-md hover:shadow-xl transition-shadow duration-300">
-                    <img src="https://junifoods.com/wp-content/uploads/2023/11/Easy-Chicken-Momo-Dumplings-Sajilo-Kukhura-ko-Momo-%E0%A4%B8%E0%A4%9C%E0%A4%BF%E0%A4%B2%E0%A5%8B-%E0%A4%95%E0%A5%81%E0%A4%96%E0%A5%81%E0%A4%B0%E0%A4%BE%E0%A4%95%E0%A5%8B-%E0%A4%AE%E0%A4%AE-500x375.jpg" 
-                         class="w-full h-full object-cover rounded-xl transform transition-all duration-300 group-hover:scale-105">
-                </div>
-                <span class="block mt-3 text-center text-sm font-medium text-gray-700 group-hover:text-[#FF0B55] transition-colors">
-                    Momos
-                </span>
-            </div>
-            <div class="group relative cursor-pointer transform transition-all duration-300 hover:-translate-y-1">
-                <div class="w-full aspect-square rounded-2xl bg-white p-2 shadow-md hover:shadow-xl transition-shadow duration-300">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Vegetarian_Curry.jpeg/640px-Vegetarian_Curry.jpeg" 
-                         class="w-full h-full object-cover rounded-xl transform transition-all duration-300 group-hover:scale-105">
-                </div>
-                <span class="block mt-3 text-center text-sm font-medium text-gray-700 group-hover:text-[#FF0B55] transition-colors">
-                    Thali
-                </span>
-            </div>
-            <div class="group relative cursor-pointer transform transition-all duration-300 hover:-translate-y-1">
-                <div class="w-full aspect-square rounded-2xl bg-white p-2 shadow-md hover:shadow-xl transition-shadow duration-300">
-                    <img src="https://www.allrecipes.com/thmb/rOSWRQmSwBjWyAnnCVJcpd5xBnM=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/3574694-hot-fudge-ice-cream-bar-dessert-Allrecipes-Magazine-4x3-1-8b0b0580bfb14ae9bb8a9b3acb421ad5.jpg" 
-                         class="w-full h-full object-cover rounded-xl transform transition-all duration-300 group-hover:scale-105">
-                </div>
-                <span class="block mt-3 text-center text-sm font-medium text-gray-700 group-hover:text-[#FF0B55] transition-colors">
-                    Desserts
-                </span>
-            </div>
+<!-- Section 1: Category Gallery -->
+<!-- Section 1: Category Gallery -->
+<section class="py-4 px-4">
+  <h2 class="text-xl font-semibold mb-3">Categories</h2>
+  
+  <div class="flex overflow-x-auto space-x-4 scrollbar-hide">
+    {% for category in categories %}
+    <a href="" class="flex-shrink-0 text-center w-24 group">
+      <div class="flex-shrink-0 text-center w-24">
+        <!-- Circular Category Image -->
+        <div class="w-20 h-20 mx-auto mb-2 rounded-full overflow-hidden border border-gray-300 shadow">
+          <img 
+            src="/media/images/{{ category|slugify }}.jpg" 
+            alt="{{ category }}" 
+            class="w-full h-full object-cover"
+          >
         </div>
+
+        <!-- Category Name -->
+        <p class="text-sm font-medium text-gray-700 truncate">
+          {{ category }}
+        </p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+
+<!-- Section 2: Approved Restaurants -->
+<section class="py-6 px-4">
+  <h2 class="text-xl font-semibold mb-4">Popular Restaurants</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+    {% for restaurant in approved_restaurants %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden relative">
+      <!-- Restaurant Image -->
+      <img src="{{ restaurant.image.url }}" alt="{{ restaurant.name }}" class="w-full h-48 object-cover">
+
+      <!-- Rating Overlay (Top Right) -->
+      <div class="absolute top-2 right-2 bg-black bg-opacity-50 text-yellow-500 text-sm font-bold px-2 py-1 rounded-full">
+        5 ⭐
+      </div>
+
+      <!-- Availability Status (Top Left) -->
+      <div class="absolute top-2 left-2 px-2 py-1 text-xs rounded-full font-semibold
+        {% if restaurant.is_available %}
+          bg-green-300 text-green-900
+        {% else %}
+          bg-red-100 text-red-900
+        {% endif %}
+      ">
+        {% if restaurant.is_available %}
+  Open
+{% else %}
+  Closed
+{% endif %}
+
+
+      </div>
+
+      <!-- Card Content -->
+      <div class="p-4">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-lg font-bold">{{ restaurant.name }}</h3>
+        </div>
+        <span class="material-icons text-green-900 text-xm">{{ restaurant.address }}</span>
+
+        <p class="text-sm text-gray-600 mb-2">{{ restaurant.description|truncatechars:100 }}</p>
+        <div class="flex justify-between items-center text-sm text-gray-500">
+          <span class="flex items-center">
+           
+            <span class="material-icons text-green-900 text-xm">Estimated Delivery: 25-45 min</span>
+          </span>
+          <span class="bg-pink-100 text-pink-600 px-2 py-1 rounded-full text-xs">{{ restaurant.category }}</span>
+        </div>
+        <div class="mt-4 text-center">
+          <a href="{{ restaurant.menu_url }}" class="bg-pink-600 text-white py-2 px-4 rounded-full text-sm hover:bg-pink-700 transition">View Menu</a>
+        </div>
+      </div>
     </div>
+    {% endfor %}
+  </div>
+</section>
 
-    <!-- Restaurants Section -->
-    <h2 class="text-2xl font-bold text-gray-800 mb-6 animate-slide-up">Popular Restaurants Near You</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <!-- Dummy Restaurant 1 -->
-        <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 animate-staggered" style="--index: 0">
-            <div class="relative overflow-hidden rounded-t-2xl">
-                <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/25/e5/56/aa/main-view.jpg?w=600&h=-1&s=1" 
-                     class="w-full h-48 object-cover transform transition-all duration-300 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                <div class="absolute bottom-4 left-4 text-white">
-                    <h3 class="text-xl font-bold">Kashmir Darbar</h3>
-                    <p class="text-sm">Kashmiri, North Indian</p>
-                </div>
-                <span class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-medium">
-                    ⭐ 4.3
-                </span>
-                <span class="absolute top-3 left-3 bg-[#FF0B55] text-white px-2 py-1 text-xs rounded-full">
-                    30% OFF
-                </span>
-            </div>
-            
-            <div class="p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center space-x-2">
-                        <hero-icon name="clock" class="w-4 h-4 text-gray-500"></hero-icon>
-                        <span class="text-sm text-gray-600">25-35 mins</span>
+
+
+    <!-- Section 3: Menu Items -->
+    <section class="py-6 px-4">
+        <h2 class="text-xl font-semibold mb-4">Menu Items</h2>
+
+        {% for restaurant in available_restaurants %}
+        <div class="mb-6">
+            <h3 class="text-lg font-bold mb-2">{{ restaurant.name }}</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {% for item in restaurant.restaurantmenu_set.all %}
+                <div class="bg-white shadow-sm rounded-lg p-3">
+                    <img src="{{ item.image.url }}" alt="{{ item.name }}" class="h-28 w-full object-cover rounded-md mb-2">
+                    <div class="text-sm">
+                        <h4 class="font-semibold">{{ item.name }}</h4>
+                        <p class="text-gray-600">{{ item.description|truncatechars:80 }}</p>
+                        <p class="text-green-700 font-bold mt-1">₹{{ item.price }}</p>
+                        <p class="text-xs text-gray-500 italic">{{ item.category }}</p>
                     </div>
-                    <span class="text-sm font-medium text-gray-600">₹250 for two</span>
                 </div>
-                <button class="w-full bg-[#FF0B55] text-white px-4 py-3 rounded-xl text-sm font-medium 
-                          hover:bg-[#FF0B55]/90 transition-all duration-300 active:scale-95 add-to-cart">
-                    View Menu
-                </button>
+                {% endfor %}
             </div>
         </div>
+        {% endfor %}
 
-        <!-- Dummy Restaurant 2 -->
-        <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 animate-staggered" style="--index: 1">
-            <div class="relative overflow-hidden rounded-t-2xl">
-                <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0e/9e/45/90/niramish.jpg?w=600&h=400&s=1" 
-                     class="w-full h-48 object-cover transform transition-all duration-300 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                <div class="absolute bottom-4 left-4 text-white">
-                    <h3 class="text-xl font-bold">Pizza Palace</h3>
-                    <p class="text-sm">Italian, Fast Food</p>
-                </div>
-                <span class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-medium">
-                    ⭐ 4.1
-                </span>
-                <span class="absolute top-3 left-3 bg-[#FF0B55] text-white px-2 py-1 text-xs rounded-full">
-                    40% OFF
-                </span>
-            </div>
-            
-            <div class="p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center space-x-2">
-                        <hero-icon name="clock" class="w-4 h-4 text-gray-500"></hero-icon>
-                        <span class="text-sm text-gray-600">20-30 mins</span>
-                    </div>
-                    <span class="text-sm font-medium text-gray-600">₹350 for two</span>
-                </div>
-                <button class="w-full bg-[#FF0B55] text-white px-4 py-3 rounded-xl text-sm font-medium 
-                          hover:bg-[#FF0B55]/90 transition-all duration-300 active:scale-95 add-to-cart">
-                    View Menu
-                </button>
-            </div>
-        </div>
+    </section>
 
-        <!-- Dummy Restaurant 3 -->
-        <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 animate-staggered" style="--index: 2">
-            <div class="relative overflow-hidden rounded-t-2xl">
-                <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/25/54/b9/f9/cafe-tulip.jpg?w=600&h=-1&s=1" 
-                     class="w-full h-48 object-cover transform transition-all duration-300 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                <div class="absolute bottom-4 left-4 text-white">
-                    <h3 class="text-xl font-bold">Burger King</h3>
-                    <p class="text-sm">American, Fast Food</p>
-                </div>
-                <span class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-medium">
-                    ⭐ 4.5
-                </span>
-                <span class="absolute top-3 left-3 bg-[#FF0B55] text-white px-2 py-1 text-xs rounded-full">
-                    BUY 1 GET 1
-                </span>
-            </div>
-            
-            <div class="p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center space-x-2">
-                        <hero-icon name="clock" class="w-4 h-4 text-gray-500"></hero-icon>
-                        <span class="text-sm text-gray-600">15-25 mins</span>
-                    </div>
-                    <span class="text-sm font-medium text-gray-600">₹200 for two</span>
-                </div>
-                <button class="w-full bg-[#FF0B55] text-white px-4 py-3 rounded-xl text-sm font-medium 
-                          hover:bg-[#FF0B55]/90 transition-all duration-300 active:scale-95 add-to-cart">
-                    View Menu
-                </button>
-            </div>
-        </div>
+</body>
 
-        <!-- Dummy Restaurant 4 -->
-        <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 animate-staggered" style="--index: 3">
-            <div class="relative overflow-hidden rounded-t-2xl">
-                <img src="https://s3.india.com/wp-content/uploads/2024/06/Best-Hill-Top-Restaurants-in-Srinagar.jpg?impolicy=Medium_Widthonly&w=330" 
-                     class="w-full h-48 object-cover transform transition-all duration-300 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                <div class="absolute bottom-4 left-4 text-white">
-                    <h3 class="text-xl font-bold">Chinese Wok</h3>
-                    <p class="text-sm">Chinese, Asian</p>
-                </div>
-                <span class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-medium">
-                    ⭐ 4.2
-                </span>
-                <span class="absolute top-3 left-3 bg-[#FF0B55] text-white px-2 py-1 text-xs rounded-full">
-                    20% OFF
-                </span>
-            </div>
-            
-            <div class="p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center space-x-2">
-                        <hero-icon name="clock" class="w-4 h-4 text-gray-500"></hero-icon>
-                        <span class="text-sm text-gray-600">30-40 mins</span>
-                    </div>
-                    <span class="text-sm font-medium text-gray-600">₹300 for two</span>
-                </div>
-                <button class="w-full bg-[#FF0B55] text-white px-4 py-3 rounded-xl text-sm font-medium 
-                          hover:bg-[#FF0B55]/90 transition-all duration-300 active:scale-95 add-to-cart">
-                    View Menu
-                </button>
-            </div>
-        </div>
-
-        <!-- Dummy Restaurant 5 -->
-        <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 animate-staggered" style="--index: 4">
-            <div class="relative overflow-hidden rounded-t-2xl">
-                <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/04/72/96/aa/hotel-paradise-and-restaurant.jpg" 
-                     class="w-full h-48 object-cover transform transition-all duration-300 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                <div class="absolute bottom-4 left-4 text-white">
-                    <h3 class="text-xl font-bold">South Spice</h3>
-                    <p class="text-sm">South Indian, Vegetarian</p>
-                </div>
-                <span class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-medium">
-                    ⭐ 4.4
-                </span>
-                <span class="absolute top-3 left-3 bg-[#FF0B55] text-white px-2 py-1 text-xs rounded-full">
-                    15% OFF
-                </span>
-            </div>
-            
-            <div class="p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center space-x-2">
-                        <hero-icon name="clock" class="w-4 h-4 text-gray-500"></hero-icon>
-                        <span class="text-sm text-gray-600">20-30 mins</span>
-                    </div>
-                    <span class="text-sm font-medium text-gray-600">₹180 for two</span>
-                </div>
-                <button class="w-full bg-[#FF0B55] text-white px-4 py-3 rounded-xl text-sm font-medium 
-                          hover:bg-[#FF0B55]/90 transition-all duration-300 active:scale-95 add-to-cart">
-                    View Menu
-                </button>
-            </div>
-        </div>
-
-        <!-- Dummy Restaurant 6 -->
-        <div class="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 animate-staggered" style="--index: 5">
-            <div class="relative overflow-hidden rounded-t-2xl">
-                <img src="https://curlytales.com/wp-content/uploads/2022/01/zarpar-8.jpg" 
-                     class="w-full h-48 object-cover transform transition-all duration-300 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                <div class="absolute bottom-4 left-4 text-white">
-                    <h3 class="text-xl font-bold">Sweet Tooth</h3>
-                    <p class="text-sm">Bakery, Desserts</p>
-                </div>
-                <span class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-medium">
-                    ⭐ 4.7
-                </span>
-                <span class="absolute top-3 left-3 bg-[#FF0B55] text-white px-2 py-1 text-xs rounded-full">
-                    FREE DELIVERY
-                </span>
-            </div>
-            
-            <div class="p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center space-x-2">
-                        <hero-icon name="clock" class="w-4 h-4 text-gray-500"></hero-icon>
-                        <span class="text-sm text-gray-600">15-25 mins</span>
-                    </div>
-                    <span class="text-sm font-medium text-gray-600">₹150 for two</span>
-                </div>
-                <button class="w-full bg-[#FF0B55] text-white px-4 py-3 rounded-xl text-sm font-medium 
-                          hover:bg-[#FF0B55]/90 transition-all duration-300 active:scale-95 add-to-cart">
-                    View Menu
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Popular Dishes Section -->
-    <h2 class="text-2xl font-bold text-gray-800 mb-6 mt-12 animate-slide-up">Popular Dishes in Kupwara</h2>
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        <!-- Dummy Dish 1 -->
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <div class="relative">
-                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSIQqR9rkCAqS-faniW_IYN2tsw43maqitrFA&s" 
-                     class="w-full h-40 object-cover rounded-t-xl">
-                <span class="absolute top-2 right-2 bg-[#FF0B55] text-white px-2 py-1 text-xs rounded-full">
-                    Bestseller
-                </span>
-            </div>
-            <div class="p-3">
-                <h3 class="font-bold text-gray-800">Chicken Biryani</h3>
-                <p class="text-sm text-gray-600 mb-2">Kashmir Darbar</p>
-                <div class="flex items-center justify-between">
-                    <span class="font-bold text-gray-900">₹220</span>
-                    <button class="bg-[#FF0B55] text-white p-1 rounded-full hover:bg-[#FF0B55]/90 transition-all">
-                        <hero-icon name="plus" class="w-4 h-4"></hero-icon>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Dummy Dish 2 -->
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <div class="relative">
-                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSX2w-6ljxAJtEImAJ4zBsRnou1CoSAVmgvQw&s" 
-                     class="w-full h-40 object-cover rounded-t-xl">
-                <span class="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 text-xs rounded-full">
-                    Veg
-                </span>
-            </div>
-            <div class="p-3">
-                <h3 class="font-bold text-gray-800">Margherita Pizza</h3>
-                <p class="text-sm text-gray-600 mb-2">Pizza Palace</p>
-                <div class="flex items-center justify-between">
-                    <span class="font-bold text-gray-900">₹299</span>
-                    <button class="bg-[#FF0B55] text-white p-1 rounded-full hover:bg-[#FF0B55]/90 transition-all">
-                        <hero-icon name="plus" class="w-4 h-4"></hero-icon>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Dummy Dish 3 -->
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <div class="relative">
-                <img src="https://mccormick.widen.net/content/ufuxobl3aq/jpeg/Franks_Photo_Spicy_Grilled_Chicken_Cheeseburger_with_the_Works_Horizontal_2000x1125_180321.jpg?w=1374&h=774&keep=c&crop=yes&quality=80&x.app=portals" 
-                     class="w-full h-40 object-cover rounded-t-xl">
-                <span class="absolute top-2 right-2 bg-[#FF0B55] text-white px-2 py-1 text-xs rounded-full">
-                    Bestseller
-                </span>
-            </div>
-            <div class="p-3">
-                <h3 class="font-bold text-gray-800">Chicken Burger</h3>
-                <p class="text-sm text-gray-600 mb-2">Burger King</p>
-                <div class="flex items-center justify-between">
-                    <span class="font-bold text-gray-900">₹150</span>
-                    <button class="bg-[#FF0B55] text-white p-1 rounded-full hover:bg-[#FF0B55]/90 transition-all">
-                        <hero-icon name="plus" class="w-4 h-4"></hero-icon>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Dummy Dish 4 -->
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <div class="relative">
-                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTR9KvEnkyR7_CHbuFWOVW70qtwh_GLHV0OVA&s" 
-                     class="w-full h-40 object-cover rounded-t-xl">
-                <span class="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 text-xs rounded-full">
-                    Veg
-                </span>
-            </div>
-            <div class="p-3">
-                <h3 class="font-bold text-gray-800">Steamed Momos</h3>
-                <p class="text-sm text-gray-600 mb-2">Chinese Wok</p>
-                <div class="flex items-center justify-between">
-                    <span class="font-bold text-gray-900">₹120</span>
-                    <button class="bg-[#FF0B55] text-white p-1 rounded-full hover:bg-[#FF0B55]/90 transition-all">
-                        <hero-icon name="plus" class="w-4 h-4"></hero-icon>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Dummy Dish 5 -->
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <div class="relative">
-                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQACh1yWbIwNiWJOZ-8lkt9oGkf5cdMK4DV8Q&s" 
-                     class="w-full h-40 object-cover rounded-t-xl">
-                <span class="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 text-xs rounded-full">
-                    Veg
-                </span>
-            </div>
-            <div class="p-3">
-                <h3 class="font-bold text-gray-800">Masala Dosa</h3>
-                <p class="text-sm text-gray-600 mb-2">South Spice</p>
-                <div class="flex items-center justify-between">
-                    <span class="font-bold text-gray-900">₹90</span>
-                    <button class="bg-[#FF0B55] text-white p-1 rounded-full hover:bg-[#FF0B55]/90 transition-all">
-                        <hero-icon name="plus" class="w-4 h-4"></hero-icon>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</main>
-
-<!-- Live Support -->
-<div class="fixed bottom-8 right-8 bg-[#FF0B55] p-4 rounded-full shadow-xl cursor-pointer hover:bg-[#FF0B55]/90 
-          transition-all duration-300 animate-bounce-in">
-    <hero-icon name="chat-bubble-left-ellipsis" class="w-6 h-6 text-white"></hero-icon>
-</div>
-
-<!-- Keep existing JavaScript functionality -->
+    
 {% endblock %}

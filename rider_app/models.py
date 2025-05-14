@@ -56,14 +56,20 @@ class Rider(models.Model):
         ).count()
     
     def get_acceptance_rate(self):
-        total_assignments = self.orderassignment_set.count()
-        if total_assignments == 0:
+        assignments = self.orderassignment_set.filter(
+            status__in=['accepted', 'rejected']
+        )
+        
+        if not assignments.exists():
             return 0.0
-        return round((self.accepted_assignments / total_assignments) * 100, 1)
-
-    @property
-    def acceptance_rate_display(self):
-        return f"{self.get_acceptance_rate()}%"
+            
+        total_score = sum(
+            a.acceptance_score for a in assignments 
+            if a.status == 'accepted'
+        )
+        total_possible = 100 * assignments.count()
+        
+        return round((total_score / total_possible) * 100, 1) if total_possible else 0.0
     #transaction
     def get_current_balance(self):
         total_earnings = self.get_total_earnings()
@@ -117,6 +123,13 @@ class OrderAssignment(models.Model):
     assigned_at = models.DateTimeField(default=timezone.now)
     accepted_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+    response_time = models.DurationField(null=True, blank=True)
+    acceptance_score = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2,
+        default=0.0,
+        help_text="Weighted score based on response time"
+    )
 
     class Meta:
         ordering = ['-assigned_at']

@@ -19,6 +19,8 @@ class RiderAdmin(admin.ModelAdmin):
         'is_approved',
         'is_available',
         'total_earnings_display',
+        'today_earnings_display',
+        'current_balance_display',
         'completed_orders_display',
         'acceptance_rate_display',
         'total_assignments',
@@ -109,11 +111,16 @@ class RiderAdmin(admin.ModelAdmin):
     license_copy_preview.short_description = 'License Copy Preview'
 
     def total_earnings_display(self, obj):
-        
-        if hasattr(obj, 'get_total_earnings'):
-             return f"₹{obj.get_total_earnings():,.2f}"
-        return "N/A" 
-    total_earnings_display.short_description = 'Total Earnings'
+        return f"₹{obj.get_total_earnings():,.2f}"
+    total_earnings_display.short_description = 'Total'
+
+    def today_earnings_display(self, obj):
+        return f"₹{obj.today_earnings:,.2f}"
+    today_earnings_display.short_description = 'Today'
+    
+    def current_balance_display(self, obj):
+        return f"₹{obj.get_current_balance():,.2f}"
+    current_balance_display.short_description = 'Balance'
 
     def completed_orders_display(self, obj):
         

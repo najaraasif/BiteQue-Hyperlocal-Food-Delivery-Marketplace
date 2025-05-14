@@ -119,22 +119,23 @@
     <h2>Your Earnings</h2>
     
     <!-- Summary Cards -->
-    <div class="earnings-summary">
-        <div class="summary-card">
-            <h3>Current Balance</h3>
-            <p class="amount">₹{{ rider.current_balance|floatformat:2 }}</p>
-            <small class="text-gray-500">(Lifetime accumulated earnings)</small>
-        </div>
-        <div class="summary-card">
-            <h3>Today's Earnings</h3>
-            <p class="amount">₹{{ rider.today_earnings|floatformat:2 }}</p>
-            <small class="text-gray-500">(Resets daily at midnight)</small>
-        </div>
-        <div class="summary-card">
-            <h3>Completed Orders</h3>
-            <p class="count">{{ total_orders }}</p>
-        </div>
+<div class="earnings-summary">
+    <div class="summary-card">
+        <h3>Today's Earnings</h3>
+        <p class="amount">₹{{ rider.today_earnings|floatformat:2 }}</p>
+        <small class="text-gray-500">(Resets daily at midnight)</small>
     </div>
+    <div class="summary-card">
+        <h3>Current Balance</h3>
+        <p class="amount">₹{{ rider.get_current_balance|floatformat:2 }}</p>
+        <small class="text-gray-500">(Available for withdrawal)</small>
+    </div>
+    <div class="summary-card">
+        <h3>Total Earnings</h3>
+        <p class="amount">₹{{ rider.get_total_earnings|floatformat:2 }}</p>
+        <small class="text-gray-500">(Lifetime earnings)</small>
+    </div>
+</div>
 
     <!-- Earnings Breakdown -->
     <!-- Earnings Breakdown -->

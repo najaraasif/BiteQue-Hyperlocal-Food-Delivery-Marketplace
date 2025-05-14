@@ -14,7 +14,7 @@ class userRegistrationForm(forms.Form):
             label="Full Name"
         )
         email = forms.EmailField(
-            max_length=20,
+            max_length=50,
             label="Email"
         )
         password = forms.CharField(

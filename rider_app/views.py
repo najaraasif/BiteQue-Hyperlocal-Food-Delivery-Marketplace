@@ -69,14 +69,19 @@ def rider_dashboard(request):
         'active_orders': active_orders,
         'completed_orders': completed_orders,
         'total_earnings': rider.get_total_earnings(),
+        'today_earnings': rider.today_earnings,
+        'current_balance': rider.get_current_balance(),
+        'weekly_earnings': get_weekly_earnings(rider),
         'total_orders': rider.get_total_orders_completed(),
         'acceptance_rate': rider.get_acceptance_rate(),
-        'weekly_earnings': get_weekly_earnings(rider),
-        'earnings': RiderEarning.objects.filter(rider=rider).order_by('-date')[:5],  # Last 5 earnings
         'acceptance_stats': {
-            'accepted': rider.accepted_assignments,
-            'total': rider.total_assignments
-        }
+                'score': rider.get_acceptance_rate(),
+                'response_times': rider.orderassignment_set.filter(
+                    status='accepted'
+                ).values_list('response_time', flat=True)[:10]
+            },
+        'earnings': RiderEarning.objects.filter(rider=rider).order_by('-date')[:5],  # Last 5 earnings
+        
     }
     return render(request, 'rider_app/dashboard.html', context)
 
@@ -278,10 +283,6 @@ def rider_earnings(request):
         return redirect('rider:dashboard')
       
 
-from django.contrib import messages
-from django.views.decorators.http import require_http_methods, require_POST
-
-import logging
 
 
 logger = logging.getLogger(__name__)
@@ -289,10 +290,9 @@ logger = logging.getLogger(__name__)
 @login_required
 @require_http_methods(["GET", "POST"])
 def mark_delivered(request, order_id):
-    
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-
     print(f"DEBUG MarkDelivered: AJAX: {is_ajax}, Method: {request.method}, Order ID: {order_id}")
+    
     try:
         rider = request.user.rider
         assignment = get_object_or_404(
@@ -317,40 +317,57 @@ def mark_delivered(request, order_id):
             if form.is_valid():
                 entered_otp = form.cleaned_data['otp']
                 print(f"DEBUG MarkDelivered: POST valid. OTP: {entered_otp}")
+                
                 if order.is_delivery_pin_valid(entered_otp):
                     assignment.status = 'delivered'
-                    assignment.save() 
+                    assignment.save()
+
                     restaurant = order.restaurant
                     distance_km = Decimal('0.0')
                     if restaurant.lat and restaurant.lon and order.dest_lat and order.dest_lon:
                         distance_km = Decimal(str(calculate_distance(
                             restaurant.lat, restaurant.lon, order.dest_lat, order.dest_lon
                         )))
-                    distance_earning = distance_km * Decimal('10')
+
                     order_total = order.total
-                    if order_total <= Decimal('200'): commission_rate = Decimal('0.10')
-                    elif order_total <= Decimal('400'): commission_rate = Decimal('0.06')
-                    elif order_total <= Decimal('1000'): commission_rate = Decimal('0.04')
-                    elif order_total <= Decimal('2000'): commission_rate = Decimal('0.02')
-                    elif order_total <= Decimal('4000'): commission_rate = Decimal('0.01')
-                    else: commission_rate = Decimal('0.00')
+                    if order_total <= 200:
+                        commission_rate = Decimal('0.10')
+                    elif order_total <= 400:
+                        commission_rate = Decimal('0.06')
+                    elif order_total <= 1000:
+                        commission_rate = Decimal('0.04')
+                    elif order_total <= 2000:
+                        commission_rate = Decimal('0.02')
+                    elif order_total <= 4000:
+                        commission_rate = Decimal('0.01')
+                    else:
+                        commission_rate = Decimal('0.00')
+
                     commission_earning = order_total * commission_rate
+                    distance_earning = distance_km * Decimal('10')
                     total_earning = distance_earning + commission_earning
+
                     order.distance_km = distance_km
                     order.distance_earning = distance_earning
                     order.commission = commission_earning
                     order.total_earning = total_earning
                     order.save(update_fields=['distance_km', 'distance_earning', 'commission', 'total_earning'])
+
                     rider.today_earnings += total_earning
                     rider.save(update_fields=['today_earnings'])
+
                     today = timezone.now().date()
                     rider_earning, created = RiderEarning.objects.get_or_create(
-                        rider=rider, date=today,
+                        rider=rider,
+                        date=today,
                         defaults={
-                            'total_earnings': total_earning, 'orders_completed': 1,
-                            'distance_km': distance_km, 'distance_earning': distance_earning,
+                            'total_earnings': total_earning,
+                            'orders_completed': 1,
+                            'distance_km': distance_km,
+                            'distance_earning': distance_earning,
                             'commission_earning': commission_earning
-                        })
+                        }
+                    )
                     if not created:
                         rider_earning.total_earnings += total_earning
                         rider_earning.orders_completed += 1
@@ -358,7 +375,8 @@ def mark_delivered(request, order_id):
                         rider_earning.distance_earning += distance_earning
                         rider_earning.commission_earning += commission_earning
                         rider_earning.save()
-                    print(f"DEBUG MarkDelivered: OTP Correct. Order delivered.") 
+
+                    print("DEBUG MarkDelivered: OTP Correct. Order delivered.")
                     if is_ajax:
                         return JsonResponse({
                             'status': 'success',
@@ -367,20 +385,20 @@ def mark_delivered(request, order_id):
                         })
                     messages.success(request, f"Order #{order.id} marked as delivered successfully!")
                     return redirect('rider:dashboard')
-                else: 
-                    print(f"DEBUG MarkDelivered: Incorrect OTP.")
+                else:
+                    print("DEBUG MarkDelivered: Incorrect OTP.")
                     message = "Incorrect PIN. Please confirm with the customer and try again."
                     logger.warning(f"Failed OTP attempt for order {order.id} by rider {rider.id}. Entered OTP: {entered_otp}")
                     if is_ajax:
                         return JsonResponse({'status': 'error', 'message': message, 'field_errors': {'otp': [message]}}, status=400)
                     messages.error(request, message)
-            else: 
-                print(f"DEBUG MarkDelivered: Form invalid. Errors: {form.errors.as_json()}") # Debug
+            else:
+                print(f"DEBUG MarkDelivered: Form invalid. Errors: {form.errors.as_json()}")
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'message': 'Invalid input.', 'field_errors': form.errors.get_json_data()}, status=400)
                 messages.error(request, "Invalid input. Please check the PIN format.")
-        
-        form = DeliveryOTPForm(request.POST or None) 
+
+        form = DeliveryOTPForm(request.POST or None)
         return render(request, 'rider_app/mark_delivered_otp.html', {
             'form': form,
             'order': order,
@@ -389,19 +407,21 @@ def mark_delivered(request, order_id):
 
     except OrderAssignment.DoesNotExist:
         message = "Order assignment not found or not in 'accepted' state."
-        print(f"DEBUG MarkDelivered: OrderAssignment.DoesNotExist or status mismatch.") 
+        print("DEBUG MarkDelivered: OrderAssignment.DoesNotExist or status mismatch.")
         if is_ajax:
             return JsonResponse({'status': 'error', 'message': message}, status=404)
         messages.error(request, message)
         return redirect('rider:dashboard')
+
     except Exception as e:
         logger.error(f"Error in mark_delivered view for order {order_id}: {str(e)}", exc_info=True)
         message = "An unexpected error occurred."
-        print(f"DEBUG MarkDelivered: Exception: {str(e)}") 
+        print(f"DEBUG MarkDelivered: Exception: {str(e)}")
         if is_ajax:
             return JsonResponse({'status': 'error', 'message': message}, status=500)
         messages.error(request, message)
         return redirect('rider:dashboard')
+
 
 @login_required
 def bank_details_list(request): 

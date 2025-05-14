@@ -12,15 +12,31 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate, login
-from merchant_app.models import Restaurant
+from merchant_app.models import Restaurant, RestaurantMenu
 from rider_app.utils import geocode_address
-
-
-
-
+from django.contrib.auth import logout
+from django.shortcuts import render
 
 def home(request):
-    return render(request, 'home.html')
+    categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
+    approved_restaurants = Restaurant.objects.filter(is_approved=True)
+    open = Restaurant.objects.all().select_related('is_available')
+    items = RestaurantMenu.objects.filter(restaurant=approved_restaurants)
+
+    query = request.GET.get('q')  
+    if query:
+        items = items.filter(name__icontains=query)
+
+    context = {
+        'categories': categories,
+        'approved_restaurants': approved_restaurants,
+        'open':open,
+    
+    }
+    return render(request, 'home.html', context)
+
+
+
 
 def about(request):
     return render(request, 'about.html')
@@ -240,3 +256,60 @@ def submit_feedback(request, order_id=None, restaurant_id=None):
 
 def feedback_thanks(request):
     return render(request, 'feedback_thanks.html')
+
+
+
+def add_to_cart(request, item_id):
+    menu_item = get_object_or_404(RestaurantMenu, id=item_id)
+
+    cart = request.session.get('cart', {})
+
+    if str(item_id) in cart:
+        cart[str(item_id)]['quantity'] += 1
+    else:
+        cart[str(item_id)] = {'quantity': 1}
+
+    request.session['cart'] = cart
+    request.session.modified = True
+
+    return redirect('view_cart')
+
+def view_cart(request):
+    cart = request.session.get('cart', {})
+    cart_items = []
+    total_price = 0
+
+    for item_id, item_data in cart.items():
+        menu_item = get_object_or_404(RestaurantMenu, id=item_id)
+        quantity = item_data['quantity']
+        subtotal = menu_item.price * quantity
+        total_price += subtotal
+
+        cart_items.append({
+            'item': menu_item,
+            'quantity': quantity,
+            'subtotal': subtotal,
+        })
+
+    return render(request, 'your_cart.html', {
+        'cart_items': cart_items,
+        'total': total_price,
+    })
+
+
+def remove_from_cart(request, item_id):
+    cart = request.session.get('cart', {})
+
+    if str(item_id) in cart:
+        del cart[str(item_id)]
+        request.session['cart'] = cart
+        request.session.modified = True
+
+    return redirect('your_cart')
+
+
+def user_logout(request):
+    logout(request)
+    return redirect('user_login')
+
+

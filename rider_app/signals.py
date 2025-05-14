@@ -175,3 +175,27 @@ def handle_order_assignment_changes(sender, instance, created, **kwargs):
             order.clear_delivery_pin() 
             order.save() 
             print(f"DEBUG SIGNAL: Order {order.id} status set to 'delivered'. PIN cleared.")
+
+
+@receiver(pre_save, sender=OrderAssignment)
+def calculate_acceptance_score(sender, instance, **kwargs):
+    if instance.status == 'accepted' and not instance.response_time:
+        # Calculate response time
+        instance.response_time = timezone.now() - instance.assigned_at
+        total_seconds = instance.response_time.total_seconds()
+        
+        # Calculate score based on response time
+        if total_seconds <= 60:  # 0-1 min
+            score = 100
+        elif total_seconds <= 120:  # 1-2 min
+            score = 90
+        elif total_seconds <= 180:  # 2-3 min
+            score = 80
+        elif total_seconds <= 240:  # 3-4 min
+            score = 70
+        elif total_seconds <= 300:  # 4-5 min
+            score = 50
+        else:  # 5+ min
+            score = 0
+            
+        instance.acceptance_score = score

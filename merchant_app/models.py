@@ -24,6 +24,7 @@ class Restaurant(models.Model):
     contact_number = models.CharField(max_length=15)
     address = models.TextField()
     city = models.CharField(max_length=50)
+    image = models.ImageField(upload_to='restaurantImages/', null=True, blank=True)
     pan_number = models.CharField(max_length=20, blank=True)
     gstin_number = models.CharField(max_length=20, blank=True)
     fssai_number = models.CharField(max_length=20, blank=True)
