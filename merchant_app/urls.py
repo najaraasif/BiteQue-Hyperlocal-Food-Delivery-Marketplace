@@ -1,11 +1,14 @@
 from django.urls import path
 from merchant_app import views
 from django.contrib.auth.views import LogoutView
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('merchant-register/', views.merchant_register_view, name='merchant_register'),
     path('merchant-register/success/', views.merchant_register_success, name='merchant_register_success'),
     path('merchant-login/', views.merchant_login, name='merchant_login'),
+    path('merchant-approval/', views.merchant_approval, name='merchant_approval'),
+
     path('logout/', LogoutView.as_view(next_page='merchant_login'), name='merchant_logout'),
     path('restaurant-status/', views.post_login_redirect, name='post-login-redirect'),
     path('add-restaurant', views.add_restaurant_view, name='add_restaurant'),
@@ -14,7 +17,7 @@ urlpatterns = [
     path('awaiting-approval/', views.awaiting_approval_view, name='awaiting-approval'),
     path('merchant-dashboard/', views.merchant_dashboard, name='merchant_dashboard'),
     path('awaiting-approval/', views.merchant_dashboard, name='awaiting-approval'),
-    path('merchant/orders/', views.merchant_orders, name='merchant_orders'),
+    path('merchant/orders/', views.merchant_order_view, name='merchant_orders'),
     path('merchant/orders/confirm/<int:order_id>/', views.confirm_order, name='confirm_order'),
     path('merchant/orders/ready/<int:order_id>/', views.mark_order_ready, name='mark_order_ready'),
 
@@ -28,5 +31,19 @@ urlpatterns = [
     path('merchant/bank-accounts/add/', views.add_bank_account, name='add_bank_account'),
     path('merchant/bank-accounts/edit/<int:account_id>/', views.edit_bank_account, name='edit_bank_account'),
     path('merchant/bank-accounts/delete/<int:account_id>/', views.delete_bank_account, name='delete_bank_account'),
+
+    path('merchant/payments/', views.merchant_payment_section_view, name='merchant_payment_section'),
+
+    path('merchant/revenue-report/', views.merchant_revenue_report, name='merchant_revenue_report'),
+    path('merchant/order-report/', views.order_reports, name='order_report'),
+    path('merchant/feedbacks/', views.feedback_list, name='customer_feedback'),
+
+
+    path('merchant/check_notifications/', views.check_notifications, name='check_notifications'),
+
+    path('merchant/reset-password/', views.merchant_password_reset_request, name='merchant-password-reset'),
+    path('merchant/reset-sent/', views.password_reset_sent_view, name='password_reset_sent'),
+
+    path('merchant/reset/<uidb64>/<token>/', views.merchant_password_reset_confirm, name='merchant-password-reset-confirm'),
 
 ]

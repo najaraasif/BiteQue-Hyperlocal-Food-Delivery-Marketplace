@@ -2,7 +2,7 @@ from mailersend import emails
 from django.conf import settings
 from django.http import HttpResponse
 def send_mailersend_email(recipient_email, subject, text_content, html_content=None):
-    mailer = emails.NewEmail(settings.MAILERSEND_API_KEY)
+    mailer = emails.NewEmail(settings.MAILERSEND_API_KEY_R)
     
     mail_body = {}
     mail_from = {

@@ -1,57 +1,105 @@
 {% extends 'dashboardBase.html' %}
 
 {% block content %}
-<div class="container mx-auto p-6">
-  
-  <!-- Header and Add Button -->
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-    <h3 class="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Your Menu Items</h3>
-    <a href="{% url 'add_item' %}"
-       class="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
-      ➕ Add New Item
-    </a>
-  </div>
+<div class="container mx-auto p-4">
 
-  <!-- Menu Items Grid -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    {% for item in items %}
-      <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition duration-300">
-        
-        {% if item.image %}
-          <img src="{{ item.image.url }}" alt="{{ item.name }}"
-               class="w-full h-48 object-cover border-b border-gray-200">
-        {% endif %}
-        
-        <div class="p-5">
-          <h4 class="text-xl font-semibold text-gray-800 mb-1">{{ item.name }}</h4>
-          <p class="text-sm text-gray-600 mb-2 font-bold">Category: {{ item.size_category }}</p>
-          <p class="text-gray-700 text-sm mb-2">{{ item.description }}</p>
-          <p class="text-sm font-semibold text-green-600 mb-1">Price: ₹{{ item.price }}</p>
-          <p class="text-sm text-gray-500 mb-1">Preparation Time: {{ item.prep_time }} min</p>
-          
-          <p class="text-sm">
-            <span class="text-gray-500">Available: </span>
-            {% if item.available %}
-              <span class="text-green-600 font-semibold">Yes</span>
-            {% else %}
-              <span class="text-red-600 font-semibold">No</span>
+  <!-- 🔍 Search Bar -->
+  <form method="GET" action="{% url 'menu_dashboard' %}" class="mb-4 max-w-md mx-auto flex items-center space-x-2">
+    <!-- Search Bar -->
+    <input type="text" name="q" placeholder="Search by product name..." value="{{ request.GET.q|default:'' }}"
+           class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 text-sm" />
+
+    <!-- Category Dropdown -->
+    <select name="category" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 text-sm">
+        <option value="">All Categories</option>
+        {% for category in categories %}
+            <option value="{{ category }}" {% if category == request.GET.category %} selected {% endif %}>{{ category }}</option>
+        {% endfor %}
+    </select>
+
+    <!-- Search Button -->
+    <button type="submit" class="px-3 py-2 bg-pink-700 text-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+        Search
+    </button>
+</form>
+
+  <!-- 🔎 Search Results -->
+  {% if request.GET.q %}
+    <div class="mt-4 bg-gray-100 p-4 rounded-lg">
+      <h3 class="text-lg font-semibold text-gray-800 mb-3">Search Results for "{{ request.GET.q }}":</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {% for item in results %}
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition duration-300">
+            {% if item.image %}
+              <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-36 object-cover border-b border-gray-200 rounded-t-lg">
             {% endif %}
-          </p>
+            <div class="p-3">
+              <h4 class="text-sm font-semibold text-gray-800 mb-1 truncate">{{ item.name }}</h4>
+              <p class="text-xs text-gray-600 font-medium mb-1">Category: {{ item.category }}</p>
+              <p class="text-xs text-gray-600 font-medium mb-1">Size: {{ item.sizes_categories }}</p>
+              <p class="text-xs text-gray-700 mb-2">{{ item.description }}</p>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-green-600 font-semibold">₹{{ item.price }}</span>
+                <span class="text-gray-500">Prep: {{ item.prep_time }} min</span>
+              </div>
+              <p class="text-xs mb-2">
+                <span class="text-gray-500">Available: </span>
+                {% if item.available %}
+                  <span class="text-green-600 font-semibold">Yes</span>
+                {% else %}
+                  <span class="text-red-600 font-semibold">No</span>
+                {% endif %}
+              </p>
+              <div class="text-right">
+                <a href="{% url 'edit_menu_item' item.id %}" class="inline-flex items-center px-2 py-1 bg-pink-700 text-xs text-white rounded-lg font-medium transition">Edit</a>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <p class="col-span-full text-gray-600 text-center text-sm mt-12">No items found. Add a new item to start.</p>
+        {% endfor %}
+      </div>
+    </div>
+  {% else %}
+    <!-- 🧾 Header and Add Button -->
+    <div class="flex items-center justify-between mb-6 mt-6">
+      <h3 class="text-xl font-semibold text-gray-800">Your Menu Items</h3>
+      <a href="{% url 'add_item' %}" class="inline-flex items-center px-3 py-2 bg-pink-700 text-white text-sm font-medium rounded-lg hover:bg-pink-800 transition">➕ Add Item</a>
+    </div>
 
-          <div class="mt-4">
-            <a href="{% url 'edit_menu_item' item.id %}"
-               class="inline-block text-sm text-blue-600 hover:text-blue-800 font-medium transition">
-              ✏️ Edit Item
-            </a>
+    <!-- 🧾 Menu Items Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 xl:grid-cols-4 gap-4">
+      {% for item in items %}
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition duration-300">
+          {% if item.image %}
+            <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-36 object-cover border-b border-gray-200 rounded-t-lg">
+          {% endif %}
+          <div class="p-3">
+            <h4 class="text-sm font-semibold text-gray-800 mb-1 truncate">{{ item.name }}</h4>
+            <p class="text-xs text-gray-600 font-medium mb-1">Category: {{ item.category }}</p>
+            <p class="text-xs text-gray-600 font-medium mb-1">Size: {{ item.sizes_categories }}</p>
+            <p class="text-xs text-gray-700">{{ item.description }}</p>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-green-600 font-semibold">₹{{ item.price }}</span>
+              <span class="text-gray-500">Prep: {{ item.prep_time }} min</span>
+            </div>
+            <p class="text-xs mb-2">
+              <span class="text-gray-500">Available: </span>
+              {% if item.available %}
+                <span class="text-green-600 font-semibold">Yes</span>
+              {% else %}
+                <span class="text-red-600 font-semibold">No</span>
+              {% endif %}
+            </p>
+            <div class="text-right">
+              <a href="{% url 'edit_menu_item' item.id %}" class="inline-flex items-center px-2 py-1 bg-pink-700 text-xs text-white rounded-lg font-medium transition">Edit</a>
+            </div>
           </div>
         </div>
-      </div>
-    {% empty %}
-      <p class="col-span-full text-gray-600 text-center text-lg mt-12">
-        No menu items found. Use the "Add New Item" button to start adding.
-      </p>
-    {% endfor %}
-  </div>
-
+      {% empty %}
+        <p class="col-span-full text-gray-600 text-center text-sm mt-12">No menu items found. Add a new item to start.</p>
+      {% endfor %}
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

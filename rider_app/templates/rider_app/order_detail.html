@@ -9,38 +9,83 @@
             </div>
         {% endfor %}
     {% endif %}
-    </div>
-<h1>Order Details</h1>
-<p>Order ID: {{ order.id }}</p>
-<p>Customer Address: {{ order.delivery_address }}</p>
-<h2>Customer Location</h2>
+</div>
 
-<!-- Map Container -->
+<div class="container mx-auto mt-8 p-4">
+    <h1 class="text-3xl font-bold mb-6">Order #{{ order.id }} Details</h1>
+
+    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+        <p><strong>Status:</strong> <span id="order-status-{{ order.id }}">{{ assignment.get_status_display }}</span></p>
+        <p><strong>Customer:</strong> {{ order.customer_name }}</p>
+        <p><strong>Delivery Address:</strong> {{ order.delivery_address }}</p>
+        <p><strong>Restaurant:</strong> {{ order.restaurant.name }}</p>
+    </div>
+
+ 
+
+<!-- Map Section -->
 <div id="googleMap" style="height: 500px; width: 100%; border: 1px solid #ddd; border-radius: 8px; margin: 20px 0;"></div>
 
-<!-- Redirect Button -->
 {% if dest_lat and dest_lon %}
-    <div style="text-align: center; margin-bottom: 20px;">
+    <div class="text-center mb-4">
         <a href="https://www.google.com/maps/search/?api=1&query={{ dest_lat }},{{ dest_lon }}" 
            target="_blank" 
-           style="display: inline-block; background: #28a745; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px;">
+           class="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
             Open in Google Maps
         </a>
     </div>
 {% endif %}
-
-<!-- Add this after the map container -->
-{% if assignment.status == 'accepted' %}
-<div class="mt-6 text-center">
-    <button 
-        id="markDeliveredBtn"
-        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg"
-    >
-        Mark as Delivered
-    </button>
-</div>
+{% if assignment.status == 'accepted' and order.status == 'out_for_delivery' %}
+    <div class="text-center my-4">
+        <button id="mark-delivered-btn"
+                data-order-id="{{ order.id }}"
+                data-otp-url="{% url 'rider:mark_delivered' order_id=order.id %}"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-block">
+            Mark Delivered
+        </button>
+    </div>
+{% elif assignment.status == 'delivered' %}
+    <p class="text-green-600 font-semibold text-center">This order has been delivered.</p>
+{% elif assignment.status == 'pending' %}
+    <div class="text-center my-4">
+        <form method="POST" action="{% url 'rider:accept_order_assignment_action' order_id=order.id %}">
+            {% csrf_token %}
+            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Accept Order
+            </button>
+        </form>
+    </div>
 {% endif %}
-<!-- Google Maps Implementation -->
+<!-- OTP Modal -->
+<div id="otpModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center" style="display: none; z-index: 1000;">
+    <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Enter Delivery PIN</h3>
+            <div class="mt-2 px-7 py-3">
+                <form id="otpForm" method="POST">
+                    {% csrf_token %}
+                    <input type="text" name="otp" id="otpInput"
+                           class="w-full px-4 py-2 border rounded-lg text-center mb-3"
+                           placeholder="Enter 4 or 6 digit PIN"
+                           pattern="\d*" inputmode="numeric" maxlength="6" required>
+                    <div id="otpError" class="text-red-500 text-sm mb-3"></div>
+                    <div class="items-center px-4 py-3">
+                        <button id="submitOtpBtn"
+                                class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            Confirm Delivery
+                        </button>
+                        <button id="closeOtpModalBtn" type="button"
+                                class="mt-2 px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Google Maps Script -->
 <script>
 function initGoogleMap() {
     const customerLat = {{ dest_lat|default:"null" }};
@@ -48,7 +93,6 @@ function initGoogleMap() {
     
     if (customerLat && customerLon) {
         const location = { lat: customerLat, lng: customerLon };
-        
         const map = new google.maps.Map(document.getElementById("googleMap"), {
             zoom: 15,
             center: location,
@@ -62,63 +106,96 @@ function initGoogleMap() {
         });
     } else {
         document.getElementById('googleMap').innerHTML = 
-            '<div style="padding: 20px; text-align: center; color: #666;">Location coordinates not available</div>';
+            '<div class="p-5 text-center text-gray-600">Location coordinates not available</div>';
     }
 }
 </script>
 
-<!-- Load Google Maps API (replace YOUR_API_KEY) -->
 <script src="https://maps.googleapis.com/maps/api/js?key=***REMOVED***&callback=initGoogleMap" async defer></script>
-<!-- Add this script at the end of your template -->
+
+<!-- OTP Modal Logic -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const markDeliveredBtn = document.getElementById('markDeliveredBtn');
-        
-        if (markDeliveredBtn) {
-            markDeliveredBtn.addEventListener('click', async () => {
-                const orderId = {{ order.id }};
-                
-                // Disable button during processing
-                markDeliveredBtn.disabled = true;
-                markDeliveredBtn.textContent = 'Processing...';
-                markDeliveredBtn.classList.add('opacity-50');
-    
-                try {
-                    const response = await fetch(`{% url 'rider:mark_delivered' order_id=0 %}`.replace('0', orderId), {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': '{{ csrf_token }}',
-                            'Content-Type': 'application/json',
-                        },
-                    });
-    
-                    const result = await response.json();
-    
-                    if (result.status === 'success') {
-                        // Update UI on success
-                        markDeliveredBtn.textContent = '✓ Delivered';
-                        markDeliveredBtn.classList.remove('bg-blue-500', 'hover:bg-blue-700');
-                        markDeliveredBtn.classList.add('bg-green-500', 'cursor-default');
-                        
-                        // Optional: Redirect after delay
-                        setTimeout(() => {
-                            window.location.href = "{% url 'rider:dashboard' %}";
-                        }, 1500);
-                    } else {
-                        // Handle error
-                        alert('Error: ' + result.message);
-                        markDeliveredBtn.disabled = false;
-                        markDeliveredBtn.textContent = 'Mark as Delivered';
-                        markDeliveredBtn.classList.remove('opacity-50');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    markDeliveredBtn.disabled = false;
-                    markDeliveredBtn.textContent = 'Mark as Delivered';
-                    markDeliveredBtn.classList.remove('opacity-50');
+document.addEventListener('DOMContentLoaded', function () {
+    const markDeliveredBtn = document.getElementById('mark-delivered-btn');
+    const otpModal = document.getElementById('otpModal');
+    const closeOtpModalBtn = document.getElementById('closeOtpModalBtn');
+    const otpForm = document.getElementById('otpForm');
+    const otpInput = document.getElementById('otpInput');
+    const otpError = document.getElementById('otpError');
+    const submitOtpBtn = document.getElementById('submitOtpBtn');
+
+    let currentOtpUrl = '';
+
+    // Safely attach click handler only if button exists
+    if (markDeliveredBtn) {
+        markDeliveredBtn.addEventListener('click', function () {
+            currentOtpUrl = this.dataset.otpUrl;
+            otpForm.action = currentOtpUrl;
+            otpInput.value = '';
+            otpError.textContent = '';
+            otpModal.style.display = 'flex';
+            otpInput.focus();
+        });
+    }
+
+    // ... rest of existing modal handling code ...
+
+    otpForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        otpError.textContent = '';
+        submitOtpBtn.disabled = true;
+        submitOtpBtn.textContent = 'Processing...';
+
+        const formData = new FormData(otpForm);
+
+        fetch(otpForm.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const modalContent = document.querySelector('#otpModal .relative');
+                if (!modalContent) return;
+
+                // Update modal content
+                modalContent.innerHTML = `
+                    <div class="mt-3 text-center">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Order Delivered!</h3>
+                        <div class="mt-2 px-7 py-3">
+                            <p class="text-green-600">✅ Delivery confirmed successfully!</p>
+                            <p class="text-gray-600 mt-2">Redirecting to dashboard in 3 seconds...</p>
+                        </div>
+                    </div>
+                `;
+
+                // Safely handle status update
+                if (markDeliveredBtn) {
+                    markDeliveredBtn.remove();
+                    const statusElement = document.getElementById(`order-status-${markDeliveredBtn.dataset.orderId}`);
+                    if (statusElement) statusElement.textContent = 'Delivered';
                 }
-            });
-        }
+
+                // Redirect after delay
+                setTimeout(() => {
+                    window.location.href = "{% url 'rider:dashboard' %}";
+                }, 3000);
+            } else {
+                otpError.textContent = data.message || 'Invalid PIN entered';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            otpError.textContent = 'Submission failed. Please try again.';
+        })
+        .finally(() => {
+            submitOtpBtn.disabled = false;
+            submitOtpBtn.textContent = 'Confirm Delivery';
+        });
     });
-    </script>
+});
+</script>
 {% endblock %}

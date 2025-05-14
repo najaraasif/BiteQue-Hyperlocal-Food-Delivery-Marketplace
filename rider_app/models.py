@@ -29,7 +29,9 @@ class Rider(models.Model):
     current_location = models.CharField(max_length=255, blank=True, null=True)
     total_assignments = models.PositiveIntegerField(default=0)
     accepted_assignments = models.PositiveIntegerField(default=0)
-    assigned_at = models.DateTimeField(auto_now_add=True)
+    assigned_at = models.DateTimeField(default=timezone.now)
+    today_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    current_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     
     
@@ -54,27 +56,36 @@ class Rider(models.Model):
         ).count()
     
     def get_acceptance_rate(self):
-        self.total_assignments = self.orderassignment_set.count()
-        self.accepted_assignments = self.orderassignment_set.filter(status='accepted').count()
-        self.save()
-        
-        if self.total_assignments == 0:
+        total_assignments = self.orderassignment_set.count()
+        if total_assignments == 0:
             return 0.0
-        return round((self.accepted_assignments / self.total_assignments) * 100, 1)
+        return round((self.accepted_assignments / total_assignments) * 100, 1)
 
     @property
     def acceptance_rate_display(self):
         return f"{self.get_acceptance_rate()}%"
-    
+    #transaction
+    def get_current_balance(self):
+        total_earnings = self.get_total_earnings()
+        total_payments = self.transaction_set.filter(
+            transaction_type='payment', 
+            processed=True
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        return (total_earnings - total_payments)
 
+    def get_transaction_history(self):
+        return self.transaction_set.all().order_by('-transaction_date')
 
 
 
 class RiderEarning(models.Model):
     rider = models.ForeignKey(Rider, on_delete=models.CASCADE)
-    date = models.DateField()
+    date = models.DateField(default=timezone.now)
     total_earnings = models.DecimalField(max_digits=10, decimal_places=2)
     orders_completed = models.PositiveIntegerField()
+    distance_km = models.DecimalField(max_digits=6, decimal_places=2, default=0)  
+    distance_earning = models.DecimalField(max_digits=10, decimal_places=2, default=0)  
+    commission_earning = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         ordering = ['-date']
@@ -93,13 +104,17 @@ class OrderAssignment(models.Model):
         ('delivered', 'Delivered'),
     ]
     rider = models.ForeignKey(Rider, on_delete=models.CASCADE)
-    order = models.ForeignKey('user_app.Order', on_delete=models.CASCADE) # Assuming Order is in user_app
+    order = models.ForeignKey(
+        'user_app.Order', 
+        on_delete=models.CASCADE,
+        related_name='assignments'  
+    ) 
     status = models.CharField(
         max_length=20,
         choices=ORDER_STATUS_CHOICES,
         default='pending'  
     )
-    assigned_at = models.DateTimeField(auto_now_add=True)
+    assigned_at = models.DateTimeField(default=timezone.now)
     accepted_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -143,3 +158,23 @@ class RiderBankAccount(models.Model):
         if self.is_primary:
             RiderBankAccount.objects.filter(rider=self.rider, is_primary=True).exclude(pk=self.pk).update(is_primary=False)
         super().save(*args, **kwargs)
+
+
+class Transaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('payment', 'Payment to Rider'),
+        ('pending', 'Pending Balance'),
+    ]
+
+    rider = models.ForeignKey(Rider, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    description = models.CharField(max_length=255)
+    transaction_date = models.DateTimeField(auto_now_add=True)
+    processed = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-transaction_date']
+
+    def __str__(self):
+        return f"{self.get_transaction_type_display()} - ₹{self.amount}"

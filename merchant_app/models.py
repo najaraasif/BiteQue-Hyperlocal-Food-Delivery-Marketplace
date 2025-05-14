@@ -4,19 +4,17 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, get_object_or_404, render
 from django.contrib.auth.models import User
 from user_app.models import Order
+from decimal import Decimal
+
 
 
 class merchantRegistration(models.Model):
-    username = models.CharField(max_length=50, unique=True)
+    username = models.OneToOneField(User, max_length=50, unique=True, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     number = models.DecimalField(max_length=50,max_digits=15, decimal_places=1)
-    email = models.EmailField(max_length=100)
-    password = models.CharField(max_length=50, unique=True)   
-    retypePassword = models.CharField(max_length=50)
+    is_approved = models.BooleanField(default=False)
 
 
-    def __str__(self):
-        return self.username
     
 
 class Restaurant(models.Model):
@@ -24,7 +22,6 @@ class Restaurant(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     email = models.EmailField()
     contact_number = models.CharField(max_length=15)
-    area = models.CharField(max_length=100, blank=True)
     address = models.TextField()
     city = models.CharField(max_length=50)
     pan_number = models.CharField(max_length=20, blank=True)
@@ -32,24 +29,34 @@ class Restaurant(models.Model):
     fssai_number = models.CharField(max_length=20, blank=True)
     is_approved = models.BooleanField(default=False)
     is_available = models.BooleanField(default=False)
+    lat = models.DecimalField(max_digits=9, decimal_places=7, null=True, blank=True)
+    lon = models.DecimalField(max_digits=9, decimal_places=7, null=True, blank=True)
 
 
     def __str__(self):
         return f"{self.name} - {self.city}"
     
+class SizeCategory(models.Model):
+    name = models.CharField(max_length=50, unique=True)
 
+    def __str__(self):
+        return self.name
+    
 class RestaurantMenu(models.Model):
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menus')
     name = models.CharField(max_length=100)
-    size_category = models.CharField(max_length=130)
+    category = models.CharField(max_length=130)
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='menu_images/', null=True, blank=True)
     price = models.DecimalField(max_digits=6, decimal_places=2)
     available = models.BooleanField(default=True)
     prep_time = models.PositiveIntegerField()
+    sizes_categories = models.ForeignKey(SizeCategory,on_delete=models.CASCADE, related_name='menu_items')  # 👈 new field
+
 
     def __str__(self):
         return f"{self.name} - {self.restaurant.name}"
+
 
 
 class BankAccount(models.Model):
@@ -71,3 +78,39 @@ class BankAccount(models.Model):
 
     def __str__(self):
         return f"{self.bank_name} - {self.account_number}"
+
+
+
+class MerchantPayment(models.Model):
+    merchant = models.ForeignKey(User, on_delete=models.CASCADE)
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField(auto_now_add=True)
+    payment_method = models.CharField(max_length=50, default='Bank Transfer')
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    account = models.CharField(max_length=100, blank=True, null=True)
+    payment_screenshot = models.ImageField(upload_to='payment_screenshots/', blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.restaurant.name} - ₹{self.amount_paid} on {self.payment_date.strftime('%Y-%m-%d')}"
+    
+
+
+class MerchantEarning(models.Model):
+    merchant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='earnings')
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='earnings')
+
+    net_sales = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    weekly_sales = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    amount_pending = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+
+    last_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Earnings for {self.restaurant.name} - {self.merchant.username}"
+
+    class Meta:
+        verbose_name = "Merchant Earning"
+        verbose_name_plural = "Merchant Earnings"
+        unique_together = ('merchant', 'restaurant')

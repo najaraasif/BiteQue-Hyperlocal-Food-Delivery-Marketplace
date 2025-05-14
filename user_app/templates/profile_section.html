@@ -1,0 +1,34 @@
+{% extends 'userbase.html' %}
+{% block content %}
+<div class="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+
+
+
+  <!-- Main Content -->
+  <main class="flex-1 p-6">
+    <section id="profile" class="max-w-xl mx-auto">
+      <div class="bg-white rounded-2xl shadow-md p-6 flex flex-col items-center text-center">
+        <!-- Avatar -->
+        <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-[#FF0B55] flex items-center justify-center text-white text-3xl font-bold mb-4">
+          {{ user.username|slice:":1" }}
+        </div>
+
+        <!-- Username -->
+        <h3 class="text-xl font-semibold text-gray-800">{{ user.username }}</h3>
+
+        <!-- Email -->
+        <p class="text-gray-500 text-sm">{{ user.email }}</p>
+
+        {% if user.userregistration %}
+          <p class="text-sm mt-1 text-gray-500">📞 {{ user.userregistration.number }}</p>
+        {% endif %}
+
+        <!-- Button -->
+        <a href="#" class="mt-4 text-[#FF0B55] border border-[#FF0B55] px-4 py-1 rounded-full hover:bg-[#FF0B55] hover:text-white transition-all duration-300">
+          Edit Profile
+        </a>
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}

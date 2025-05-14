@@ -3,66 +3,118 @@
 {% block content %}
 <style>
     /* Earnings Page Styles */
-.earnings-container {
-    padding: 20px;
-}
+    .earnings-container {
+        padding: 20px;
+    }
 
-.earnings-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
+    .earnings-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
 
-.summary-card {
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+    .summary-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
 
-.summary-card h3 {
-    color: #666;
-    font-size: 1rem;
-    margin-bottom: 10px;
-}
+    .summary-card h3 {
+        color: #666;
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
 
-.amount {
-    font-size: 1.8rem;
-    font-weight: bold;
-    color: #4CAF50;
-}
+    .amount {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #4CAF50;
+    }
 
-.count {
-    font-size: 1.8rem;
-    font-weight: bold;
-    color: #2196F3;
-}
+    .count {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #2196F3;
+    }
 
-.earnings-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
+    .earnings-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
 
-.earnings-table th, .earnings-table td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
+    .earnings-table th, .earnings-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
 
-.earnings-table th {
-    background-color: #f8f9fa;
-}
+    .earnings-table th {
+        background-color: #f8f9fa;
+    }
 
-.earnings-graph {
-    margin-top: 40px;
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    .earnings-graph {
+        margin-top: 40px;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .details-btn {
+        background: none;
+        border: none;
+        color: #3B82F6;
+        cursor: pointer;
+        text-decoration: underline;
+        padding: 0;
+    }
+
+    .details-btn:hover {
+        color: #2563EB;
+    }
+
+    .transaction-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+    .transaction-table th {
+        background-color: #f8f9fa;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-weight: 600;
+    }
+    .transaction-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .transaction-table tr:hover {
+        background-color: #f9fafb;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .earnings-graph canvas {
+    max-height: 400px;
+    width: 100% !important;
 }
 </style>
+<div class="mb-6">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-4 rounded-lg text-sm font-medium {% if message.tags == 'error' %} bg-red-100 text-red-700 {% elif message.tags == 'success' %} bg-green-100 text-green-700 {% else %} bg-blue-100 text-blue-700 {% endif %}" role="alert">
+                {% if message.tags == 'success' %}✅ {% elif message.tags == 'error' %}❌ {% endif %} {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    </div>
 <div class="earnings-container">
     <h2>Your Earnings</h2>
     
@@ -70,11 +122,13 @@
     <div class="earnings-summary">
         <div class="summary-card">
             <h3>Current Balance</h3>
-            <p class="amount">₹{{ current_balance|floatformat:2 }}</p>
+            <p class="amount">₹{{ rider.current_balance|floatformat:2 }}</p>
+            <small class="text-gray-500">(Lifetime accumulated earnings)</small>
         </div>
         <div class="summary-card">
-            <h3>Total Earnings</h3>
-            <p class="amount">₹{{ total_earnings|floatformat:2 }}</p>
+            <h3>Today's Earnings</h3>
+            <p class="amount">₹{{ rider.today_earnings|floatformat:2 }}</p>
+            <small class="text-gray-500">(Resets daily at midnight)</small>
         </div>
         <div class="summary-card">
             <h3>Completed Orders</h3>
@@ -83,39 +137,165 @@
     </div>
 
     <!-- Earnings Breakdown -->
-    <div class="earnings-breakdown">
-        <h3>Weekly Earnings</h3>
-        <table class="earnings-table">
-            <thead>
+    <!-- Earnings Breakdown -->
+<!-- In earnings.html -->
+<div class="earnings-breakdown">
+    <h3>Recent Orders (Last 7 Days)</h3>
+    <table class="earnings-table">
+        <tbody>
+            {% for assignment in weekly_orders %}
+            <tr>
+                <td>{{ assignment.updated_at|date:"M d, Y" }}</td>
+                <td>#{{ assignment.order.id }}</td>
+                <td>₹{{ assignment.order.total_earning|floatformat:2 }}</td>
+                <td>
+                <button class="details-btn" data-order-id="{{ assignment.order.id }}">
+                        View Details
+                    </button>               
+                </td>
+            {% empty %}
+            <tr>
+                <td colspan="4">No recent orders</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="earnings-graph mt-8">
+    <h3 class="text-xl font-semibold mb-4">Transaction History</h3>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white rounded-lg overflow-hidden">
+            <thead class="bg-gray-100">
                 <tr>
-                    <th>Date</th>
-                    <th>Orders Completed</th>
-                    <th>Earnings</th>
+                    <th class="py-3 px-4 text-left">Date</th>
+                    <th class="py-3 px-4 text-left">Description</th>
+                    <th class="py-3 px-4 text-left">Amount</th>
+                    <th class="py-3 px-4 text-left">Type</th>
+                    <th class="py-3 px-4 text-left">Status</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for earning in earnings|slice:":7" %}
-                <tr>
-                    <td>{{ earning.date|date:"M d, Y" }}</td>
-                    <td>{{ earning.orders_completed }}</td>
-                    <td>₹{{ earning.total_earnings|floatformat:2 }}</td>
+            <tbody class="divide-y divide-gray-200">
+                {% for transaction in transactions %}
+                <tr class="hover:bg-gray-50">
+                    <td class="py-3 px-4">{{ transaction.transaction_date|date:"M d, Y" }}</td>
+                    <td class="py-3 px-4">{{ transaction.description }}</td>
+                    <td class="py-3 px-4 {% if transaction.transaction_type == 'payment' %}text-red-500{% else %}text-green-500{% endif %}">
+                        ₹{{ transaction.amount|floatformat:2 }}
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-1 rounded-full text-xs 
+                            {% if transaction.transaction_type == 'payment' %}bg-blue-100 text-blue-800
+                            {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                            {{ transaction.get_transaction_type_display }}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4">
+                        {% if transaction.processed %}
+                        <span class="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">Completed</span>
+                        {% else %}
+                        <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">Pending</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="3">No earnings recorded yet</td>
+                    <td colspan="5" class="py-4 text-center text-gray-500">No transactions found</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-
-    <!-- Graph Placeholder -->
-    <div class="earnings-graph">
-        <h3>Earnings Trend</h3>
-        <div id="earningsChart" style="height: 300px;">
-            <!-- Chart.js will render here -->
-        </div>
-    </div>
 </div>
 
+<!--<div class="earnings-graph" style="position: relative; height:400px; width:100%">
+    <canvas id="earningsChart"></canvas>
+</div>-->
+
+
+</div>
+{% if transactions.has_other_pages %}
+<div class="flex justify-center mt-4">
+    <div class="flex space-x-2">
+        {% if transactions.has_previous %}
+        <a href="?page={{ transactions.previous_page_number }}" class="px-3 py-1 border rounded">Previous</a>
+        {% endif %}
+        
+        {% for i in transactions.paginator.page_range %}
+        {% if transactions.number == i %}
+        <span class="px-3 py-1 border rounded bg-blue-500 text-white">{{ i }}</span>
+        {% else %}
+        <a href="?page={{ i }}" class="px-3 py-1 border rounded">{{ i }}</a>
+        {% endif %}
+        {% endfor %}
+        
+        {% if transactions.has_next %}
+        <a href="?page={{ transactions.next_page_number }}" class="px-3 py-1 border rounded">Next</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.details-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            const orderId = this.dataset.orderId;
+            const button = this;
+            
+            try {
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                
+                const response = await fetch(
+                    "{% url 'rider:order_earning_details' 0 %}".replace('0', orderId),
+                    {
+                        credentials: 'include' // Add this line
+                    }
+                );
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to load details');
+                }
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    Swal.fire({
+                        title: `Order #${data.order_id} Details`,
+                        html: `
+                            <div class="text-left space-y-2">
+                                <p><strong>Date:</strong> ${data.date}</p>
+                                <p><strong>Restaurant:</strong> ${data.restaurant}</p>
+                                <p><strong>Customer:</strong> ${data.customer}</p>
+                                <p><strong>Delivery Address:</strong> ${data.delivery_address}</p>
+                                <hr>
+                                <p><strong>Distance:</strong> ${data.distance_km.toFixed(2)} km</p>
+                                <p><strong>Distance Earnings:</strong> ₹${data.distance_earning.toFixed(2)}</p>
+                                <p><strong>Commission:</strong> ₹${data.commission_earning.toFixed(2)}</p>
+                                <p><strong>Total Earnings:</strong> ₹${data.total_earning.toFixed(2)}</p>
+                            </div>
+                        `,
+                        confirmButtonText: 'Close',
+                        icon: 'info',
+                        width: '600px'
+                    });
+                } else {
+                    throw new Error(data.message || 'Unknown error');
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    html: `Failed to load details:<br><small>${error.message}</small>`
+                });
+            } finally {
+                button.disabled = false;
+                button.innerHTML = 'View Details';
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

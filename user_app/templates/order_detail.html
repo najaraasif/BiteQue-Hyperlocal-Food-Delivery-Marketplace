@@ -1,0 +1,119 @@
+{% extends 'userbase.html' %}
+
+{% block content %}
+<div class="mb-6">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-4 rounded-lg text-sm font-medium {% if message.tags == 'error' %} bg-red-100 text-red-700 {% elif message.tags == 'success' %} bg-green-100 text-green-700 {% else %} bg-blue-100 text-blue-700 {% endif %}" role="alert">
+                {% if message.tags == 'success' %}✅ {% elif message.tags == 'error' %}❌ {% endif %} {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    </div>
+{% if order.status == 'out_for_delivery' and order.delivery_pin %}
+    <div class="otp-info" style="background-color: #e0f7fa; border-left: 5px solid #00bcd4; padding: 15px; margin-bottom: 20px;">
+        <p style="font-weight: bold; color: #00796b;">Delivery Confirmation PIN</p>
+        <p>Share this code with your delivery rider to confirm delivery: <strong style="font-size: 1.2em; color: #d32f2f;">{{ order.delivery_pin }}</strong></p>
+        <p style="font-size: 0.9em; margin-top: 5px;">Keep this PIN safe. Share it only with your delivery rider.</p>
+    </div>
+{% endif %}
+
+
+<div class="container mx-auto px-4 py-8 max-w-3xl">
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <!-- Order Status Header -->
+        <div class="bg-gradient-to-r from-[#FF0B55] to-pink-600 p-6 text-white">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">Order #{{ order.id }}</h1>
+                    <p class="mt-1">{{ order.restaurant.name }}</p>
+                </div>
+                <span class="px-3 py-1 rounded-full bg-white bg-opacity-20 text-sm">
+                    {{ order.get_status_display }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Progress Tracker -->
+        <div class="px-6 pt-6">
+            <div class="relative">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    {% for status in order.STATUS_CHOICES %}
+                    <div class="text-center w-1/5">
+                        <div class="mx-auto mb-1 w-6 h-6 rounded-full flex items-center justify-center 
+                                    {% if order.status_index >= forloop.counter %}bg-[#FF0B55] text-white
+                                    {% else %}bg-gray-200 text-gray-600{% endif %}">
+                            {{ forloop.counter }}
+                        </div>
+                        <p class="text-xs">{{ status.1 }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="absolute top-3 left-0 right-0 h-1 bg-gray-200 z-0">
+                    <div class="bg-[#FF0B55] h-1 z-10" 
+                         style="width: {% widthratio order.status_index order.STATUS_CHOICES|length 100 %}%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Details -->
+        <div class="p-6 border-b">
+            <h2 class="text-lg font-bold text-gray-800 mb-3">Order Details</h2>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-medium text-gray-700">Delivery Address</h3>
+                    <p class="text-gray-600">{{ order.delivery_address }}</p>
+                </div>
+                <div>
+                    <h3 class="font-medium text-gray-700">Order Date</h3>
+                    <p class="text-gray-600">{{ order.created_at|date:"F j, Y g:i A" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items -->
+        <div class="p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-3">Your Items</h2>
+            <div class="space-y-3">
+                {% for item in order.menu_items.all %}
+                <div class="flex justify-between py-2">
+                    <div>
+                        <p class="font-medium">{{ item.name }}</p>
+                        <p class="text-sm text-gray-600">{{ item.description|truncatechars:40 }}</p>
+                    </div>
+                    <p class="font-medium">₹{{ item.price }}</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Order Summary -->
+            <div class="mt-6 border-t pt-4">
+                <div class="flex justify-between py-1">
+                    <span>Subtotal</span>
+                    <span>₹{{ order.total }}</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span>Delivery Fee</span>
+                    <span>₹{{ delivery_fee }}</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span>Tax</span>
+                    <span>₹{{ gst }}</span>
+                </div>
+                <div class="flex justify-between py-1 font-bold text-lg mt-2">
+                    <span>Total</span>
+                    <span>₹{{ order_total }}</span>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Support Button -->
+        <div class="px-6 pb-6">
+            <button class="w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium text-[#FF0B55] transition">
+                Need Help? Contact Support
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

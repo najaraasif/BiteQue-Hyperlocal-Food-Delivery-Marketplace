@@ -1,8 +1,11 @@
 from django.urls import path
-from .views import home, about, contact, privacy, careers, terms, ResponsibleDisclosure, addRestaurant, rideWithUs, userLogin, user_view_menu
+from .views import home, about, contact, privacy, careers, terms, ResponsibleDisclosure, addRestaurant, rideWithUs
+from .views import userLogin, user_view_menu, UserRegistration_view, registration_success, user_profile, order_detail, profile_section, dashboard_home,user_active_orders,order_user_history,support
 
 urlpatterns = [
     path('',home, name='home' ),
+    path('user-registration/',UserRegistration_view, name='user_registration' ),
+    path('registration-success/',registration_success, name='registration_success' ),
     path('about/',about, name='about' ),
     path('contact-us/',contact, name='contact' ),
     path('privacy/',privacy, name='privacy' ),
@@ -11,9 +14,18 @@ urlpatterns = [
     path('Responsible-disclosure/',ResponsibleDisclosure, name='responsible-disclosure' ),
     path('add-restaurant/',addRestaurant, name='add-restaurant' ),
     path('ride-with-us/',rideWithUs, name='ride-with-us' ),
+    path('restaurant/<int:restaurant_id>/menu/', user_view_menu, name='user_view_menu'),
     
     path('user-login/',userLogin, name='user_login' ),
-    path('restaurant/<int:restaurant_id>/menu/', user_view_menu, name='user_view_menu'),
+    path('user/', user_profile, name='user-dashboard'),
+    path('orders/<int:order_id>/', order_detail, name='order_detail'),
+    path('user/profile', profile_section, name='profile-section'),
+    path('user/home/', dashboard_home, name='dashboard_home'),
+    path('user/active/', user_active_orders, name='user_active_orders'),
+    path('user/history/', order_user_history, name='order_user_history'),
+    path('user/support', support, name='support'),
+
+
 
 
 ]

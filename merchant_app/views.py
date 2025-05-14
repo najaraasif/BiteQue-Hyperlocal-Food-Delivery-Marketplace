@@ -2,26 +2,46 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.forms import AuthenticationForm
-from django.views.decorators.csrf import csrf_protect
 from django.contrib.auth.models import User
-
-from rider_app.models import OrderAssignment, Rider
-from .forms import merchantRegistrationForm, RestaurantForm, RestaurantMenuForm, BankAccountForm, UpdateOrderStatusForm
-from .models import merchantRegistration, Restaurant, RestaurantMenu, BankAccount
+from .forms import MerchantRegistrationForm, RestaurantForm, RestaurantMenuForm, BankAccountForm
+from .models import merchantRegistration, Restaurant, RestaurantMenu, BankAccount, MerchantPayment, MerchantEarning
 from django.db import IntegrityError
 from django.contrib import messages
-from django.views.decorators.http import require_POST
-from django.apps import apps
-from user_app.models import Order
+from user_app.models import Order, CustomerFeedback, MerchantNotification
+from django.utils import timezone
+from django.db.models import Sum
+from decimal import Decimal
+from django.utils.timezone import now, timedelta
+from datetime import datetime, timedelta
+import json
+from django.http import JsonResponse
+from .signals import send_mailersend_reset_email
+from rider_app.models import OrderAssignment, Rider
 import logging
-logger = logging.getLogger(__name__)
 
+# for token lund genertation
+from django.contrib.auth.tokens import default_token_generator
+from django.utils import http
+from django.utils.encoding import force_bytes
 
+from django.contrib.auth.models import User
+from django.urls import reverse
+from django.conf import settings
+import requests
+from django.contrib.auth import get_user_model
 
+def check_notifications(request):
+    if request.user.is_authenticated:
+        notif = MerchantNotification.objects.filter(merchant=request.user, is_read=False).first()
+        if notif:
+            notif.is_read = True  # mark as read
+            notif.save()
+            return JsonResponse({"notify": True, "message": notif.message})
+    return JsonResponse({"notify": False})
 
 def merchant_register_view(request):
     if request.method == 'POST':
-        form = merchantRegistrationForm(request.POST)
+        form = MerchantRegistrationForm(request.POST)
         if form.is_valid():
             try:
                 password = form.cleaned_data['password']
@@ -29,21 +49,27 @@ def merchant_register_view(request):
                 if password != retype_password:
                     form.add_error('retypePassword', 'Passwords do not match.')
                 else:
-                    merchantRegistration.objects.create(
-                        username=form.cleaned_data['username'],
-                        email=form.cleaned_data['email'],
-                        password=form.cleaned_data['password'],
-                        retypePassword=form.cleaned_data['retypePassword'],
-                        number=form.cleaned_data['number'],
-                        name=form.cleaned_data['name']
+                    user = User.objects.create_user(
+                    username=form.cleaned_data['username'],
+                    email=form.cleaned_data['email'],
+                    password=form.cleaned_data['password']
                     )
+
+                    merchantRegistration.objects.create(
+                        username=user,  # ✅ Assign the User object here
+                        number=form.cleaned_data['number'],
+                        name=form.cleaned_data['name']  
+                )
+
                     return redirect('merchant_register_success')
             except IntegrityError:
                 form.add_error('username', 'Username already exists. Please choose a different one.')
     else:
-        form = merchantRegistrationForm()
+        form = MerchantRegistrationForm()
 
     return render(request, 'merchantRegister.html', {'form': form})
+
+
 
 
 def merchant_register_success(request):
@@ -60,6 +86,9 @@ def merchant_login(request):
 
     return render(request, 'merchantLogin.html', {'form': form})
 
+def merchant_approval(request):
+    return render(request, 'merchant_approval.html')
+
 @login_required
 def post_login_redirect(request):
     try:
@@ -72,97 +101,142 @@ def post_login_redirect(request):
         return redirect('add_restaurant')
 
 
-
-@login_required
 def add_restaurant_view(request):
+    merchant = get_object_or_404(merchantRegistration, username=request.user)
+
+    # If merchant is NOT approved, show approval pending message
+    if not merchant.is_approved:
+        return redirect('merchant_approval')  # A simple page explaining the status
+
+    # If merchant is approved, handle restaurant form submission
     if request.method == 'POST':
         form = RestaurantForm(request.POST)
         if form.is_valid():
             restaurant = form.save(commit=False)
             restaurant.owner = request.user
             restaurant.save()
-            return redirect('restaurant_success') 
+            return redirect('restaurant_success')
     else:
         form = RestaurantForm()
-    
+
     return render(request, 'addRestaurant.html', {'form': form})
+
+
 
 @login_required
 def restaurant_success(request):
     return render(request, 'restaurant_success.html')
 
-
-@login_required
 def awaiting_approval_view(request):
-    return render(request, 'awaitingapproval.html')
+    return render(request, 'awaitingApproval.html')
 
 @login_required
 def merchant_dashboard(request):
     restaurant = get_object_or_404(Restaurant, owner=request.user)
+
     if not restaurant.is_approved:
         return redirect('awaiting-approval')
-    
+
     # Toggle availability
     if request.method == 'POST' and 'toggle_availability' in request.POST:
         restaurant.is_available = not restaurant.is_available
         restaurant.save()
 
-    # Show orders only if available
-    orders = Order.objects.filter(restaurant=restaurant, status='pending') if restaurant.is_available else []
+    today = timezone.localdate()
+    now = timezone.now()
+
+    # Active orders
+    pending_orders = Order.objects.filter(restaurant=restaurant, status='pending')
+    confirmed_orders = Order.objects.filter(restaurant=restaurant, status='confirmed')
+
+    # Completed orders today
+    completed_today_qs = Order.objects.filter(
+        restaurant=restaurant,
+        status='delivered',
+        created_at__date=today
+    )
+
+    order_history = completed_today_qs  # This is now a queryset, suitable for template display
+    total_orders_today = completed_today_qs.count()
+    total_revenue_today = completed_today_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    net_revenue = total_revenue_today * Decimal('0.8')  # Restaurant earns 80%
+
+    # Weekly performance
+    one_week_ago = now - timedelta(days=7)
+    weekly_orders = Order.objects.filter(
+        restaurant=restaurant,
+        status='delivered',
+        created_at__gte=one_week_ago
+    )
+    weekly_revenue = weekly_orders.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    net_week_revenue = weekly_revenue * Decimal('0.8')
+
+    # Safe calculation of performance rate
+    performance_rate = ((net_revenue / net_week_revenue) * 100) if net_revenue > 0 else Decimal('0.00')
 
     return render(request, 'merchantDashboard.html', {
         'restaurant': restaurant,
-        'orders': orders
+        'Pending_orders': pending_orders,
+        'Confirmed_orders': confirmed_orders,
+        'total_confirmed_today': completed_today_qs,
+        'Order_history': order_history,
+        'total_orders_today': total_orders_today,
+        'total_revenue_today': round(total_revenue_today, 2),
+        'net_revenue': round(net_revenue, 2),
+        'performance_rate': round(performance_rate, 1),
     })
 
 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, get_object_or_404, redirect
-from .models import Restaurant, Order  # Adjust the import as per your app structure
 
-def get_merchant_restaurant(user):
-    return Restaurant.objects.filter(owner=user).first()
 
 @login_required
-def merchant_orders(request):
-    restaurant = get_merchant_restaurant(request.user)
-    if not restaurant:
-        return redirect('dashboard')  # fallback if merchant has no restaurant
+def merchant_order_view(request):
+    restaurant = get_object_or_404(Restaurant, owner=request.user)
 
-    # Categorize orders
-    new_orders = Order.objects.filter(restaurant=restaurant, status='pending')
-    confirmed_orders = Order.objects.filter(restaurant=restaurant, status='active')
-    order_history = Order.objects.filter(restaurant=restaurant, status__in=['completed', 'cancelled'])
+    pending_orders = Order.objects.filter(
+        restaurant=restaurant,
+        status='pending'  # only 'pending' are active to be confirmed
+    ).order_by('-created_at')
 
-    context = {
-        'new_orders': new_orders,
+    confirmed_orders = Order.objects.filter(
+        restaurant=restaurant,
+        status='confirmed'
+    ).order_by('-created_at')
+
+    order_history = Order.objects.filter(
+        restaurant=restaurant,
+        status='delivered'
+    ).order_by('-created_at')
+
+    return render(request, 'merchantOrders.html', {
+        'restaurant': restaurant,
+        'pending_orders': pending_orders,
         'confirmed_orders': confirmed_orders,
-        'order_history': order_history
-    }
-    return render(request, 'merchantOrders.html', context)
+        'order_history': order_history,
+    })
 
 @login_required
 def confirm_order(request, order_id):
-    order = get_object_or_404(Order, id=order_id, restaurant__owner=request.user)
+    order = get_object_or_404(Order, id=order_id)
     if order.status == 'pending':
-        order.status = 'active'
+        order.status = 'confirmed'
         order.save()
     return redirect('merchant_orders')
 
 
-# merchant_app/views.py
-import logging
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
+@login_required
 def mark_order_ready(request, order_id):
-    order = get_object_or_404(Order, id=order_id, restaurant__owner=request.user)
-    if order.status == 'active':
-        # Delete existing assignments to avoid duplicates
+    order = get_object_or_404(Order, id=order_id)
+    if order.status == 'confirmed':
+        order.status = 'ready'
+        order.save()
+    if order.status == 'ready':
         OrderAssignment.objects.filter(order=order).delete()
         
-        # Assign to ALL available & approved riders
         riders = Rider.objects.filter(is_available=True, is_approved=True)
-        logger.info(f"Found {riders.count()} riders for order {order.id}")  # Debug line
+        logger.info(f"Found {riders.count()} riders for order {order.id}")  
         
         for rider in riders:
             OrderAssignment.objects.create(
@@ -170,11 +244,23 @@ def mark_order_ready(request, order_id):
                 order=order,
                 status='pending'
             )
-            logger.info(f"Created assignment for rider {rider.id}")  # Debug line
+            logger.info(f"Created assignment for rider {rider.id}")  
         
-        order.status = 'ready'
-        order.save()
+           
     return redirect('merchant_orders')
+
+
+
+@login_required
+def update_order_status(request, order_id, new_status):
+    order = get_object_or_404(Order, id=order_id)
+
+    if order.restaurant.owner != request.user:
+        return redirect('unauthorized')
+
+    order.status = new_status
+    order.save()
+    return redirect('update_order_status')
 
 @login_required
 
@@ -210,18 +296,22 @@ def edit_item(request, item_id):
 @login_required
 def menu_dashboard_view(request):
     restaurant = get_object_or_404(Restaurant, owner=request.user)
-    items = RestaurantMenu.objects.filter(restaurant__owner=request.user)
+    items = RestaurantMenu.objects.filter(restaurant=restaurant)
+    query = request.GET.get('q')  
+    category_filter = request.GET.get('category')  
 
-    # Detect edit_id from GET or POST
+    if query:
+        items = items.filter(name__icontains=query)
+    if category_filter:
+        items = items.filter(category=category_filter)
+
     edit_id = request.POST.get('edit_id') or request.GET.get('edit')
 
     if edit_id:
-        # Editing existing item
         item = get_object_or_404(RestaurantMenu, pk=edit_id, restaurant__owner=request.user)
         form = RestaurantMenuForm(request.POST or None, request.FILES or None, instance=item)
         is_editing = True
     else:
-        # Adding new item
         item = None
         form = RestaurantMenuForm(request.POST or None, request.FILES or None)
         is_editing = False
@@ -232,15 +322,17 @@ def menu_dashboard_view(request):
             new_item.restaurant = restaurant
             new_item.owner = request.user
             new_item.save()
-            return redirect('menu_dashboard')  # Make sure this URL name is correct
+            return redirect('menu_dashboard')  
+
+    categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
 
     return render(request, 'menu_list.html', {
         'items': items,
         'form': form,
         'is_editing': is_editing,
         'item': item,
+        'categories': categories,  
     })
-
 
 @login_required
 def bank_account_list(request):
@@ -267,7 +359,9 @@ def add_bank_account(request):
             account = form.save(commit=False)
             account.merchant = request.user
             account.save()
+        
             return redirect('bank_account_list')
+        
     else:
         form = BankAccountForm()
     return render(request, 'add_bank_account.html', {'form': form})
@@ -292,3 +386,216 @@ def delete_bank_account(request, account_id):
         return redirect('bank_account_list')  # or wherever your list view is
 
     return render(request, 'confirm_bank_account_delete.html', {'account': account})
+
+
+@login_required
+def merchant_payment_section_view(request):
+    merchant = request.user
+    restaurant = Restaurant.objects.get(owner=merchant)
+
+    # Get all completed orders for this merchant's restaurant
+    orders = Order.objects.filter(restaurant=restaurant, status='delivered')
+
+    # Net (all-time) revenue
+    total_revenue = orders.aggregate(total=Sum('total'))['total'] or 0
+
+    # Weekly revenue
+    one_week_ago = timezone.now() - timedelta(days=7)
+    weekly_orders = orders.filter(created_at__gte=one_week_ago)
+    weekly_revenue = weekly_orders.aggregate(total=Sum('total'))['total'] or 0
+
+    # Merchant share is 80%
+    merchant_share = total_revenue * Decimal('0.80')
+    weekly_merchant_share = weekly_revenue * Decimal('0.80')
+    weekly_platform_share = weekly_revenue * Decimal('0.20')  # Fixed this logic, platform gets 20%
+
+    # Paid amount so far
+    payments = MerchantPayment.objects.filter(merchant=merchant).order_by('-payment_date')
+    paid_amount = payments.aggregate(total=Sum('amount_paid'))['total'] or 0
+
+    # Pending payout to merchant
+    pending_amount = merchant_share - paid_amount
+
+    # === Store to MerchantEarning (Non-editable record) ===
+    MerchantEarning.objects.update_or_create(
+        merchant=merchant,
+        restaurant=restaurant,
+        defaults={
+            'net_sales': total_revenue,
+            'weekly_sales': weekly_revenue,
+            'amount_paid': paid_amount,
+            'amount_pending': pending_amount,
+        }
+    )
+
+    # === Context for display ===
+    context = {
+        'total_revenues': total_revenue,
+        'weekly_revenue': weekly_revenue,
+        'merchant_share': merchant_share,
+        'weekly_merchant_share': weekly_merchant_share,
+        'weekly_platform_share': weekly_platform_share,
+        'paid_amount': paid_amount,
+        'pending_amount': pending_amount,
+        'subscription_fee': 1000,
+        'payments': payments,
+    }
+
+    return render(request, 'merchantPaymentSection.html', context)
+
+
+    # Reports section...
+
+
+def merchant_revenue_report(request):
+    merchant = request.user
+    restaurant = Restaurant.objects.get(owner=merchant)
+    today = datetime.today()
+    start_30_days = today - timedelta(days=30)
+    start_7_days = today - timedelta(days=7)
+
+    orders = Order.objects.filter(restaurant=restaurant, status='delivered')
+
+    total_revenue = orders.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    today_revenue = orders.filter(created_at__date=today.date()).aggregate(Sum('total'))['total__sum'] or 0
+    week_revenue = orders.filter(created_at__gte=start_7_days).aggregate(Sum('total'))['total__sum'] or 0
+    month_revenue = orders.filter(created_at__gte=start_30_days).aggregate(Sum('total'))['total__sum'] or 0
+
+    trend_labels = []
+    trend_data = []
+    
+    last_30_days = [today - timedelta(days=i) for i in range(29, -1, -1)]
+
+    labels = [day.strftime('%b %d') for day in last_30_days]
+    
+    data = []
+    for day in last_30_days:
+        total = orders.filter(created_at__date=day).aggregate(total=Sum('total'))['total'] or 0
+        data.append(float(total))
+
+    for i in range(30):
+        day = today - timedelta(days=i)
+        trend_labels.insert(0, day.strftime('%b %d'))
+        daily_total = orders.filter(created_at__date=day.date()).aggregate(Sum('total'))['total__sum'] or 0
+        trend_data.insert(0, float(daily_total))
+
+    context = {
+        'total_revenue': total_revenue,
+        'today_revenue': today_revenue,
+        'week_revenue': week_revenue,
+        'month_revenue': month_revenue,
+        'chart_labels': json.dumps(labels),
+        'chart_data': json.dumps(data),
+    }
+    
+
+    return render(request, 'revenue_report.html', context)
+
+
+@login_required
+def order_reports(request):
+    user = request.user
+    today = timezone.localdate()
+    last_7_days = today - timedelta(days=6)
+    last_30_days = today - timedelta(days=29)
+
+    merchant_restaurants = Restaurant.objects.filter(owner=user)
+
+    orders = Order.objects.filter(restaurant__in=merchant_restaurants)
+
+    total_orders = orders.count()
+    total_revenue = orders.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+
+    thirty_day_orders_qs = orders.filter(created_at__date__range=(last_30_days, today))
+    thirty_day_orders = thirty_day_orders_qs.count()
+    thirty_day_revenue = thirty_day_orders_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+
+    seven_day_orders_qs = orders.filter(created_at__date__range=(last_7_days, today))
+    seven_day_orders = seven_day_orders_qs.count()
+    seven_day_revenue = seven_day_orders_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+
+    today_orders_qs = orders.filter(created_at__date=today, status='delivered')
+    today_orders = today_orders_qs.count()
+    today_revenue = today_orders_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+
+    chart_labels = []
+    chart_data = []
+
+    for i in range(29, -1, -1):
+        day = today - timedelta(days=i)
+        label = day.strftime('%d %b')
+        count = orders.filter(created_at__date=day).count()
+        chart_labels.append(label)
+        chart_data.append(count)
+
+    context = {
+        'total_orders': total_orders,
+        'total_revenue': round(total_revenue, 2),
+        'thirty_day_orders': thirty_day_orders,
+        'thirty_day_revenue': round(thirty_day_revenue, 2),
+        'seven_day_orders': seven_day_orders,
+        'seven_day_revenue': round(seven_day_revenue, 2),
+        'today_orders': today_orders,
+        'today_revenue': round(today_revenue, 2),
+        'order_chart_labels': json.dumps(chart_labels),
+        'order_chart_data': json.dumps(chart_data),
+    }
+
+    return render(request, 'order_reports.html', context)
+
+
+@login_required
+def feedback_list(request):
+    restaurant = get_object_or_404(Restaurant, owner=request.user)
+    feedbacks = CustomerFeedback.objects.filter(restaurant=restaurant).select_related(
+        'order', 'customer'
+    ).order_by('-created_at')
+    
+    context = {
+        'feedbacks': feedbacks,
+        'restaurant': restaurant,
+    }
+    return render(request, 'customer_feedback.html', context)
+
+def merchant_password_reset_request(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            user = User.objects.get(email=email)  # Or your custom Merchant model
+            token = default_token_generator.make_token(user)
+            uid = http.urlsafe_base64_encode(force_bytes(user.pk))
+            reset_link = request.build_absolute_uri(
+                reverse('merchant-password-reset-confirm', kwargs={'uidb64': uid, 'token': token})
+            )
+
+            send_mailersend_reset_email(user.email, reset_link)
+            messages.success(request, "Reset link sent to your email.")
+            return redirect('password_reset_sent')
+
+        except User.DoesNotExist:
+            messages.error(request, "User with this email does not exist.")
+
+    return render(request, 'password_reset_form.html')
+
+def password_reset_sent_view(request):
+    return render(request, 'password_reset_sent.html')
+
+
+def merchant_password_reset_confirm(request, uidb64, token):
+    User = get_user_model()
+    try:
+        uid = http.urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user and default_token_generator.check_token(user, token):
+        if request.method == 'POST':
+            new_password = request.POST.get('password')
+            user.set_password(new_password)
+            user.save()
+            messages.success(request, "Password reset successful.")
+            return redirect('merchant_login')
+        return render(request, 'password_reset_confirm.html', {'validlink': True})
+    else:
+        return render(request, 'password_reset_confirm.html', {'validlink': False})

@@ -1,7 +1,23 @@
-from django.shortcuts import redirect, render
+from datetime import timedelta
+from decimal import Decimal
+from django.http import HttpResponse
+from django.shortcuts import render, redirect
 from merchant_app.models import RestaurantMenu
-from user_app.models import Order
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import Order, CustomerFeedback, MerchantNotification, userRegistration
+from .forms import userRegistrationForm
+from rider_app.utils import calculate_distance, geocode_address
+from django.contrib.auth.models import User
+from django.db import IntegrityError
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import authenticate, login
+from merchant_app.models import Restaurant
 from rider_app.utils import geocode_address
+
+
+
+
 
 def home(request):
     return render(request, 'home.html')
@@ -30,36 +46,197 @@ def careers(request):
 def ResponsibleDisclosure(request):
     return render(request, 'ResponsibleDisclosure.html')
 
-def userLogin(request):
-    return render(request, 'login.html')
+def UserRegistration_view(request):
+    if request.method == 'POST':
+        form = userRegistrationForm(request.POST)
+        if form.is_valid():
+            try:
+                password = form.cleaned_data['password']
+                retype_password = form.cleaned_data['retypePassword']
+                if password != retype_password:
+                    form.add_error('retypePassword', 'Passwords do not match.')
+                else:
+                    user = User.objects.create_user(
+                    username=form.cleaned_data['username'],
+                    email=form.cleaned_data['email'],
+                    password=form.cleaned_data['password']
+                    )
+                    userRegistration.objects.create(
+                        username=user,  # ✅ Assign the User object here
+                        name=form.cleaned_data['name'],
+                        email=form.cleaned_data['email'],
+                        password=form.cleaned_data['password']
+
+                )
+
+                    return redirect('user_registration_success')
+            except IntegrityError:
+                form.add_error('username', 'Username already exists. Please choose a different one.')
+    else:
+        form = userRegistrationForm()
+
+    return render(request, 'userRegistration.html', {'form': form})
+
+def registration_success(request):
+    return render(request, 'user_registration_success.html')
 
 def user_view_menu(request, restaurant_id):
     menus = RestaurantMenu.objects.filter(restaurant_id=restaurant_id, available=True)
-    return render(request, 'user_app/view_menu.html', {'menus': menus})
+    return render(request, 'view_menu.html', {'menus': menus})
 
-from rider_app.utils import geocode_address
 
+@login_required
 def create_order(request):
     if request.method == 'POST':
-        # Get your order data from the form/request
+        if not request.user.is_authenticated:
+            return redirect('user_login')
+        restaurant_id = Restaurant.POST.get(restaurant_id)
+        restaurant=Restaurant.objects.get(id=restaurant_id)
+
         order_data = {
             'delivery_address': request.POST.get('delivery_address'),
-            # other order fields...
         }
         
-        # Create the order
         order = Order.objects.create(
-            restaurant=...,
+            user=request.user,
+            restaurant=restaurant,
             customer_name=request.POST.get('customer_name'),
             delivery_address=request.POST.get('delivery_address'),
+            customer_contact = request.POST.get('customer_contact'),
+            items =  request.POST.get('menu_items'),
+            total =  request.POST.get('total'),
+
         )
+        menu_items = request.POST.getlist('menu_items')
+        order.menu_items.set(menu_items)
         
-        # Geocode the address
         lat, lng = geocode_address(order_data['delivery_address'])
         if lat and lng:
             order.delivery_latitude = lat
             order.delivery_longitude = lng
             order.save()
         
-        return redirect('order_success')
-    return render(request, 'create_order.html')
+        return redirect('')
+    #return render(request, 'create_order.html')
+
+
+def userLogin(request):
+    form = AuthenticationForm(request, data=request.POST or None)
+
+    if request.method == 'POST' and form.is_valid():
+        user = form.get_user()
+        login(request, user)
+        return redirect('dashboard_home') 
+
+    return render(request, 'login.html', {'form': form})
+
+@login_required
+def user_profile(request):
+    return render(request, 'dashboard_home.html')
+
+@login_required
+def order_detail(request, order_id):
+    order = get_object_or_404(Order.objects.select_related(
+        'restaurant__owner'
+    ).prefetch_related(
+        'menu_items'
+    ), id=order_id, user=request.user)
+    
+
+    restaurant = order.restaurant
+    distance_km = Decimal('0.0')
+        
+    if restaurant.lat and restaurant.lon and order.dest_lat and order.dest_lon:
+            distance_km = Decimal(str(calculate_distance(
+                restaurant.lat, restaurant.lon,
+                order.dest_lat, order.dest_lon
+            )))
+        
+    delivery_fee = distance_km * Decimal('10')
+    gst_tax = order.total * Decimal('0.05')
+    order_total = float(order.total + delivery_fee + gst_tax)
+
+    context = {
+        'order': order,
+        'gst': round(gst_tax,2),
+        'delivery_fee': round(delivery_fee,2),
+        'order_total': round(order_total,2),
+        'eta': order.created_at + timedelta(minutes=45),  
+        'rider': order.assignment.rider if hasattr(order, 'assignment') else None
+    }
+    return render(request, 'order_detail.html', context)
+
+@login_required
+def dashboard_home(request):
+    #menus = RestaurantMenu.objects.filter(restaurant_id=restaurant_id, available=True)
+    return render(request, 'dashboard_home.html')
+
+def profile_section(request):
+    return render(request, 'profile_section.html')
+
+
+def user_active_orders(request):
+    orders = Order.objects.filter(user=request.user).select_related('restaurant').prefetch_related('menu_items')
+    active_statuses = ['pending', 'confirmed', 'ready', 'out_for_delivery']
+    context = {
+        'user': request.user,
+        'orders': orders,  
+        'active_orders': orders.filter(status__in=active_statuses),
+    }
+    return render(request, 'partials/active_orders.html', context)
+
+def order_user_history(request):
+    orders = Order.objects.filter(user=request.user).select_related('restaurant').prefetch_related('menu_items')
+    context = {
+        'user': request.user,
+        'orders': orders,  
+        'past_orders': orders.filter(status='delivered'),
+    }
+    return render(request, 'partials/order_history.html', context)
+
+def support(request):
+    return render(request, 'partials/support.html')
+
+
+def submit_feedback(request, order_id=None, restaurant_id=None):
+    # Defer the import to avoid circular import
+    from merchant_app.models import Restaurant
+    from .models import Order  # Assuming you have an Order model
+
+    # Handle the case where order_id or restaurant_id is provided
+    if order_id:
+        order = get_object_or_404(Order, id=order_id)
+        restaurant = order.restaurant  # Assuming Order has a relationship with Restaurant
+    elif restaurant_id:
+        restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+        order = None
+    else:
+        return HttpResponse("Invalid Feedback Request", status=400)
+
+    # Handle feedback submission
+    if request.method == 'POST':
+        from .forms import CustomerFeedbackForm  # Import form here as well
+        form = CustomerFeedbackForm(request.POST)
+        if form.is_valid():
+            feedback = form.save(commit=False)
+            feedback.customer = request.user
+            feedback.restaurant = restaurant
+            feedback.order = order
+            feedback.save()
+
+            MerchantNotification.objects.create(
+                merchant=restaurant.owner,  
+                message=f'New feedback from {request.user} for {restaurant.name}'
+            )
+
+            return redirect('feedback_thanks')  
+    else:
+        from .forms import CustomerFeedbackForm
+        form = CustomerFeedbackForm(initial={'restaurant': restaurant, 'order': order})
+
+    return render(request, 'submit.feedback.html', {'form': form, 'restaurant': restaurant, 'order': order})
+
+
+
+def feedback_thanks(request):
+    return render(request, 'feedback_thanks.html')

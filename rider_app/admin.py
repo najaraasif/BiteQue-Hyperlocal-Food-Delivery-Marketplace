@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Rider, RiderEarning, OrderAssignment, RiderBankAccount
+from .models import Rider, RiderEarning, OrderAssignment, RiderBankAccount, Transaction
 from .forms import RiderAdminForm
 from django.utils.html import format_html
 
@@ -178,3 +178,10 @@ class OrderAssignmentAdmin(admin.ModelAdmin):
     )
     date_hierarchy = 'assigned_at'
     list_select_related = ('rider', 'order')
+
+
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    list_display = ('rider', 'amount', 'transaction_type', 'description', 'transaction_date', 'processed')
+    list_filter = ('transaction_type', 'processed')
+    search_fields = ('rider__user__username', 'description')

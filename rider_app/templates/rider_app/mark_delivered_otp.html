@@ -1,0 +1,46 @@
+ {% block title %}Confirm Delivery - Order #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto mt-10 p-6 bg-white shadow-md rounded-lg max-w-md">
+    <h1 class="text-2xl font-bold mb-6 text-center">Confirm Delivery for Order #{{ order.id }}</h1>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-4 mb-4 text-sm rounded-lg
+                {% if message.tags == 'error' %} bg-red-100 text-red-700 {% endif %}
+                {% if message.tags == 'success' %} bg-green-100 text-green-700 {% endif %}"
+                 role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <p class="mb-4 text-gray-700">
+        Please enter the 4 or 6-digit PIN provided by the customer to confirm delivery.
+    </p>
+
+    <form method="post" action="{% url 'rider:mark_delivered' order_id=order.id %}">
+        {% csrf_token %}
+        <div class="mb-4">
+            {{ form.otp.label_tag }}
+            {{ form.otp }}
+            {% if form.otp.errors %}
+                {% for error in form.otp.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <button type="submit"
+                class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            Confirm Delivery
+        </button>
+    </form>
+
+    <div class="mt-6 text-center">
+        <a href="{% url 'rider:rider_order_detail' order_id=order.id %}" class="text-blue-500 hover:underline">
+            Back to Order Details
+        </a>
+    </div>
+</div>
+{% endblock %}

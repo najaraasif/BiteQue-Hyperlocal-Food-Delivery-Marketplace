@@ -1,0 +1,22 @@
+{% extends 'userbase.html' %}
+{% block content %}
+
+  
+  
+  <section id="pending" class="mb-10">
+      <div class="bg-white rounded-xl shadow-md p-6">
+        <h4 class="text-lg font-bold mb-3">🕒 Pending Orders</h4>
+        {% for order in pending_orders %}
+          <div class="border-b pb-3 mb-3">
+            <p class="font-semibold">Order #{{ order.id }}</p>
+            <p class="text-sm text-gray-600">{{ order.restaurant.name }}</p>
+            <p class="text-sm">Status: <span class="text-yellow-600">{{ order.get_status_display }}</span></p>
+            <a href="{% url 'order_detail' order.id %}" class="text-[#FF0B55] text-sm hover:underline">View Details</a>
+          </div>
+        {% empty %}
+          <p class="text-gray-600">No pending orders.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+{% endblock %}

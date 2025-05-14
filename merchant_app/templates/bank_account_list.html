@@ -1,101 +1,95 @@
 {% extends "dashboardBase.html" %}
 {% block content %}
 
-<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 bg-gray-50 min-h-screen">
 
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
-        <h2 class="text-3xl font-bold text-[#1F2937]">Manage Bank Accounts</h2>
-        <a href="{% url 'add_bank_account' %}"
-        class="inline-flex items-center gap-2 text-white font-semibold px-5 py-2 rounded-lg shadow hover:bg-[#e0094a] transition duration-200"
-        style="background-color: #FF0B55 !important;">
-         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-              viewBox="0 0 24 24" stroke="currentColor">
-             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                   d="M12 4v16m8-8H4"/>
-         </svg>
-         Add Account
-     </a>
-     
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+    <div>
+      <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">🏦 Manage Bank Accounts</h2>
+      <p class="text-gray-600 text-sm mt-1">View, edit, and manage your linked bank accounts securely.</p>
     </div>
+    <a href="{% url 'add_bank_account' %}"
+       class="inline-flex items-center px-5 py-2 text-white text-sm font-medium bg-indigo-600 hover:bg-indigo-700 rounded-md shadow transition focus:outline-none">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      Add Account
+    </a>
+  </div>
 
-    <!-- Alert for Pending Accounts -->
-    {% if pending_accounts %}
-    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-lg shadow">
-        <p class="font-semibold text-yellow-800">Pending Approval</p>
-        <p class="text-sm text-yellow-700 mt-1">Your bank account(s) are currently awaiting admin approval. You’ll be notified via email upon confirmation.</p>
+  <!-- Alert -->
+  {% if pending_accounts %}
+  <div class="bg-yellow-50 border border-yellow-300 rounded-md px-4 py-3 shadow-sm mb-6 flex items-start space-x-3">
+    <svg class="w-5 h-5 text-yellow-500 mt-1" fill="none" stroke="currentColor" stroke-width="2"
+         viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M13 16h-1v-4h-1m0-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/>
+    </svg>
+    <div class="text-sm text-yellow-800">
+      <p class="font-semibold">Pending Approval</p>
+      <p>Your added bank accounts are under review. You will be notified once verified.</p>
     </div>
-    {% endif %}
+  </div>
+  {% endif %}
 
-    <!-- Display Accounts -->
-    {% if accounts %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {% for account in accounts %}
-            <div class="bg-white rounded-xl border-l-4 shadow p-6 hover:shadow-lg transition-all duration-200 
-                {% if not account.is_approved %}
-                    border-yellow-400
-                {% else %}
-                    border-green-500
-                {% endif %}
-            ">
-                <!-- Top: Bank Info -->
-                <div class="mb-3">
-                    <p class="text-sm text-gray-500">Bank Name</p>
-                    <h3 class="text-lg font-bold text-gray-800">{{ account.bank_name }}</h3>
-                </div>
+  <!-- Bank Accounts -->
+  {% if accounts %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+    {% for account in accounts %}
+    <div class="bg-white border border-gray-200 rounded-xl p-6 shadow hover:shadow-md transition">
 
-                <div class="space-y-2 text-gray-700">
-                    <div>
-                        <p class="text-sm text-gray-500">Account Holder</p>
-                        <p>{{ account.account_holder_name }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Account Number</p>
-                        <p>{{ account.account_number }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">IFSC Code</p>
-                        <p>{{ account.ifsc_code }}</p>
-                    </div>
-                </div>
+      <!-- Bank Info -->
+      <div class="mb-4 space-y-1">
+        <p class="text-sm text-gray-500">Bank Name</p>
+        <h3 class="text-lg font-bold text-gray-900">{{ account.bank_name }}</h3>
+      </div>
 
-                <!-- Status Tags -->
-                <div class="flex flex-wrap gap-2 mt-4">
-                    <span class="text-xs font-medium px-3 py-1 rounded-full
-                        {% if account.is_approved %}
-                            bg-green-100 text-green-800
-                        {% else %}
-                            bg-yellow-100 text-yellow-800
-                        {% endif %}">
-                        {% if account.is_approved %}Approved{% else %}Pending{% endif %}
-                    </span>
-
-                    {% if account.is_primary %}
-                        <span class="text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-800">
-                            Primary
-                        </span>
-                    {% endif %}
-                </div>
-
-                <!-- Actions -->
-                {% if account.is_approved %}
-                <div class="mt-6 flex justify-end gap-4 text-sm">
-                    <a href="{% url 'edit_bank_account' account.id %}"
-                       class="text-blue-600 hover:underline font-medium">Edit</a>
-                    <a href="{% url 'delete_bank_account' account.id %}"
-                       class="text-red-600 hover:underline font-medium">Delete</a>
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
+      <!-- Account Details -->
+      <div class="text-sm text-gray-700 space-y-2">
+        <div>
+          <p class="text-gray-500">Account Holder</p>
+          <p class="font-medium">{{ account.account_holder_name }}</p>
         </div>
-    {% else %}
-        <!-- No Accounts Message -->
-        <div class="mt-16 text-center">
-            <p class="text-gray-500 text-lg">No bank accounts added yet.</p>
+        <div>
+          <p class="text-gray-500">Account Number</p>
+          <p class="font-medium">{{ account.account_number }}</p>
         </div>
-    {% endif %}
+        <div>
+          <p class="text-gray-500">IFSC Code</p>
+          <p class="font-medium">{{ account.ifsc_code }}</p>
+        </div>
+      </div>
 
-</div>
+      <!-- Status Tags -->
+      <div class="mt-4 flex flex-wrap gap-2">
+        {% if account.is_approved %}
+        <span class="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Approved</span>
+        {% else %}
+        <span class="px-3 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700 rounded-full">Pending</span>
+        {% endif %}
 
+        {% if account.is_primary %}
+        <span class="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">Primary</span>
+        {% endif %}
+      </div>
+
+      <!-- Action Buttons -->
+      {% if account.is_approved %}
+      <div class="mt-6 flex justify-end gap-4 text-sm font-medium">
+        <a href="{% url 'edit_bank_account' account.id %}" class="text-indigo-600 hover:underline">Edit</a>
+        <a href="{% url 'delete_bank_account' account.id %}" class="text-red-600 hover:underline">Delete</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="mt-20 text-center">
+    <p class="text-gray-400 text-lg">No bank accounts have been added yet.</p>
+    <p class="text-sm text-gray-500 mt-1">Click "Add Account" to get started.</p>
+  </div>
+  {% endif %}
+
+</section>
 {% endblock %}

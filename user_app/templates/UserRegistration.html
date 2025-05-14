@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    input, textarea, select {
+      width: 100%;
+      padding: 0.5rem 1rem; 
+      border: 1px solid #d1d5db; 
+      border-radius: 0.5rem; 
+      outline: none;
+      transition: all 0.2s ease-in-out;
+    }
+  
+    input:focus, textarea:focus, select:focus {
+      border-color: #FF0B55;
+      box-shadow: 0 0 0 2px rgba(255, 11, 85, 0.4); 
+    }
+  </style>
+
+<div class="min-h-screen flex items-center justify-center bg-gray-100 py-10 px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 sm:p-8">
+    <h2 class="text-2xl font-bold mb-6 text-center text-[#FF0B55]">User Registration</h2>
+
+    <form method="POST" action="{% url 'user_registration' %}" novalidate class="space-y-5">
+      {% csrf_token %}
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.username.label }}</label>
+        {{ form.username }}
+        {% if form.username.help_text %}
+          <p class="text-xs text-gray-500">{{ form.username.help_text }}</p>
+        {% endif %}
+        {% for error in form.username.errors %}
+          <p class="text-xs text-red-500">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.name.label }}</label>
+        {{ form.name }}
+        {% for error in form.name.errors %}
+          <p class="text-xs text-red-500">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.email.label }}</label>
+        {{ form.email }}
+        {% for error in form.email.errors %}
+          <p class="text-xs text-red-500">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.password.label }}</label>
+        {{ form.password }}
+        {% if form.password.help_text %}
+          <p class="text-xs text-gray-500">{{ form.password.help_text }}</p>
+        {% endif %}
+        {% for error in form.password.errors %}
+          <p class="text-xs text-red-500">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.retypePassword.label }}</label>
+        {{ form.retypePassword }}
+        {% for error in form.retypePassword.errors %}
+          <p class="text-xs text-red-500">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="pt-4">
+        <button type="submit"
+                class="w-full bg-[#FF0B55] text-white py-2 px-4 rounded-lg font-semibold hover:bg-pink-700 transition duration-300">
+          Register
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{% endblock %}

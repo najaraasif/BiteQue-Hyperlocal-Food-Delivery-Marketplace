@@ -1,0 +1,29 @@
+{% extends 'userbase.html' %}
+{% block content %}
+
+ <section id="active" class="mb-10">
+      <div class="bg-white rounded-xl shadow-md p-6">
+        <h4 class="text-lg font-bold mb-3">🔥 Active Orders</h4>
+        {% for order in active_orders %}
+          <div class="border-b pb-3 mb-3">
+            <p class="font-semibold">Order #{{ order.id }}</p>
+            <p class="text-sm text-gray-600">{{ order.restaurant.name }}</p>
+            <p class="text-sm">
+              Status:
+              <span class="{% if order.status == 'confirmed' %}text-blue-600
+                            {% elif order.status == 'ready' %}text-orange-600
+                            {% else %}text-[#FF0B55]{% endif %}">
+                {{ order.get_status_display }}
+              </span>
+            </p>
+            {% if order.status == 'out_for_delivery' %}
+              <p class="text-sm text-gray-600">Estimated delivery: 15–30 minutes</p>
+            {% endif %}
+            <a href="{% url 'order_detail' order.id %}" class="text-[#FF0B55] text-sm hover:underline">View Details</a>
+          </div>
+        {% empty %}
+          <p class="text-gray-600">No active orders.</p>
+        {% endfor %}
+      </div>
+    </section>
+{% endblock %}

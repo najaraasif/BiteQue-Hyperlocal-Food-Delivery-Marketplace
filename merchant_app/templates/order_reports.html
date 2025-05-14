@@ -1,0 +1,95 @@
+{% extends 'dashboardBase.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-6 py-8">
+
+  <!-- Heading -->
+  <div class="flex justify-between items-center mb-8">
+    <h2 class="text-3xl font-bold text-gray-800"> Order Reports</h2>
+  </div>
+
+  <!-- Order Summary Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    
+    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-blue-500">
+      <p class="text-sm text-gray-500 mb-1">Today Orders</p>
+      <p class="text-2xl font-semibold text-gray-800">{{ today_orders }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-green-500">
+      <p class="text-sm text-gray-500 mb-1">Weekly Orders</p>
+      <p class="text-2xl font-semibold text-gray-800">{{ seven_day_orders }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-red-500">
+      <p class="text-sm text-gray-500 mb-1">Monthly Orders</p>
+      <p class="text-2xl font-semibold text-gray-800">{{ thirty_day_orders }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-purple-500">
+      <p class="text-sm text-gray-500 mb-1">Total Orders</p>
+      <p class="text-2xl font-semibold text-gray-800">{{ total_orders }}</p> 
+    </div>
+  </div>
+
+  <!-- Order Trend Chart -->
+  <div class="bg-white rounded-lg shadow-md p-6 mb-10">
+    <h3 class="text-xl font-semibold text-gray-800 mb-4">Order Trend - Last 30 Days</h3>
+    <canvas id="orderChart" height="100"></canvas>
+  </div>
+
+<!-- Chart.js -->    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      const orderLabels = {{ order_chart_labels|safe }};
+      const orderData = {{ order_chart_data|safe }};
+    
+      const ctxOrder = document.getElementById('orderChart').getContext('2d');
+      new Chart(ctxOrder, {
+        type: 'line',
+        data: {
+          labels: orderLabels,
+          datasets: [{
+            label: 'Orders per Day',
+            data: orderData,
+            borderColor: '#3B82F6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#3B82F6',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              labels: {
+                color: '#555'
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: '#444'
+              },
+              grid: {
+                color: '#e5e7eb'
+              }
+            },
+            x: {
+              ticks: {
+                color: '#444'
+              },
+              grid: {
+                color: '#f3f4f6'
+              }
+            }
+          }
+        }
+      });
+    </script>
+{% endblock %}

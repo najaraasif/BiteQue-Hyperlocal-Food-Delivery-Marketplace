@@ -1,0 +1,30 @@
+{% extends 'Base.html' %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full bg-white p-8 rounded-lg shadow-md text-center">
+
+    <div class="flex justify-center mb-4">
+      <!-- Success Icon -->
+      <svg class="h-16 w-16 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12l2 2l4-4m5 2a9 9 0 11-18 0a9 9 0 0118 0z" />
+      </svg>
+    </div>
+
+    <h2 class="text-2xl font-semibold text-[#FF0B55] mb-2">Restaurant Submitted Successfully!</h2>
+    <p class="text-gray-600 mb-4">
+      Your restaurant has been submitted for review. An administrator will verify your details and approve your listing shortly.
+    </p>
+    <p class="text-gray-600 mb-6">
+      You will be notified via email once your restaurant is approved and made available on the platform.
+    </p>
+
+    <a href="{% url 'home' %}" 
+       class="inline-block bg-[#FF0B55] hover:bg-pink-700 text-white font-semibold px-6 py-2 rounded shadow">
+      Return
+    </a>
+  </div>
+</div>
+{% endblock %}

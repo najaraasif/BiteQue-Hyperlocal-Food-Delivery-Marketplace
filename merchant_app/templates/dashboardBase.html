@@ -15,14 +15,14 @@
     .toggle-checkbox:checked {
         right: 0;
         border-color: #FF0B55;
-        }
-        .toggle-checkbox:checked + .toggle-label {
+    }
+    .toggle-checkbox:checked + .toggle-label {
         background-color: #FF0B55;
-        }
-        .toggle-checkbox {
+    }
+    .toggle-checkbox {
         right: 0.25rem;
         transition: all 0.3s ease-in-out;
-}
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -30,76 +30,81 @@
 <div class="flex h-screen overflow-hidden">
 
   <!-- Sidebar -->
-  <aside class="w-64 bg-gradient-to-b from-pink-100 to-white shadow-lg flex flex-col border-r border-gray-200">
-    <!-- Sidebar Header -->
-    <div class="h-20 flex items-center justify-center border-b border-gray-200">
-      <h1 class="text-2xl font-bold text-[#FF0B55] tracking-wide">Merchant Panel</h1>
+  <aside class="w-64 bg-white shadow-xl flex flex-col border-r border-gray-200">
+    <div class="h-20 flex items-center justify-center bg-[#FF0B55]">
+      <h1 class="text-2xl font-bold text-black-800 tracking-wide">Control Panel</h1>
     </div>
-
-    <!-- Sidebar Nav -->
-    <nav class="flex-1 px-6 py-6 space-y-4 text-sm font-medium">
-      <a href="{% url 'merchant_dashboard' %}" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="home" class="mr-3"></span> Dashboard
+    <nav class="flex-1 px-6 py-6 space-y-4 text-sm font-medium text-gray-800">
+      <a href="{% url 'merchant_dashboard' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="home" class="mr-3 text-[#FF0B55]"></span> Dashboard
       </a>
-      <a href="{% url 'merchant_orders' %}" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="box" class="mr-3"></span> Orders
+      <a href="{% url 'merchant_orders' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="box" class="mr-3 text-[#FF0B55]"></span> Orders and History
       </a>
-      <a href="{% url 'menu_dashboard' %}" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="credit-card" class="mr-3"></span> Restaurant Menu
+      <a href="{% url 'merchant_payment_section' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="dollar-sign" class="mr-3 text-[#FF0B55]"></span> Payments
       </a>
-      <a href="#" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="bar-chart-2" class="mr-3"></span> Payments
+      <a href="{% url 'order_report' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="file-text" class="mr-3 text-[#FF0B55]"></span> Order Reports
       </a>
-      <a href="#" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="user" class="mr-3"></span> Reports
+      <a href="{% url 'merchant_revenue_report' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="bar-chart-2" class="mr-3 text-[#FF0B55]"></span> Revenue Reports
       </a>
-      <a href="{% url 'bank_account_list' %}" class="flex items-center text-gray-700 hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="user" class="mr-3"></span> Account
+      <a href="{% url 'bank_account_list' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="briefcase" class="mr-3 text-[#FF0B55]"></span> Bank Account
+      </a>
+      <a href="{% url 'menu_dashboard' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="list" class="mr-3 text-[#FF0B55]"></span> Your Menu
+      </a>
+      <a href="{% url 'customer_feedback' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
+        <span data-feather="message-circle" class="mr-3 text-[#FF0B55]"></span> Customer Feedbacks
       </a>
     </nav>
   </aside>
 
   <!-- Main Area -->
-  <div class="flex-1 flex flex-col bg-gray-50 ">
+  <div class="flex-1 flex flex-col bg-gray-50">
 
     <!-- Top Navbar -->
     <header class="h-20 bg-white shadow flex items-center justify-between px-8 border-b border-gray-200">
-      <!-- Left side -->
-      <div class="text-xl font-semibold text-gray-800">
-        Welcome back, <span class="text-[#FF0B55]">Merchant</span>!
+      <style>
+        .welcome-message {
+          font-size: 1.35rem;
+          font-weight: 750;
+          color: black;
+          font-style: italic;
+        }
+      </style>
+      <div class="welcome-message">
+        Welcome Back Merchant! Your business tools are ready.
       </div>
 
-      <!-- Right side -->
       <div class="flex items-center space-x-6">
         <!-- Notification Icon -->
         <div class="relative">
-          <button class="relative text-gray-500 hover:text-[#FF0B55] focus:outline-none transition">
-            <span data-feather="bell" class="w-6 h-6"></span>
-            <span class="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-[#FF0B55] rounded-full animate-pulse">
-              3
+          <button id="notification-btn" class="relative text-gray-500 hover:text-[#FF0B55] focus:outline-none transition">
+            <i id="notification-icon" data-feather="bell" class="w-6 h-6"></i>
+            <span id="notification-badge"
+                  class="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full"
+                  style="display: none;">
+              1
             </span>
           </button>
         </div>
-
-        <div class="relative w-10 h-10 bg-[#FF0B55] rounded-full flex items-center justify-center text-white shadow-lg border-2 border-white overflow-hidden">
-            <img src="https://cdn-icons-png.flaticon.com/512/2922/2922510.png" alt="Male Avatar" class="w-10 h-10 object-cover" />
-          </div>
-          
-          
 
         <!-- Logout Button -->
         <form method="post" action="{% url 'merchant_logout' %}">
           {% csrf_token %}
           <button type="submit"
-          style="background-color: #FF0B55"
-          class="text-white px-4 py-2 rounded-lg transition duration-200 font-medium hover:opacity-90">
-          Logout
-        </button>
+                  style="background-color: #FF0B55"
+                  class="text-white px-4 py-2 rounded-lg transition duration-200 font-medium hover:opacity-90">
+            Logout
+          </button>
         </form>
       </div>
     </header>
 
-    <!-- Content -->
+    <!-- Content Area -->
     <main class="flex-1 overflow-y-auto p-8 bg-gray-100">
       {% block content %}
       <!-- Dynamic content goes here -->
@@ -108,9 +113,45 @@
   </div>
 </div>
 
-<!-- Feather icons init -->
+<!-- JavaScript Section -->
 <script>
-  feather.replace()
+  feather.replace();
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  });
+
+  function checkNotifications() {
+    fetch("{% url 'check_notifications' %}")
+      .then(response => response.json())
+      .then(data => {
+        const badge = document.getElementById('notification-badge');
+        const icon = document.getElementById('notification-icon');
+
+        if (data.notify) {
+          badge.style.display = 'inline-flex';
+          badge.textContent = data.count || 1;
+          icon.classList.add('text-red-600', 'animate-pulse');
+
+          if (Notification.permission === "granted") {
+            new Notification("🔔 New Notification", {
+              body: data.message,
+              icon: "" // optional icon URL
+            });
+          }
+        } else {
+          badge.style.display = 'none';
+          icon.classList.remove('text-red-600', 'animate-pulse');
+        }
+      })
+      .catch(error => {
+        console.error("Notification fetch error:", error);
+      });
+  }
+
+  setInterval(checkNotifications, 15000); // Poll every 15 seconds
 </script>
 
 </body>

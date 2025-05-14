@@ -1,8 +1,61 @@
 {% extends 'base.html' %}
-{% load static %}
-
 {% block content %}
-<div class="max-w-xl mx-auto mt-12 p-8 bg-white shadow-md rounded-lg border border-gray-200">
+<style>
+    /* Make sure the borders of form fields are visible by default */
+    input,
+    textarea,
+    select {
+        border: 1px solid #d1d5db; /* Default light gray border */
+        padding: 8px 12px;
+        border-radius: 8px;
+        width: 100%; /* Ensure the inputs fill their container */
+        box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    /* Change border color when focused */
+    input:focus,
+    textarea:focus,
+    select:focus {
+        border-color: #FF0B55; /* Set the focus border color */
+        box-shadow: 0 0 0 2px rgba(255, 11, 85, 0.3); /* Optional focus ring */
+        outline: none; /* Remove default outline to avoid double focus effects */
+    }
+
+    /* Optional: add a subtle hover effect */
+    input:hover,
+    textarea:hover,
+    select:hover {
+        border-color: #ccc; /* Lighter border when hovered */
+    }
+
+    /* Responsive grid for inputs */
+    .form-input-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    /* Ensure the grid layout stacks for smaller screens */
+    @media (max-width: 768px) {
+        .form-input-group {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Specific style for password fields in horizontal line */
+    .password-group {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .password-group div {
+        width: 48%; /* Each field will take up almost half of the row */
+    }
+</style>
+
+<div class="max-w-2xl mx-auto mt-8 p-6 bg-white shadow-md rounded-lg border border-gray-200">
     <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">Merchant Registration</h2>
 
     <form method="POST" class="space-y-6">
@@ -25,34 +78,38 @@
         </div>
         {% endif %}
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-            {{ form.username }}
+        <div class="form-input-group">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                {{ form.username }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                {{ form.name }}
+            </div>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-            {{ form.name }}
+        <div class="form-input-group">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                {{ form.number }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                {{ form.email }}
+            </div>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-            {{ form.number }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            {{ form.email }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            {{ form.password }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Retype Password</label>
-            {{ form.retypePassword }}
+        <!-- Password and Retype Password in horizontal line -->
+        <div class="password-group">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                {{ form.password }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Retype Password</label>
+                {{ form.retypePassword }}
+            </div>
         </div>
 
         <button type="submit" class="w-full bg-[#FF0B55] hover:bg-pink-600 text-white font-semibold py-2 px-4 rounded-md transition duration-300">

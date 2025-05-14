@@ -213,3 +213,26 @@ class BankDetailsForm(forms.ModelForm):
         elif self.rider and not self.instance.pk and not RiderBankAccount.objects.filter(rider=self.rider).exists():
             cleaned_data['is_primary'] = True
         return cleaned_data
+    
+
+class DeliveryOTPForm(forms.Form):
+    otp = forms.CharField(
+    label='Delivery PIN',
+    max_length=6,
+    min_length=4,
+    widget=forms.TextInput(attrs={
+        'class': 'w-full px-4 py-2 border rounded-lg text-center',
+        'placeholder': 'Enter 4 digit PIN',
+        'type': 'number', 
+        'pattern': '\\d*',
+        'inputmode': 'numeric'
+    })
+)
+
+def clean_otp(self):
+    otp = self.cleaned_data.get('otp')
+    if not otp.isdigit():
+        raise forms.ValidationError("PIN must only contain digits.")
+    if not (len(otp) == 4 or len(otp) == 6): 
+        raise forms.ValidationError("PIN must be 4 digits long.")
+    return otp

@@ -1,20 +1,22 @@
+from decimal import Decimal
 from django.contrib import messages
 from venv import logger
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.db import IntegrityError
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST,require_http_methods
 from django.shortcuts import render, redirect,get_object_or_404
 from django.urls import reverse, reverse_lazy
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from merchant_app.models import Order
 from .models import Rider, OrderAssignment, RiderBankAccount, RiderEarning
-from .forms import BankDetailsForm, RiderPasswordResetForm, RiderRegistrationForm, RiderLoginForm
+from .forms import BankDetailsForm, DeliveryOTPForm, RiderPasswordResetForm, RiderRegistrationForm, RiderLoginForm
 from django.contrib.auth.views import LoginView
 import logging
 from django.db import transaction
 from datetime import datetime, timedelta
-from django.db.models import Sum
+from rider_app.utils import calculate_distance
+from django.db.models import Sum,F
 from merchant_app.models import Restaurant 
 from user_app.models import Order
 from django.utils import timezone
@@ -25,6 +27,8 @@ from django.contrib.auth.views import (
     PasswordResetConfirmView as BasePasswordResetConfirmView,
     PasswordResetCompleteView as BasePasswordResetCompleteView
 )
+from django.core.paginator import Paginator
+from rider_app import models
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +72,7 @@ def rider_dashboard(request):
         'total_orders': rider.get_total_orders_completed(),
         'acceptance_rate': rider.get_acceptance_rate(),
         'weekly_earnings': get_weekly_earnings(rider),
+        'earnings': RiderEarning.objects.filter(rider=rider).order_by('-date')[:5],  # Last 5 earnings
         'acceptance_stats': {
             'accepted': rider.accepted_assignments,
             'total': rider.total_assignments
@@ -233,52 +238,170 @@ def rider_logout(request):
 @login_required
 def rider_earnings(request):
     try:
-        rider = request.user.rider
-        earnings = RiderEarning.objects.filter(rider=rider).order_by('-date')[:30]  # Last 30 earnings
+        rider = get_object_or_404(Rider, user=request.user)
+        weekly_orders = OrderAssignment.objects.filter(
+            rider=rider,
+            status='delivered',
+            updated_at__gte=timezone.now() - timedelta(days=7)
+        ).select_related('order').order_by('-updated_at')
+        print(f"DEBUG: Weekly orders count: {weekly_orders.count()}")
+        earnings = RiderEarning.objects.filter(rider=rider).order_by('-date')
+        transactions = rider.transaction_set.all().order_by('-transaction_date')[:20]
+        paginator = Paginator(transactions, 10)  
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        total_earnings = sum(earning.total_earnings for earning in earnings)
+        payments = rider.transaction_set.filter(
+            transaction_type='payment',
+            processed=True
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        
+        pending = rider.transaction_set.filter(
+            transaction_type='pending',
+            processed=False
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
         
         context = {
             'rider': rider,
+            'weekly_orders': weekly_orders,
             'earnings': earnings,
-            'total_earnings': sum(earning.total_earnings for earning in earnings),
-            'total_orders': sum(earning.orders_completed for earning in earnings)
+            'transactions': transactions,
+            'total_earnings': rider.get_total_earnings(),
+            'current_balance': rider.get_current_balance(),
+            'total_orders': weekly_orders.count(),
         }
         return render(request, 'rider_app/earnings.html', context)
         
-    except Rider.DoesNotExist:
-        messages.warning(request, "Please complete your rider registration first")
-        return redirect('rider_registration')
     except Exception as e:
-        logger.error(f"Earnings view error: {str(e)}")
-        messages.error(request, "Unable to load earnings data")
+        logger.error(f"Earnings error: {str(e)}", exc_info=True)
+        messages.error(request, "Error loading earnings page")
         return redirect('rider:dashboard')
       
 
-@require_POST
+from django.contrib import messages
+from django.views.decorators.http import require_http_methods, require_POST
+
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 @login_required
+@require_http_methods(["GET", "POST"])
 def mark_delivered(request, order_id):
+    
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    print(f"DEBUG MarkDelivered: AJAX: {is_ajax}, Method: {request.method}, Order ID: {order_id}")
     try:
         rider = request.user.rider
-        assignment = OrderAssignment.objects.get(
+        assignment = get_object_or_404(
+            OrderAssignment,
             order_id=order_id,
             rider=rider,
             status='accepted'
         )
-        
-        assignment.status = 'delivered'
-        assignment.save()
-        
         order = assignment.order
-        order.status = 'delivered'
-        order.save()
-        
-        return JsonResponse({'status': 'success'})
-        
-    except OrderAssignment.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Order not found'}, status=404)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-    
+        print(f"DEBUG MarkDelivered: Assignment: {assignment.id}, Order: {order.id}, PIN: {order.delivery_pin}") 
 
+        if not (order.status == 'out_for_delivery' and order.delivery_pin):
+            message = "Order not ready for PIN or PIN not set."
+            print(f"DEBUG MarkDelivered: Pre-condition failed. Status: {order.status}, PIN: {order.delivery_pin}") 
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': message}, status=400)
+            messages.error(request, message)
+            return redirect('rider:rider_order_detail', order_id=order.id)
+
+        if request.method == 'POST':
+            form = DeliveryOTPForm(request.POST)
+            if form.is_valid():
+                entered_otp = form.cleaned_data['otp']
+                print(f"DEBUG MarkDelivered: POST valid. OTP: {entered_otp}")
+                if order.is_delivery_pin_valid(entered_otp):
+                    assignment.status = 'delivered'
+                    assignment.save() 
+                    restaurant = order.restaurant
+                    distance_km = Decimal('0.0')
+                    if restaurant.lat and restaurant.lon and order.dest_lat and order.dest_lon:
+                        distance_km = Decimal(str(calculate_distance(
+                            restaurant.lat, restaurant.lon, order.dest_lat, order.dest_lon
+                        )))
+                    distance_earning = distance_km * Decimal('10')
+                    order_total = order.total
+                    if order_total <= Decimal('200'): commission_rate = Decimal('0.10')
+                    elif order_total <= Decimal('400'): commission_rate = Decimal('0.06')
+                    elif order_total <= Decimal('1000'): commission_rate = Decimal('0.04')
+                    elif order_total <= Decimal('2000'): commission_rate = Decimal('0.02')
+                    elif order_total <= Decimal('4000'): commission_rate = Decimal('0.01')
+                    else: commission_rate = Decimal('0.00')
+                    commission_earning = order_total * commission_rate
+                    total_earning = distance_earning + commission_earning
+                    order.distance_km = distance_km
+                    order.distance_earning = distance_earning
+                    order.commission = commission_earning
+                    order.total_earning = total_earning
+                    order.save(update_fields=['distance_km', 'distance_earning', 'commission', 'total_earning'])
+                    rider.today_earnings += total_earning
+                    rider.save(update_fields=['today_earnings'])
+                    today = timezone.now().date()
+                    rider_earning, created = RiderEarning.objects.get_or_create(
+                        rider=rider, date=today,
+                        defaults={
+                            'total_earnings': total_earning, 'orders_completed': 1,
+                            'distance_km': distance_km, 'distance_earning': distance_earning,
+                            'commission_earning': commission_earning
+                        })
+                    if not created:
+                        rider_earning.total_earnings += total_earning
+                        rider_earning.orders_completed += 1
+                        rider_earning.distance_km += distance_km
+                        rider_earning.distance_earning += distance_earning
+                        rider_earning.commission_earning += commission_earning
+                        rider_earning.save()
+                    print(f"DEBUG MarkDelivered: OTP Correct. Order delivered.") 
+                    if is_ajax:
+                        return JsonResponse({
+                            'status': 'success',
+                            'message': f"Order #{order.id} marked as delivered successfully!",
+                            'order_id': order.id
+                        })
+                    messages.success(request, f"Order #{order.id} marked as delivered successfully!")
+                    return redirect('rider:dashboard')
+                else: 
+                    print(f"DEBUG MarkDelivered: Incorrect OTP.")
+                    message = "Incorrect PIN. Please confirm with the customer and try again."
+                    logger.warning(f"Failed OTP attempt for order {order.id} by rider {rider.id}. Entered OTP: {entered_otp}")
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': message, 'field_errors': {'otp': [message]}}, status=400)
+                    messages.error(request, message)
+            else: 
+                print(f"DEBUG MarkDelivered: Form invalid. Errors: {form.errors.as_json()}") # Debug
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': 'Invalid input.', 'field_errors': form.errors.get_json_data()}, status=400)
+                messages.error(request, "Invalid input. Please check the PIN format.")
+        
+        form = DeliveryOTPForm(request.POST or None) 
+        return render(request, 'rider_app/mark_delivered_otp.html', {
+            'form': form,
+            'order': order,
+            'assignment': assignment
+        })
+
+    except OrderAssignment.DoesNotExist:
+        message = "Order assignment not found or not in 'accepted' state."
+        print(f"DEBUG MarkDelivered: OrderAssignment.DoesNotExist or status mismatch.") 
+        if is_ajax:
+            return JsonResponse({'status': 'error', 'message': message}, status=404)
+        messages.error(request, message)
+        return redirect('rider:dashboard')
+    except Exception as e:
+        logger.error(f"Error in mark_delivered view for order {order_id}: {str(e)}", exc_info=True)
+        message = "An unexpected error occurred."
+        print(f"DEBUG MarkDelivered: Exception: {str(e)}") 
+        if is_ajax:
+            return JsonResponse({'status': 'error', 'message': message}, status=500)
+        messages.error(request, message)
+        return redirect('rider:dashboard')
 
 @login_required
 def bank_details_list(request): 
@@ -425,7 +548,7 @@ class RiderPasswordResetView(BasePasswordResetView):
         subject = ''.join(subject.splitlines())
         body = render_to_string(email_template_name, context)
 
-        mailer = emails.NewEmail(settings.MAILERSEND_API_KEY)
+        mailer = emails.NewEmail(settings.MAILERSEND_API_KEY_R)
         
         mail_body = {
             "personalization": [
@@ -440,7 +563,7 @@ class RiderPasswordResetView(BasePasswordResetView):
         }
 
         mail_from = {
-            "email": settings.DEFAULT_FROM_EMAIL,
+            "email": settings.DEFAULT_FROM_EMAIL_R,
             "name": "BiteQue Rider Support"
         }
 
@@ -472,3 +595,75 @@ class RiderPasswordResetCompleteView(TemplateView):
         context = super().get_context_data(**kwargs)
         context['login_url'] = '/rider-login/' 
         return context
+    
+@login_required
+def earning_details(request, earning_id):
+    try:
+        earning = RiderEarning.objects.get(
+            id=earning_id,
+            rider=request.user.rider  
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'distance_km': float(earning.distance_km) if hasattr(earning, 'distance_km') else 0,
+            'distance_earning': float(earning.distance_earning) if hasattr(earning, 'distance_earning') else 0,
+            'commission_earning': float(earning.commission_earning) if hasattr(earning, 'commission_earning') else 0,
+            'total_earning': float(earning.total_earnings),
+            'orders_completed': earning.orders_completed,
+            'date': earning.date.strftime("%b %d, %Y")
+        })
+    except RiderEarning.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Earning record not found'
+        }, status=404)
+    
+
+
+@login_required
+def order_earning_details(request, order_id):
+    try:
+        print(f"Fetching details for order {order_id}")
+        
+        order = Order.objects.get(
+            id=order_id,
+            assignments__rider=request.user.rider,
+            assignments__status='delivered'
+        )
+        
+        required_fields = [
+            'distance_km', 'distance_earning',
+            'commission', 'total_earning',
+            'restaurant', 'customer_name'
+        ]
+        for field in required_fields:
+            if not hasattr(order, field):
+                raise AttributeError(f"Order missing {field} field")
+
+        return JsonResponse({
+            'status': 'success',
+            'date': order.created_at.strftime("%b %d, %Y"),
+            'order_id': order.id,
+            'distance_km': float(order.distance_km),
+            'distance_earning': float(order.distance_earning),
+            'commission_earning': float(order.commission),
+            'total_earning': float(order.total_earning),
+            'restaurant': order.restaurant.name,
+            'customer': order.customer_name,
+            'delivery_address': order.delivery_address
+        })
+        
+    except Order.DoesNotExist:
+        return JsonResponse({
+            'status': 'error', 
+            'message': 'Order not found or not delivered by you'
+        }, status=404)
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+

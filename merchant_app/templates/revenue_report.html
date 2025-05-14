@@ -1,0 +1,101 @@
+{% extends 'dashboardBase.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-6 py-8">
+
+  <!-- Page Heading -->
+  <div class="flex justify-between items-center mb-8">
+    <h2 class="text-3xl font-bold text-gray-800">Revenue Reports</h2>
+  </div>
+
+  <!-- Revenue Summary Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Revenue -->
+    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-[#FF0B55]">
+      <p class="text-sm text-gray-500 mb-1">Total Revenue</p>
+      <p class="text-2xl font-semibold text-gray-800">₹{{ total_revenue }}</p>
+    </div>
+
+    <!-- Monthly Revenue -->
+    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-[#FF0B55]">
+      <p class="text-sm text-gray-500 mb-1">This Month</p>
+      <p class="text-2xl font-semibold text-gray-800">₹{{ month_revenue }}</p>
+    </div>
+
+    <!-- Weekly Revenue -->
+    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-[#FF0B55]">
+      <p class="text-sm text-gray-500 mb-1">This Week</p>
+      <p class="text-2xl font-semibold text-gray-800">₹{{ week_revenue }}</p>
+    </div>
+
+    <!-- Today's Revenue -->
+    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-[#FF0B55]">
+      <p class="text-sm text-gray-500 mb-1">Today</p>
+      <p class="text-2xl font-semibold text-gray-800">₹{{ today_revenue }}</p>
+    </div>
+  </div>
+
+  <!-- Revenue Trend Chart -->
+  <div class="bg-white rounded-lg shadow-md p-6 mb-10">
+    <h3 class="text-xl font-semibold text-gray-800 mb-4">Revenue Trend - Last 30 Days</h3>
+    <canvas id="trendChart" height="100"></canvas>
+  </div>
+
+</div>
+
+<!-- Chart.js Script -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const labels = {{ chart_labels|safe }};
+  const data = {{ chart_data|safe }};
+
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Daily Revenue (₹)',
+        data: data,
+        borderColor: '#FF0B55',
+        backgroundColor: 'rgba(255, 11, 85, 0.1)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#FF0B55',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#555'
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (value) => `₹${value}`,
+            color: '#444'
+          },
+          grid: {
+            color: '#e5e7eb'
+          }
+        },
+        x: {
+          ticks: {
+            color: '#444'
+          },
+          grid: {
+            color: '#f3f4f6'
+          }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

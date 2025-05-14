@@ -30,6 +30,7 @@ urlpatterns = [
     path('', include('user_app.urls')),
     path('', include('rider_app.urls')),
     path('', include('merchant_app.urls')),
+    
 
 ] 
 

@@ -1,0 +1,45 @@
+{% extends 'dashboardBase.html' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-2xl font-semibold text-gray-800">Customer Feedback</h2>
+    <span class="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded-full">
+      {{ feedbacks|length }} feedback{{ feedbacks|length|pluralize }}
+    </span>
+  </div>
+
+  {% if feedbacks %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for feedback in feedbacks %}
+        <div class="bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+          <div class="p-5 space-y-3">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-medium text-blue-700">Order #{{ feedback.order.id }}</h3>
+              <span class="text-yellow-500 font-semibold">{{ feedback.rating }}★</span>
+            </div>
+
+            <p class="text-sm text-gray-600">
+              <span class="font-semibold">Customer:</span> {{ feedback.customer.username }}
+            </p>
+
+            {% if feedback.comments %}
+              <p class="text-gray-700 text-sm">{{ feedback.comments }}</p>
+            {% else %}
+              <p class="italic text-gray-400 text-sm">No comments provided.</p>
+            {% endif %}
+
+            <div class="text-right">
+              <p class="text-xs text-gray-500">Submitted on {{ feedback.created_at|date:"M d, Y H:i" }}</p>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="mt-6 text-center">
+      <p class="text-gray-500 text-lg">No feedback available yet.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

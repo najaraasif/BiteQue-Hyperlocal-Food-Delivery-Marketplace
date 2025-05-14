@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Dashboard - BiteQue</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --primary: #FF0B77;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+  <!-- Header -->
+  <header class="bg-[#FF0B77] shadow-md py-4 px-6 flex justify-between items-center">
+    <h1 class="text-xl md:text-2xl font-bold text-white">User Dashboard</h1>
+
+    <!-- Hamburger Button (Mobile Only) -->
+    <button id="menu-toggle" class="text-white md:hidden focus:outline-none text-2xl">
+      &#9776;
+    </button>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="flex flex-col md:flex-row min-h-screen">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-full md:w-64 bg-white shadow-md py-6 px-4 md:px-6 hidden md:block transition-all duration-300 ease-in-out">
+      <nav class="space-y-3 text-sm md:text-base">
+        <a href="{% url 'dashboard_home' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">🏠 Home</a>
+        <a href="{% url 'profile-section' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">👤 Profile Info</a>
+        <a href="{% url 'user_active_orders' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">🔥 Active Orders</a>
+        <a href="{% url 'order_user_history' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">📜 Order History</a>
+        <a href="{% url 'support' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">💬 Support</a>
+        <a href="" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">🛒 Cart</a>
+        <a href="" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">🚪 Logout</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6">
+      {% block content %}
+      
+      
+      {% endblock %}
+       </main>
+  </div>
+                    <!-- Footer -->
+<footer class="w-full bg-gray-900 text-white mt-auto">
+  <div class="max-w-5xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+    <!-- Branding -->
+    <div>
+      <h2 class="text-2xl font-bold mb-3">BiteQue</h2>
+      <p class="text-sm text-gray-200">Your trusted partner in local food delivery. Fresh meals, fast delivery, and happy tummies!</p>
+    </div>
+
+    <!-- Quick Links -->
+    <div>
+      <h3 class="text-white font-bold text-lg mb-4">Quick Links</h3>
+      <ul class="space-y-3">
+        <li>
+          <a href="{% url 'about' %}" class="text-sm hover:text-white transition-colors flex items-center space-x-2">
+            <span class="text-[#FFB3C9]">›</span>
+            <span>About Us</span>
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'careers' %}" class="text-sm hover:text-white transition-colors flex items-center space-x-2">
+            <span class="text-[#FFB3C9]">›</span>
+            <span>Careers</span>
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'contact' %}" class="text-sm hover:text-white transition-colors flex items-center space-x-2">
+            <span class="text-[#FFB3C9]">›</span>
+            <span>Contact Us</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Legal -->
+    <div>
+      <h3 class="text-white font-bold text-lg mb-4">Legal</h3>
+      <ul class="space-y-3">
+        <li>
+          <a href="{% url 'privacy' %}" class="text-sm hover:text-white transition-colors flex items-center space-x-2">
+            <span class="text-[#FFB3C9]">›</span>
+            <span>Privacy Policy</span>
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'terms-and-conditions' %}" class="text-sm hover:text-white transition-colors flex items-center space-x-2">
+            <span class="text-[#FFB3C9]">›</span>
+            <span>Terms & Conditions</span>
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'responsible-disclosure' %}" class="text-sm hover:text-white transition-colors flex items-center space-x-2">
+            <span class="text-[#FFB3C9]">›</span>
+            <span>Responsible Disclosure</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Optional Contact or Newsletter (optional fourth column) -->
+    <div>
+      <h3 class="text-white font-bold text-lg mb-4">Get in Touch</h3>
+      <p class="text-sm text-gray-200 mb-2">Email us at</p>
+      <p class="text-sm font-medium">support@biteque.in</p>
+    </div>
+
+  </div>
+
+  <!-- Bottom Bar -->
+  <div class="text-center text-sm text-gray-200 border-t border-pink-300 py-4">
+    &copy; 2025 BiteQue. All rights reserved.
+  </div>
+</footer>
+
+
+  <!-- JavaScript for Mobile Toggle -->
+  <script>
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+
+    menuToggle.addEventListener('click', () => {
+      if (sidebar.classList.contains('hidden')) {
+        sidebar.classList.remove('hidden');
+        sidebar.classList.add('block');
+      } else {
+        sidebar.classList.remove('block');
+        sidebar.classList.add('hidden');
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -5,7 +5,13 @@
 
     <!-- Header & Availability Toggle -->
     <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Hello, {{ restaurant.name }}</h1>
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">{{ restaurant.name }} - Dashboard</h1>
+            <p class="mt-2 text-sm text-gray-600">
+              Manage orders, track revenue, check insights, payment reports, and stay in control.
+            </p>
+          </div>
+
         <form method="post" class="mt-4 sm:mt-0">
             {% csrf_token %}
             <button name="toggle_availability" type="submit"
@@ -29,67 +35,57 @@
     <!-- Metrics Overview -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <div class="bg-white rounded-xl shadow p-5">
-            <h3 class="text-sm text-gray-500">Orders Today</h3>
-            <p class="text-2xl font-bold text-indigo-600">{{ orders_today_count }}</p>
+            <h3 class="text-sm text-gray-500">Processed Orders Today</h3>
+            <p class="text-2xl font-bold text-indigo-600">{{ total_orders_today }}</p>
         </div>
         <div class="bg-white rounded-xl shadow p-5">
-            <h3 class="text-sm text-gray-500">Pending Orders</h3>
-            <p class="text-2xl font-bold text-yellow-500">{{ orders|length }}</p>
+            <h3 class="text-sm text-gray-500">Pending Orders Today</h3>
+            <p class="text-2xl font-bold text-yellow-500">{{ Pending_orders|length }}</p>
         </div>
         <div class="bg-white rounded-xl shadow p-5">
-            <h3 class="text-sm text-gray-500">Revenue Today</h3>
-            <p class="text-2xl font-bold text-green-500">₹{{ revenue_today }}</p>
+            <h4 class="text-sm text-gray-500">Net Revenue Today</h4>
+            <p class="text-2xl font-bold text-green-500">₹ {{ net_revenue }}</p>
         </div>
         <div class="bg-white rounded-xl shadow p-5">
-            <h3 class="text-sm text-gray-500">Performance</h3>
-            <p class="text-2xl font-bold text-blue-500">85%</p>
+            <h3 class="text-sm text-gray-500"> Weekly Performance </h3>
+            <p class="text-2xl font-bold text-blue-500"> {{ performance_rate }}%</p>
         </div>
     </div>
 
     <!-- Pending Orders -->
     <div class="bg-white rounded-xl shadow p-6 mb-10">
         <h2 class="text-2xl font-bold text-yellow-600 mb-6 border-b pb-2">Pending Orders</h2>
-        {% if orders %}
+        {% if Pending_orders %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {% for order in orders %}
+            {% for order in Pending_orders %}
             <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-300 p-5">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Order #{{ order.id }}</h3>
                     <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full uppercase tracking-wide">Pending</span>
                 </div>
                 <div class="space-y-2 text-sm text-gray-700">
-                    <p><span class="font-medium text-gray-900">Items:</span>
+                    <p class="font-semibold text-[#FF0B55]"> Items Ordered:
                         {% for item in order.menu_items.all %}
-                            {{ item.name }}{% if not forloop.last %}, {% endif %}
+                          <span class="font-bold text-xl text-[#FF0B55]">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
                         {% endfor %}
-                    </p>
-                    <p><span class="font-medium text-gray-900">Customer:</span> {{ order.customer_name }}</p>
-                    <p><span class="font-medium text-gray-900">Contact:</span> {{ order.customer_contact }}</p>
-                    <p><span class="font-medium text-gray-900">Address:</span> {{ order.order_address }}</p>
-                    <p><span class="font-medium text-gray-900">Total:</span> ₹{{ order.total }}</p>
-                    <p><span class="font-medium text-gray-900">Status:</span> {{ order.get_status_display }}</p>
-                    <p><span class="font-medium text-gray-900">Placed At:</span> {{ order.created_at|date:"d M, Y - H:i" }}</p>
+                      </p>
+                    <p><span class="font-medium text-gray-900">Customer: </span><span class="font-bold ">{{ order.customer_name }}</span></p>
+                    <p><span class="font-medium text-gray-900">Contact: </span> <span class="font-bold ">{{ order.customer_contact }}</span></p>
+                    <p><span class="font-medium text-gray-900">Address: </span> <span class="font-bold ">{{ order.order_address }}</span></p>
+                    <p><span class="font-medium text-gray-900">Total: </span><span class="font-bold ">₹{{ order.total }}</span></p>
+                    <p><span class="font-medium text-gray-900">Date & Time: </span><span class="font-bold "> {{ order.created_at|date:"h:i A - d M, Y" }}</span></p>
+                    <div class="mt-4 text-right">
+                        <a href="{% url 'merchant_orders' %}" class="bg-pink-600 text-white text-xs px-3 py-1 rounded-md shadow hover:bg-pink-700">Confirm in Orders section</a>
+                      </div>
                 </div>
             </div>
             {% endfor %}
         </div>
         
-        <!-- Notice -->
-        <div class="mt-8 bg-yellow-50 border-l-4 border-yellow-400 p-4 text-sm text-yellow-800 rounded">
-            <strong>Reminder:</strong> Please visit the <a href="{% url 'merchant_orders' %}" class="underline font-medium">Orders</a> section to confirm or reject pending requests.
-        </div>
         {% else %}
         <p class="text-gray-500 text-center mt-6">No pending orders at the moment.</p>
         {% endif %}
         
-
-    <!-- Performance Graph Placeholder -->
-    <div class="bg-white rounded-xl shadow p-6 mb-10">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Weekly Performance</h2>
-        <div class="h-64 w-full bg-gray-100 flex items-center justify-center text-gray-400">
-            <span>Performance graph coming soon...</span>
-        </div>
-    </div>
 
     {% else %}
 

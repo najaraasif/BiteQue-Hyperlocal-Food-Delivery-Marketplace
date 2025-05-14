@@ -1,105 +1,158 @@
 {% extends 'dashboardBase.html' %}
 
 {% block content %}
-<div class="container mx-auto p-4">
+<div class="container mx-auto px-4 py-8">
+  
+  <!-- 📦 New Orders -->
+  <section>
+    <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2 pb-4">
+      <span data-feather="clock" class="w-5 h-6 text-black-800"></span>
+      <span>Pending Orders</span>
+    </h2>
 
-  <!-- 🆕 New Orders Section -->
-  <h2 class="text-xl font-bold mb-4 text-[#FF0B55] border-b border-pink-200 pb-1">🆕 New Orders</h2>
-  {% if new_orders %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {% for order in new_orders %}
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <div class="space-y-2 text-gray-800 text-sm">
-            <!-- Highlighting Order ID -->
-            <span class="text-xs text-gray-500">Order ID: <span class="font-bold text-[#FF0B55] text-lg">#{{ order.id }}</span></span>
-            {% for item in order.menu_items.all %}
-            <p class="font-semibold text-[#FF0B55]">🍽️ Items Ordered: <span class="font-bold text-xl text-[#FF0B55]">{{ item.name }}</span>{% if not forloop.last %}, {% endif %}</p>
-            {% endfor %}
-            </p>            
-          <p class="font-semibold text-[#FF0B55]">👦 Customer Name: <span class="font-bold">{{ order.customer_name }}</span></p>
-
-      
-          <p class="font-semibold text-[#FF0B55]">📞 Contact: <span class="font-bold">{{ order.customer_contact }}</span></p>
-
-            <!-- Highlighting Total Price -->
-            <p class="font-semibold text-[#FF0B55]">💰 Total Price: <span class="font-bold text-xl text-black-700">₹{{ order.total }}</span></p>
-
-            <p class="flex items-center gap-1">
-              <span class="font-semibold">📦 Status:</span>
-              <span class="bg-yellow-100 text-yellow-800 text-[10px] font-medium px-2 py-[2px] rounded-full">{{ order.get_status_display }}</span>
+    {% if pending_orders %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2.5 gap-8">
+      {% for order in pending_orders %}
+        <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200 hover:shadow-xl transition-all">
+          <div class="space-y-1 text-sm text-gray-800">
+            <p class="text-xs text-gray-500">Order ID: <span class="font-semibold text-pink-600">#{{ order.id }}</span></p>
+            <p><strong>🍽️ Items:</strong> 
+              {% for item in order.menu_items.all %}
+                <span class="text-pink-600">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
+              {% endfor %}
             </p>
-            <p class="font-semibold text-[#FF0B55]">⏰ Date and Time: {{ order.created_at|date:"d M, Y H:i" }}</p>
+            <p><strong>👤 Customer:</strong> {{ order.customer_name }}</p>
+            <p><strong>📞 Contact:</strong> {{ order.customer_contact }}</p>
+            <p><strong>💰 Total:</strong> ₹{{ order.total }}</p>
+            <p><strong>🏠 Address:</strong> {{ order.order_address }}</p>
+            <p><strong>📦 Status:</strong> <span class="bg-yellow-100 text-yellow-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></p>
+            <p class="text-xs text-black-800"><strong>⏰ Date & Time:</strong> {{ order.created_at|date:"h:i A, d M, Y" }}</p>
           </div>
           <div class="mt-4 text-right">
-            <a href="{% url 'confirm_order' order.id %}" class="bg-pink-600 text-white text-xs px-3 py-1 rounded-md shadow hover:bg-pink-700">Confirm</a>
+            <a href="{% url 'confirm_order' order.id %}" class="bg-pink-600 text-white text-xs px-4 py-2 rounded-md hover:bg-pink-700 transition">✅ Confirm</a>
           </div>
         </div>
       {% endfor %}
     </div>
-  {% else %}
-    <p class="text-sm text-gray-500">No new orders.</p>
-  {% endif %}
+    {% else %}
+      <p class="text-sm text-gray-500">No new orders at the moment.</p>
+    {% endif %}
+  </section>
 
-  <!-- ✅ Confirmed Orders Section -->
-  <h2 class="text-xl font-bold mt-8 mb-4 text-[#FF0B55] border-b border-pink-200 pb-1">✅ Confirmed Orders</h2>
-  {% if confirmed_orders %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <!-- ✅ Confirmed Orders -->
+  <section class="mt-12">
+  
+    <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2 pb-4">
+      <span data-feather="check-circle" class="w-5 h-6 text-black-800"></span>
+      <span>Confirmed Orders</span>
+    </h2>
+    
+    {% if confirmed_orders %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-8">
       {% for order in confirmed_orders %}
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <div class="space-y-2 text-gray-800 text-sm">
-            <span class="text-xs text-gray-500">Order #{{ order.id }}</span>
-            <p class="font-semibold text-black-700">👦 Customer Name: <span class="font-bold">{{ order.customer_name }}</span></p>
-            <p><span class="font-semibold">🍽️:</span> Items: 
+        <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200 hover:shadow-xl transition-all">
+          <div class="space-y-1 text-sm text-gray-800">
+            <p class="text-xs text-gray-500">Order #{{ order.id }}</p>
+            <p><strong>🍽️ Items:</strong> 
               {% for item in order.menu_items.all %}
-                <span class="font-medium">{{ item.name }}</span>{% if not forloop.last %}, {% endif %}
+                <span class="text-pink-600">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
               {% endfor %}
             </p>
-            <p><span class="font-semibold">📞:</span> Contact: <span class="text-gray-600 font-medium">{{ order.customer_contact }}</span></p>
-            <p><span class="font-semibold">💰:</span> Total Price: <span class="font-bold text-xl text-black-700">₹{{ order.total }}</span></p>
-            <p class="flex items-center gap-1">
-              <span class="font-semibold">📦 Status:</span>
-              <span class="bg-green-100 text-green-800 text-[10px] font-medium px-2 py-[2px] rounded-full">{{ order.get_status_display }}</span>
-            </p>
-            <p class="font-semibold text-[#FF0B55]">⏰ Date and Time: {{ order.created_at|date:"d M, Y H:i" }}</p>
+            <p><strong>👤 Customer:</strong> {{ order.customer_name }}</p>
+            <p><strong>📞 Contact:</strong> {{ order.customer_contact }}</p>
+            <p><strong>💰 Total:</strong> ₹{{ order.total }}</p>
+            <p><strong>🏠 Address:</strong> {{ order.order_address }}</p>
+            <p><strong>📦 Status:</strong> <span class="bg-green-100 text-green-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></p>
+            <p class="text-xs text-black-800"><strong>⏰ Date & Time:</strong> {{ order.created_at|date:"h:i A, d M, Y" }}</p>
           </div>
           <div class="mt-4 text-right">
-            <a href="{% url 'confirm_order' order.id %}" class="bg-pink-600 text-white text-xs px-3 py-1 rounded-md shadow hover:bg-pink-700">🚚 Mark Ready</a>
+            <a href="{% url 'mark_order_ready' order.id %}" class="bg-green-600 text-white text-xs px-4 py-2 rounded-md hover:bg-green-700 transition">🚴‍♂️ Ready for Pickup</a>
           </div>
         </div>
       {% endfor %}
     </div>
-  {% else %}
-    <p class="text-sm text-gray-500">No confirmed orders.</p>
-  {% endif %}
+    {% else %}
+      <p class="text-sm text-gray-500">No confirmed orders yet.</p>
+    {% endif %}
+  </section>
 
-  <!-- 📜 Order History Section -->
-  <h2 class="text-xl font-bold mt-8 mb-4 text-[#FF0B55] border-b border-pink-200 pb-1">📜 Order History</h2>
-  {% if order_history %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {% for order in order_history %}
-        <div class="bg-gray-50 p-4 rounded-xl shadow-sm border border-gray-200">
-          <div class="space-y-2 text-gray-800 text-sm">
-            <span class="text-xs text-gray-500">Order #{{ order.id }}</span>
-            <p class="font-semibold">👦 Customer Name: <span class="font-bold">{{ order.customer_name }}</span></p>
-            <p><span class="font-semibold">📞:</span> Contact: <span class="text-gray-600 font-medium">{{ order.customer_contact }}</span></p>
-            <p><span class="font-semibold">🍽️:</span> Items: 
-              {% for item in order.menu_items.all %}
-                <span class="font-medium">{{ item.name }}</span>{% if not forloop.last %}, {% endif %}
-              {% endfor %}
-            </p>
-            <p><span class="font-semibold">💰:</span> Total Price: <span class="font-bold text-xl text-gray-600">₹{{ order.total }}</span></p>
-            <p class="flex items-center gap-1">
-              <span class="font-semibold">📦 Status:</span>
-              <span class="bg-gray-200 text-gray-700 text-[10px] font-medium px-2 py-[2px] rounded-full">{{ order.get_status_display }}</span>
-            </p>
-            <p class="font-semibold text-[#FF0B55]">⏰ Date and Time: {{ order.created_at|date:"d M, Y H:i" }}</p>
-          </div>
-        </div>
-      {% endfor %}
+  <!--  Order History -->
+  <section class="mt-12">
+    <div class="flex justify-between items-center mb-4">
+
+      <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2">
+        <span data-feather="archive" class="w-5 h-6 text-black-800"></span>
+        <span>Order History</span>
+      </h2>
+            <form method="get" class="flex items-center space-x-3">
+        <label for="order_date" class="text-sm text-gray-600">Filter by Date:</label>
+        <input type="date" id="order_date" name="order_date" value="{{ request.GET.order_date|default:'' }}" class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-pink-400 focus:outline-none">
+        <button type="submit" class="bg-pink-600 text-white text-xs px-3 py-1 rounded hover:bg-pink-700">Go</button>
+      </form>
     </div>
-  {% else %}
-    <p class="text-sm text-gray-500">No completed or cancelled orders.</p>
-  {% endif %}
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm text-left border border-gray-200 rounded-lg">
+        <thead class="bg-gray-50 text-gray-700 uppercase text-xs tracking-wider">
+          <tr>
+            <th class="px-4 py-2">ID</th>
+            <th class="px-4 py-2">Customer</th>
+            <th class="px-4 py-2">Contact</th>
+            <th class="px-4 py-2">Items</th>
+            <th class="px-4 py-2">Total ₹</th>
+            <th class="px-4 py-2">Address</th>
+            <th class="px-4 py-2">Status</th>
+            <th class="px-4 py-2">Date</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-100">
+          {% with request.GET.order_date as selected_date %}
+            {% if selected_date %}
+              {% for order in order_history|dictsortreversed:"created_at" %}
+                {% if order.created_at|date:"Y-m-d" == selected_date %}
+                  <tr class="hover:bg-pink-50 transition">
+                    <td class="px-4 py-2">#{{ order.id }}</td>
+                    <td class="px-4 py-2">{{ order.customer_name }}</td>
+                    <td class="px-4 py-2">{{ order.customer_contact }}</td>
+                    <td class="px-4 py-2 truncate">
+                      {% for item in order.menu_items.all %}
+                        {{ item.name }}{% if not forloop.last %}, {% endif %}
+                      {% endfor %}
+                    </td>
+                    <td class="px-4 py-2">₹{{ order.total }}</td>
+                    <td class="px-4 py-2">{{ order.order_address }}</td>
+                    <td class="px-4 py-2">
+                      <span class="bg-gray-200 text-gray-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span>
+                    </td>
+                    <td class="px-4 py-2">{{ order.created_at|date:"d M, Y H:i" }}</td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              {% for order in order_history|dictsortreversed:"created_at"|slice:":10" %}
+                <tr class="hover:bg-pink-50 transition">
+                  <td class="px-4 py-2">#{{ order.id }}</td>
+                  <td class="px-4 py-2">{{ order.customer_name }}</td>
+                  <td class="px-4 py-2">{{ order.customer_contact }}</td>
+                  <td class="px-4 py-2 truncate">
+                    {% for item in order.menu_items.all %}
+                      {{ item.name }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                  </td>
+                  <td class="px-4 py-2">₹{{ order.total }}</td>
+                  <td class="px-4 py-2">{{ order.order_address }}</td>
+                  <td class="px-4 py-2">
+                    <span class="bg-gray-200 text-gray-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span>
+                  </td>
+                  <td class="px-4 py-2">{{ order.created_at|date:"d M, Y h:i A" }}</td>
+                </tr>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
 </div>
 {% endblock %}

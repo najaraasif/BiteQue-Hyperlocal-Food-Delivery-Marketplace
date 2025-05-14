@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-12">
+  <div class="bg-white shadow-2xl rounded-2xl max-w-md w-full p-8 text-center">
+    
+    <div class="mb-6">
+      <div class="w-16 h-16 mx-auto flex items-center justify-center rounded-full bg-[#FF0B55]/10">
+        <svg class="w-8 h-8 text-[#FF0B55]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+    </div>
+
+    <h2 class="text-2xl font-bold text-[#FF0B55] mb-2">Registration Successful!</h2>
+    <p class="text-gray-600 text-sm mb-6">
+      Thank you for registering. Your account has been created successfully.
+    </p>
+
+    <a href="{% url 'user_login' %}" 
+       class="inline-block bg-[#FF0B55] hover:bg-pink-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300">
+      Proceed to Login
+    </a>
+
+    <div class="mt-6 text-gray-500 text-xs">
+      <p>If you have any issues, <a href="#" class="text-[#FF0B55] underline">contact support</a>.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'dashboardBase.html' %}
+
+{% block content %}
+<section class="px-4 py-6 space-y-6 bg-gray-50 min-h-screen">
+
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
+    <div>
+      <h2 class="text-2xl font-semibold text-gray-900">Payment Dashboard</h2>
+      <p class="text-gray-600 mt-1 text-xs">Track your earnings, payouts, and pending balances here.</p>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    
+    <!-- Net Sales -->
+    <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
+      <p class="text-xs text-gray-500">Your Net Sales</p>
+      <p class="mt-1 text-xl font-semibold text-green-600">₹{{ merchant_share|floatformat:2 }}</p>
+    </div>
+
+    <!-- Last Week Sales -->
+    <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
+      <p class="text-xs text-gray-500">Last Week Sales</p>
+      <p class="mt-1 text-xl font-semibold text-green-600">₹{{ weekly_merchant_share|floatformat:2 }}</p>
+    </div>
+
+    <!-- Paid -->
+    <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
+      <p class="text-xs text-gray-500">Amount Paid</p>
+      <p class="mt-1 text-xl font-semibold text-yellow-600">₹{{ paid_amount|floatformat:2 }}</p>
+    </div>
+
+    <!-- Pending -->
+    <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
+      <p class="text-xs text-gray-500">Pending Amount</p>
+      <p class="mt-1 text-xl font-semibold text-red-600">₹{{ pending_amount|floatformat:2 }}</p>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+    <form method="get" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+      <div>
+        <label for="start_date" class="block text-xs font-medium text-gray-700">Start Date</label>
+        <input type="date" name="start_date" value="{{ request.GET.start_date }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs">
+      </div>
+      <div>
+        <label for="end_date" class="block text-xs font-medium text-gray-700">End Date</label>
+        <input type="date" name="end_date" value="{{ request.GET.end_date }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs">
+      </div>
+      <div class="sm:col-span-2">
+        <button type="submit" class="w-full sm:w-auto px-4 py-1.5 text-white bg-indigo-600 hover:bg-indigo-700 font-medium text-sm rounded-md transition">
+          🔍 Filter
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Payment History Table -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 overflow-x-auto">
+    <h3 class="text-base font-semibold text-gray-800 mb-3">📄 Latest Payments</h3>
+
+    <table class="min-w-full divide-y divide-gray-200 text-xs text-left">
+      <thead class="bg-gray-100 text-gray-600 uppercase text-[10px] font-bold">
+        <tr>
+          <th class="px-3 py-2">Date</th>
+          <th class="px-3 py-2">Amount</th>
+          <th class="px-3 py-2">Method</th>
+          <th class="px-3 py-2">Transaction ID</th>
+          <th class="px-3 py-2">Account</th>
+          <th class="px-3 py-2">Screenshot</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for payment in payments|slice:":10" %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-3 py-2 text-gray-700">{{ payment.payment_date|date:"Y-m-d" }}</td>
+          <td class="px-3 py-2 font-medium text-green-600">₹{{ payment.amount_paid|floatformat:2 }}</td>
+          <td class="px-3 py-2 text-gray-600">{{ payment.payment_method }}</td>
+          <td class="px-3 py-2 text-gray-600">{{ payment.transaction_id }}</td>
+          <td class="px-3 py-2 text-gray-600">{{ payment.account }}</td>
+          <td class="px-3 py-2">
+            {% if payment.payment_screenshot %}
+            <a href="{{ payment.payment_screenshot.url }}" target="_blank" class="inline-block">
+              <img src="{{ payment.payment_screenshot.url }}" alt="Screenshot" class="h-8 w-8 object-cover border rounded-md hover:ring-2 ring-indigo-400 transition">
+            </a>
+            {% else %}
+            <span class="text-gray-400 italic">No screenshot</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center py-3 text-gray-500 italic">No payments found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</section>
+{% endblock %}

@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'user_app',
     'rider_app',
     'merchant_app',
-     'django.contrib.humanize',
+    'django.contrib.humanize',
 ]
 
 MIDDLEWARE = [
@@ -53,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_HTTPONLY = False
 
@@ -122,7 +123,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+STATIC_ROOT = BASE_DIR / 'static'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -132,21 +133,51 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-
 #redirect_urls
 
-LOGIN_URL = 'rider-login'  
-LOGIN_REDIRECT_URL = '/rider/dashboard/'  
+#LOGIN_URL = 'rider-login'  
+#LOGIN_REDIRECT_URL = '/rider/dashboard/'
 
-#email for verification
 
-EMAIL_BACKEND = 'rider_app.mailersend_backend.MailerSendBackend'
-MAILERSEND_API_KEY = '***REMOVED***'
-MAILERSEND_DOMAIN = 'test-r83ql3ppozxgzw1j.mlsender.net'
-DEFAULT_FROM_EMAIL = 'noreply@test-r83ql3ppozxgzw1j.mlsender.net'
+#email for verification Merchant
+
+
+MAILERSEND_DOMAIN = 'test-r6ke4n1100vgon12.mlsender.net' 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+MAILERSEND_API_KEY = '***REMOVED***' 
+DEFAULT_FROM_EMAIL = 'noreply@test-r6ke4n1100vgon12.mlsender.net'
+
+
+
+#email for verification RIDER
+
+EMAIL_BACKEND_R = 'rider_app.mailersend_backend.MailerSendBackend'
+MAILERSEND_API_KEY_R = '***REMOVED***'
+MAILERSEND_DOMAIN_R = 'test-r83ql3ppozxgzw1j.mlsender.net'
+DEFAULT_FROM_EMAIL_R = 'noreply@test-r83ql3ppozxgzw1j.mlsender.net'
 
 EMAIL_HOST = 'smtp.mailersend.net'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'MS_6pOOGd@test-r83ql3ppozxgzw1j.mlsender.net'
 EMAIL_HOST_PASSWORD = '***REMOVED***'
+
+
+
+
+LOGGING = {
+    'version': 1,
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'logs/earnings_reset.log',
+        },
+    },
+    'loggers': {
+        'rider_app': {
+            'handlers': ['file'],
+            'level': 'INFO',
+        },
+    },
+}
