@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block content %}
 <body class="bg-gray-50">
     <!-- Navigation -->
@@ -21,21 +20,24 @@
         </form>
 
         <!-- Categories -->
-        <section class="my-12">
-            <h2 class="text-2xl font-bold mb-6">Explore Categories</h2>
-            <div class="flex space-x-6 overflow-x-auto pb-4 scrollbar-hide">
-                {% for category in categories %}
-                <div class="flex-shrink-0">
-                    <div class="w-32 h-32 rounded-full bg-white shadow-md p-2 hover:shadow-lg transition">
-                        <img src="/media/images/{{ category|slugify }}.jpg" 
-                             alt="{{ category }}" 
-                             class="w-full h-full object-cover rounded-full">
-                        <p class="text-center mt-2 text-sm font-medium">{{ category }}</p>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </section>
+        <section class="my-12 bg-white">
+  <h2 class="text-2xl font-bold mb-6 text-gray-800">Explore Categories</h2>
+
+  <div class="flex space-x-6 overflow-x-auto pb-4 scrollbar-hide">
+    {% for category in categories %}
+    <div class="flex-shrink-0 text-center">
+      <div class="w-32 h-32 p-2">
+        <img src="/media/images/{{ category|slugify }}.jpg" 
+             alt="{{ category }}" 
+             class="w-full h-full object-contain rounded-full">
+      </div>
+      <p class="mt-2 text-sm font-medium text-gray-800">{{ category }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+
 
         <!-- Restaurants Grid -->
         <section class="my-12">
@@ -57,9 +59,9 @@
                     </div>
                     <div class="p-4">
                         <h3 class="text-xl font-bold mb-2">{{ restaurant.name }}</h3>
-                        <p class="text-gray-600 mb-3">{{ restaurant.description|truncatechars:100 }}</p>
+                        <p class="text-black mb-3">{{ restaurant.description|truncatechars:100 }}</p>
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-500">📍 {{ restaurant.address|truncatechars:20 }}</span>
+                            <span class="text-sm text-black">📍 {{ restaurant.address|truncatechars:20 }}</span>
                             <a href="{% url 'user_view_menu' restaurant.id %}" 
                                class="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition">
                                 View Menu
@@ -72,41 +74,75 @@
         </section>
 
         <!-- Menu Items Grid -->
-       <!-- Menu Items Grid -->
-<section class="my-12 px-4">
-    <h2 class="text-3xl font-extrabold mb-8 text-gray-800 text-center">🍽️ Featured Menu Items</h2>
-    
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        {% for item in items %}
-        <div class="bg-white rounded-2xl shadow-lg hover:shadow-xl overflow-hidden transition transform hover:-translate-y-1">
-            {% if item.image %}
-                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-48 object-cover" />
-            {% else %}
-                <div class="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
-                    No Image Available
-                </div>
-            {% endif %}
+<section class="my-12 px-0">
+  <h2 class="text-2xl font-bold mb-6">Featured Menu </h2>
 
-            <div class="p-5">
-                <h3 class="text-xl font-semibold text-gray-800 mb-1">{{ item.name }}</h3>
-                <p class="text-gray-600 text-sm mb-3">{{ item.description|truncatechars:80 }}</p>
+  <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    {% for item in items %}
+    <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition duration-300 overflow-hidden">
+      
+      {% if item.image %}
+      <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-32 object-cover" />
+      {% else %}
+      <div class="w-full h-32 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+        No Image
+      </div>
+      {% endif %}
 
-                <div class="flex flex-wrap items-center justify-between text-sm text-gray-500 mb-4 space-y-1">
-                    <span><strong>Price:</strong></span><span class = 'text-green-600'> ₹{{ item.price }}</span>
-                    <span><strong>Prep Time:</strong></span><span class = 'text-green-600'> {{ item.prep_time }} mins</span>
-                    <span><strong>Category:</strong></span><span class = 'text-green-600'> {{ item.category }}</span>
-                </div>
+      <div class="p-3">
+        <h3 class="text-sm font-semibold text-gray-800 truncate">{{ item.name }}</h3>
+        <p class="text-gray-600 text-xs mt-1 mb-2 line-clamp-2">{{ item.description|truncatechars:60 }}</p>
 
-                <a href="{% url 'add_to_cart' item.id %}" 
-                   class="block w-full text-center bg-[#FF0B55] text-white font-medium py-2 rounded-full hover:bg-pink-700 transition">
-                    Add to Cart
-                </a>
-            </div>
+        <div class="grid grid-cols-2 text-[11px] text-gray-500 gap-y-1 mb-3">
+          <div class="flex items-center gap-1">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-black">
+    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM9 7.5A.75.75 0 0 0 9 9h1.5c.98 0 1.813.626 2.122 1.5H9A.75.75 0 0 0 9 12h3.622a2.251 2.251 0 0 1-2.122 1.5H9a.75.75 0 0 0-.53 1.28l3 3a.75.75 0 1 0 1.06-1.06L10.8 14.988A3.752 3.752 0 0 0 14.175 12H15a.75.75 0 0 0 0-1.5h-.825A3.733 3.733 0 0 0 13.5 9H15a.75.75 0 0 0 0-1.5H9Z" clip-rule="evenodd" />
+  </svg>
+  <span class="text-green-500">₹{{ item.price }}</span>
+</div>
+
+          <div class="flex items-center gap-1">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-black">
+      <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+    </svg>
+    <span class="text-green-500">{{ item.prep_time }} mins</span>
+  </div>
+          <div class="flex items-center gap-1">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-black">
+    <path fill-rule="evenodd" d="M5.25 2.25a3 3 0 0 0-3 3v4.318a3 3 0 0 0 .879 2.121l9.58 9.581c.92.92 2.39 1.186 3.548.428a18.849 18.849 0 0 0 5.441-5.44c.758-1.16.492-2.629-.428-3.548l-9.58-9.581a3 3 0 0 0-2.122-.879H5.25ZM6.375 7.5a1.125 1.125 0 1 0 0-2.25 1.125 1.125 0 0 0 0 2.25Z" clip-rule="evenodd" />
+  </svg>
+  <span class="text-green-500">{{ item.category }}</span>
+</div>
+
+          <div class="flex items-center gap-1">
+  <svg class="w-4 h-4 text-black" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M8 4H4m0 0v4m0-4 5 5m7-5h4m0 0v4m0-4-5 5M8 20H4m0 0v-4m0 4 5-5m7 5h4m0 0v-4m0 4-5-5"/>
+  </svg>
+  <span class="text-green-500">{{ item.sizes_categories }}</span>
+</div>
+
         </div>
-        {% endfor %}
+
+        <div class="flex justify-between gap-2">
+          <a href="{% url 'add_to_cart' item.id %}" 
+             class="w-1/2 text-center bg-[#FF0B55] text-white text-xs py-1.5 rounded-full hover:bg-pink-600 transition">
+            Add to Cart
+          </a>
+          <a href="#" 
+             class="w-1/2 text-center bg-[#FF0B55] text-white text-xs py-1.5 rounded-full hover:bg-pink-600 transition">
+            Order Now
+          </a>
+        </div>
+      </div>
     </div>
+    {% endfor %}
+  </div>
 </section>
 
+
+
     </main>
+   
+
 </body>
 {% endblock %}

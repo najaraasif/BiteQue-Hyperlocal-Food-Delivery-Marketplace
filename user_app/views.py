@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate, login
-from merchant_app.models import Restaurant, RestaurantMenu
+from merchant_app.models import Restaurant, RestaurantMenu, SizeCategory
 from rider_app.utils import geocode_address
 from django.contrib.auth import logout
 from django.shortcuts import render
@@ -23,7 +23,7 @@ from django.urls import reverse
 def home(request):
     categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
     approved_restaurants = Restaurant.objects.filter(is_approved=True)
-    
+    sizes = SizeCategory.objects.all()
     items = RestaurantMenu.objects.filter(restaurant__in=approved_restaurants)
     
     query = request.GET.get('q')  
@@ -34,6 +34,7 @@ def home(request):
         'categories': categories,
         'approved_restaurants': approved_restaurants,
         'items': items,  
+        'size': sizes,
     }
     return render(request, 'home.html', context)
 
@@ -47,24 +48,59 @@ def checkout(request):
     cart = request.session.get('cart', {})
     cart_items = []
     total_price = 0
-    
+    restaurant = None  # Will be set from the first menu item
+
+    # Build cart item list and compute total
     for item_id, item_data in cart.items():
         menu_item = get_object_or_404(RestaurantMenu, id=item_id)
         quantity = item_data['quantity']
         subtotal = menu_item.price * quantity
         total_price += subtotal
-        
+
         cart_items.append({
-            'id': item_id,
+            'id': menu_item.id,
             'name': menu_item.name,
             'quantity': quantity,
             'subtotal': subtotal,
             'price': menu_item.price
         })
 
+        # Get the restaurant from first menu item
+        if not restaurant:
+            restaurant = menu_item.restaurant
+
     if request.method == 'POST':
-        # Placeholder for order submission logic
-        pass
+        # Collect form data
+        customer_name = request.user.get_full_name()
+        contact_number = request.POST.get('contact_number')
+        delivery_address = request.POST.get('delivery_address')
+
+        # Create the order
+        order = Order.objects.create(
+            user=request.user,
+            restaurant=restaurant,
+            customer_name=customer_name,
+            customer_contact=contact_number,
+            delivery_address=delivery_address,
+            total=total_price
+        )
+
+        # Set menu items in the order
+        for item in cart_items:
+            menu_item = get_object_or_404(RestaurantMenu, id=item['id'])
+            order.menu_items.add(menu_item)
+
+        # Geocode address
+        lat, lng = geocode_address(delivery_address)
+        if lat and lng:
+            order.delivery_latitude = lat
+            order.delivery_longitude = lng
+            order.save()
+
+        # Clear the cart
+        request.session['cart'] = {}
+
+        return redirect('order_confirmation',order_id=order.id)  # Create a success page
 
     context = {
         'cart_items': cart_items,
@@ -344,11 +380,13 @@ def remove_from_cart(request, item_id):
         request.session['cart'] = cart
         request.session.modified = True
 
-    return redirect('logi')
+    return redirect('view_cart')
 
 
 def user_logout(request):
     logout(request)
     return redirect('user_login')
 
-
+def order_confirmation(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    return render(request, 'order_confirmation.html', {'order': order})

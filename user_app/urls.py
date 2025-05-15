@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import home, about, contact, privacy, careers, terms, ResponsibleDisclosure, addRestaurant, rideWithUs
 from .views import userLogin, user_view_menu, UserRegistration_view,user_logout
-from .views  import registration_success, user_profile, order_detail, profile_section, dashboard_home,user_active_orders,order_user_history,support, view_cart, add_to_cart, remove_from_cart
+from .views  import registration_success, user_profile,order_confirmation, order_detail, profile_section, dashboard_home,user_active_orders,order_user_history,support, view_cart, add_to_cart, remove_from_cart
 from django.contrib.auth.views import LogoutView
 
 from user_app import views
@@ -34,6 +34,7 @@ urlpatterns = [
     path('user/cart/remove/<int:item_id>/', remove_from_cart, name='remove_from_cart'),
     path('logout/', user_logout, name='user_logout'),
     path('checkout/', views.checkout, name='checkout'),
+    path('order-confirmation/<int:order_id>/', order_confirmation, name='order_confirmation'),
 
 
 
