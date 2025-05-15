@@ -16,13 +16,16 @@ from merchant_app.models import Restaurant, RestaurantMenu
 from rider_app.utils import geocode_address
 from django.contrib.auth import logout
 from django.shortcuts import render
+from django.urls import reverse
+
+
 
 def home(request):
     categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
     approved_restaurants = Restaurant.objects.filter(is_approved=True)
-    open = Restaurant.objects.all().select_related('is_available')
-    items = RestaurantMenu.objects.filter(restaurant=approved_restaurants)
-
+    
+    items = RestaurantMenu.objects.filter(restaurant__in=approved_restaurants)
+    
     query = request.GET.get('q')  
     if query:
         items = items.filter(name__icontains=query)
@@ -30,11 +33,44 @@ def home(request):
     context = {
         'categories': categories,
         'approved_restaurants': approved_restaurants,
-        'open':open,
-    
+        'items': items,  
     }
     return render(request, 'home.html', context)
 
+
+def checkout(request):
+    # Check if user is authenticated
+    if not request.user.is_authenticated:
+        # Redirect to login with next parameter to return to checkout after login
+        return redirect(f"{reverse('user_login')}?next={request.path}")
+
+    cart = request.session.get('cart', {})
+    cart_items = []
+    total_price = 0
+    
+    for item_id, item_data in cart.items():
+        menu_item = get_object_or_404(RestaurantMenu, id=item_id)
+        quantity = item_data['quantity']
+        subtotal = menu_item.price * quantity
+        total_price += subtotal
+        
+        cart_items.append({
+            'id': item_id,
+            'name': menu_item.name,
+            'quantity': quantity,
+            'subtotal': subtotal,
+            'price': menu_item.price
+        })
+
+    if request.method == 'POST':
+        # Placeholder for order submission logic
+        pass
+
+    context = {
+        'cart_items': cart_items,
+        'total_price': total_price
+    }
+    return render(request, 'checkout.html', context)
 
 
 
@@ -138,13 +174,15 @@ def create_order(request):
 
 def userLogin(request):
     form = AuthenticationForm(request, data=request.POST or None)
+    next_url = request.GET.get('next') or request.POST.get('next') or reverse('dashboard_home')
 
     if request.method == 'POST' and form.is_valid():
         user = form.get_user()
         login(request, user)
-        return redirect('dashboard_home') 
+        return redirect(next_url)  # Redirect to original page (e.g., /checkout)
 
-    return render(request, 'login.html', {'form': form})
+    return render(request, 'login.html', {'form': form, 'next': next_url})
+
 
 @login_required
 def user_profile(request):
@@ -272,7 +310,8 @@ def add_to_cart(request, item_id):
     request.session['cart'] = cart
     request.session.modified = True
 
-    return redirect('view_cart')
+    return redirect('home')
+
 
 def view_cart(request):
     cart = request.session.get('cart', {})
@@ -305,7 +344,7 @@ def remove_from_cart(request, item_id):
         request.session['cart'] = cart
         request.session.modified = True
 
-    return redirect('your_cart')
+    return redirect('logi')
 
 
 def user_logout(request):

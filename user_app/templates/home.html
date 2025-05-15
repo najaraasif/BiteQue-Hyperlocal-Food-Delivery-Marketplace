@@ -1,142 +1,112 @@
 {% extends 'base.html' %}
-
-{% block content %}
 {% load static %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Explorer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 text-gray-900">
-
+{% block content %}
+<body class="bg-gray-50">
+    <!-- Navigation -->
     
-<!-- Main Content -->
-<main class="container mx-auto px-4 py-6">
-    <!-- Search & Filters -->
-    <div class="mb-8">
-        <div class="max-w-3xl mx-auto relative mb-6 animate-fade-in">
-            <input type="text" 
-                   placeholder="Search restaurants or dishes..." 
-                   class="w-full px-6 py-4 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-[#FF0B55] transition-all duration-300 hover:shadow-xl">
-            <button class="absolute right-3 top-3 bg-[#FF0B55] text-white px-8 py-2 rounded-full hover:bg-[#FF0B55]/90 transition-all duration-300 active:scale-95">
-                Search
-            </button>
-        </div>
 
-<!-- Section 1: Category Gallery -->
-<!-- Section 1: Category Gallery -->
-<section class="py-4 px-4">
-  <h2 class="text-xl font-semibold mb-3">Categories</h2>
-  
-  <div class="flex overflow-x-auto space-x-4 scrollbar-hide">
-    {% for category in categories %}
-    <a href="" class="flex-shrink-0 text-center w-24 group">
-      <div class="flex-shrink-0 text-center w-24">
-        <!-- Circular Category Image -->
-        <div class="w-20 h-20 mx-auto mb-2 rounded-full overflow-hidden border border-gray-300 shadow">
-          <img 
-            src="/media/images/{{ category|slugify }}.jpg" 
-            alt="{{ category }}" 
-            class="w-full h-full object-cover"
-          >
-        </div>
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Search Bar -->
+        <form action="{% url 'home' %}" method="GET" class="my-8">
+            <div class="relative rounded-full shadow-sm">
+                <input type="text" name="q" value="{{ request.GET.q }}"
+                       class="w-full px-6 py-4 rounded-full border-0 ring-1 ring-gray-300 focus:ring-2 focus:ring-red-600"
+                       placeholder="Search restaurants or dishes...">
+                <button type="submit" class="absolute right-3 top-3 bg-red-600 text-white px-8 py-2 rounded-full hover:bg-red-700 transition">
+                    Search
+                </button>
+            </div>
+        </form>
 
-        <!-- Category Name -->
-        <p class="text-sm font-medium text-gray-700 truncate">
-          {{ category }}
-        </p>
-      </div>
-    </a>
-    {% endfor %}
-  </div>
-</section>
-
-
-<!-- Section 2: Approved Restaurants -->
-<section class="py-6 px-4">
-  <h2 class="text-xl font-semibold mb-4">Popular Restaurants</h2>
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-    {% for restaurant in approved_restaurants %}
-    <div class="bg-white shadow-lg rounded-lg overflow-hidden relative">
-      <!-- Restaurant Image -->
-      <img src="{{ restaurant.image.url }}" alt="{{ restaurant.name }}" class="w-full h-48 object-cover">
-
-      <!-- Rating Overlay (Top Right) -->
-      <div class="absolute top-2 right-2 bg-black bg-opacity-50 text-yellow-500 text-sm font-bold px-2 py-1 rounded-full">
-        5 ⭐
-      </div>
-
-      <!-- Availability Status (Top Left) -->
-      <div class="absolute top-2 left-2 px-2 py-1 text-xs rounded-full font-semibold
-        {% if restaurant.is_available %}
-          bg-green-300 text-green-900
-        {% else %}
-          bg-red-100 text-red-900
-        {% endif %}
-      ">
-        {% if restaurant.is_available %}
-  Open
-{% else %}
-  Closed
-{% endif %}
-
-
-      </div>
-
-      <!-- Card Content -->
-      <div class="p-4">
-        <div class="flex justify-between items-center mb-2">
-          <h3 class="text-lg font-bold">{{ restaurant.name }}</h3>
-        </div>
-        <span class="material-icons text-green-900 text-xm">{{ restaurant.address }}</span>
-
-        <p class="text-sm text-gray-600 mb-2">{{ restaurant.description|truncatechars:100 }}</p>
-        <div class="flex justify-between items-center text-sm text-gray-500">
-          <span class="flex items-center">
-           
-            <span class="material-icons text-green-900 text-xm">Estimated Delivery: 25-45 min</span>
-          </span>
-          <span class="bg-pink-100 text-pink-600 px-2 py-1 rounded-full text-xs">{{ restaurant.category }}</span>
-        </div>
-        <div class="mt-4 text-center">
-          <a href="{{ restaurant.menu_url }}" class="bg-pink-600 text-white py-2 px-4 rounded-full text-sm hover:bg-pink-700 transition">View Menu</a>
-        </div>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</section>
-
-
-
-    <!-- Section 3: Menu Items -->
-    <section class="py-6 px-4">
-        <h2 class="text-xl font-semibold mb-4">Menu Items</h2>
-
-        {% for restaurant in available_restaurants %}
-        <div class="mb-6">
-            <h3 class="text-lg font-bold mb-2">{{ restaurant.name }}</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {% for item in restaurant.restaurantmenu_set.all %}
-                <div class="bg-white shadow-sm rounded-lg p-3">
-                    <img src="{{ item.image.url }}" alt="{{ item.name }}" class="h-28 w-full object-cover rounded-md mb-2">
-                    <div class="text-sm">
-                        <h4 class="font-semibold">{{ item.name }}</h4>
-                        <p class="text-gray-600">{{ item.description|truncatechars:80 }}</p>
-                        <p class="text-green-700 font-bold mt-1">₹{{ item.price }}</p>
-                        <p class="text-xs text-gray-500 italic">{{ item.category }}</p>
+        <!-- Categories -->
+        <section class="my-12">
+            <h2 class="text-2xl font-bold mb-6">Explore Categories</h2>
+            <div class="flex space-x-6 overflow-x-auto pb-4 scrollbar-hide">
+                {% for category in categories %}
+                <div class="flex-shrink-0">
+                    <div class="w-32 h-32 rounded-full bg-white shadow-md p-2 hover:shadow-lg transition">
+                        <img src="/media/images/{{ category|slugify }}.jpg" 
+                             alt="{{ category }}" 
+                             class="w-full h-full object-cover rounded-full">
+                        <p class="text-center mt-2 text-sm font-medium">{{ category }}</p>
                     </div>
                 </div>
                 {% endfor %}
             </div>
+        </section>
+
+        <!-- Restaurants Grid -->
+        <section class="my-12">
+            <h2 class="text-2xl font-bold mb-6">Popular Restaurants</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for restaurant in approved_restaurants %}
+                <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition">
+                    <div class="relative">
+                        <img src="{{ restaurant.image.url }}" 
+                             alt="{{ restaurant.name }}" 
+                             class="w-full h-48 object-cover">
+                        <div class="absolute top-2 right-2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                            ★ {{ restaurant.average_rating|default:"4.5" }}
+                        </div>
+                        <span class="absolute top-2 left-2 px-3 py-1 rounded-full text-sm font-medium
+                            {% if restaurant.is_available %} bg-green-100 text-green-800 {% else %} bg-red-100 text-red-800 {% endif %}">
+                            {% if restaurant.is_available %} Open Now {% else %} Closed {% endif %}
+                        </span>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-xl font-bold mb-2">{{ restaurant.name }}</h3>
+                        <p class="text-gray-600 mb-3">{{ restaurant.description|truncatechars:100 }}</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-500">📍 {{ restaurant.address|truncatechars:20 }}</span>
+                            <a href="{% url 'user_view_menu' restaurant.id %}" 
+                               class="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition">
+                                View Menu
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Menu Items Grid -->
+       <!-- Menu Items Grid -->
+<section class="my-12 px-4">
+    <h2 class="text-3xl font-extrabold mb-8 text-gray-800 text-center">🍽️ Featured Menu Items</h2>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        {% for item in items %}
+        <div class="bg-white rounded-2xl shadow-lg hover:shadow-xl overflow-hidden transition transform hover:-translate-y-1">
+            {% if item.image %}
+                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-48 object-cover" />
+            {% else %}
+                <div class="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                    No Image Available
+                </div>
+            {% endif %}
+
+            <div class="p-5">
+                <h3 class="text-xl font-semibold text-gray-800 mb-1">{{ item.name }}</h3>
+                <p class="text-gray-600 text-sm mb-3">{{ item.description|truncatechars:80 }}</p>
+
+                <div class="flex flex-wrap items-center justify-between text-sm text-gray-500 mb-4 space-y-1">
+                    <span><strong>Price:</strong></span><span class = 'text-green-600'> ₹{{ item.price }}</span>
+                    <span><strong>Prep Time:</strong></span><span class = 'text-green-600'> {{ item.prep_time }} mins</span>
+                    <span><strong>Category:</strong></span><span class = 'text-green-600'> {{ item.category }}</span>
+                </div>
+
+                <a href="{% url 'add_to_cart' item.id %}" 
+                   class="block w-full text-center bg-[#FF0B55] text-white font-medium py-2 rounded-full hover:bg-pink-700 transition">
+                    Add to Cart
+                </a>
+            </div>
         </div>
         {% endfor %}
+    </div>
+</section>
 
-    </section>
-
+    </main>
 </body>
-
-    
 {% endblock %}
