@@ -184,4 +184,6 @@ LOGGING = {
     },
 }
 
+OSRM_SERVER_URL = "http://router.project-osrm.org"
 
+GOOGLE_MAPS_API_KEY = "***REMOVED***"

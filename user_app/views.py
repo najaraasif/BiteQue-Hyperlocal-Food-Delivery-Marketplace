@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from pyexpat.errors import messages
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from merchant_app.models import RestaurantMenu
@@ -39,18 +40,19 @@ def home(request):
     return render(request, 'home.html', context)
 
 
+from decimal import Decimal
+from django.conf import settings
+
+
 def checkout(request):
-    # Check if user is authenticated
     if not request.user.is_authenticated:
-        # Redirect to login with next parameter to return to checkout after login
         return redirect(f"{reverse('user_login')}?next={request.path}")
 
     cart = request.session.get('cart', {})
     cart_items = []
     total_price = 0
-    restaurant = None  # Will be set from the first menu item
+    restaurant = None
 
-    # Build cart item list and compute total
     for item_id, item_data in cart.items():
         menu_item = get_object_or_404(RestaurantMenu, id=item_id)
         quantity = item_data['quantity']
@@ -65,46 +67,51 @@ def checkout(request):
             'price': menu_item.price
         })
 
-        # Get the restaurant from first menu item
         if not restaurant:
             restaurant = menu_item.restaurant
 
     if request.method == 'POST':
-        # Collect form data
-        customer_name = request.user.get_full_name()
-        contact_number = request.POST.get('contact_number')
-        delivery_address = request.POST.get('delivery_address')
-
-        # Create the order
-        order = Order.objects.create(
-            user=request.user,
-            restaurant=restaurant,
-            customer_name=customer_name,
-            customer_contact=contact_number,
-            delivery_address=delivery_address,
-            total=total_price
-        )
-
-        # Set menu items in the order
-        for item in cart_items:
-            menu_item = get_object_or_404(RestaurantMenu, id=item['id'])
-            order.menu_items.add(menu_item)
-
-        # Geocode address
-        lat, lng = geocode_address(delivery_address)
-        if lat and lng:
-            order.delivery_latitude = lat
-            order.delivery_longitude = lng
-            order.save()
-
-        # Clear the cart
-        request.session['cart'] = {}
-
-        return redirect('order_confirmation',order_id=order.id)  # Create a success page
-
+        dest_lat = request.POST.get('dest_lat') or None
+        dest_lon = request.POST.get('dest_lon') or None
+        
+        try:
+            order = Order.objects.create(
+                user=request.user,
+                restaurant=restaurant,
+                customer_name=request.user.get_full_name(),
+                customer_contact=request.POST.get('contact_number'),
+                delivery_address=request.POST.get('delivery_address'),
+                total=total_price,
+                dest_lat=Decimal(dest_lat) if dest_lat else None,
+                dest_lon=Decimal(dest_lon) if dest_lon else None
+            )
+            
+            for item in cart_items:
+                menu_item = RestaurantMenu.objects.get(id=item['id'])
+                order.menu_items.add(menu_item)
+            
+            if dest_lat and dest_lon and restaurant.lat and restaurant.lon:
+                distance_km = calculate_distance(
+                    float(restaurant.lat), float(restaurant.lon),
+                    float(dest_lat), float(dest_lon)
+                )
+                order.distance_km = Decimal(distance_km)
+                order.distance_earning = Decimal(distance_km) * Decimal(10)
+                order.save()
+            
+            request.session['cart'] = {}
+            return redirect('order_confirmation', order_id=order.id)
+            
+        except Exception as e:
+            messages.error(request, f"Error creating order: {str(e)}")
+            return redirect('checkout')
+    
     context = {
         'cart_items': cart_items,
-        'total_price': total_price
+        'total_price': total_price,
+        'restaurant': restaurant,
+        'OSRM_SERVER_URL': settings.OSRM_SERVER_URL,  
+        'GOOGLE_MAPS_API_KEY': settings.GOOGLE_MAPS_API_KEY
     }
     return render(request, 'checkout.html', context)
 

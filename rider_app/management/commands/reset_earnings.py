@@ -22,7 +22,7 @@ class Command(BaseCommand):
                 try:
                     from rider_app.models import Rider, RiderEarning
 
-                    now = timezone.now()
+                    now = timezone.localtime(timezone.now())
                     midnight = timezone.make_aware(
                         timezone.datetime.combine(
                             now.date() + timedelta(days=1),
@@ -45,30 +45,44 @@ class Command(BaseCommand):
                 from rider_app.models import Rider, RiderEarning
                 logger.info("Midnight - Resetting earnings...")
 
-                yesterday = (timezone.now() - timedelta(days=1)).date()
+                yesterday = (timezone.localtime(timezone.now()) - timedelta(days=1)).date()
                 riders_processed = 0
                 total_transferred = Decimal('0.00')
 
                 for rider in Rider.objects.all():
-                    if rider.today_earnings > 0:
-                        RiderEarning.objects.create(
-                            rider=rider,
-                            date=yesterday,
-                            total_earnings=rider.today_earnings,
-                            orders_completed=0,
-                            distance_km=Decimal('0.00'),
-                            distance_earning=Decimal('0.00'),
-                            commission=Decimal('0.00'),
-                            gst=Decimal('0.00')
-                        )
-                        total_transferred += rider.today_earnings
-                        rider.current_balance += rider.today_earnings
-                        rider.today_earnings = Decimal('0.00')
-                        rider.save()
-                        riders_processed += 1
+                    try:
+                        if rider.today_earnings > 0:
+                            print(f"Processing rider {rider.id}: Today's earnings = ₹{rider.today_earnings}")  # Debug
+
+                            RiderEarning.objects.create(
+                                rider=rider,
+                                date=yesterday,
+                                total_earnings=rider.today_earnings,
+                                orders_completed=rider.get_total_orders_completed(),
+                                distance_km=Decimal('0.00'),
+                                distance_earning=Decimal('0.00'),
+                                commission_earning=Decimal('0.00')
+                            )
+
+                            # Add today's earnings to current balance only once
+                            rider.current_balance += rider.today_earnings
+
+                            # Reset today's earnings to zero
+                            rider.today_earnings = Decimal('0.00')
+
+                            rider.save(update_fields=['current_balance', 'today_earnings'])
+
+                            print(f"Updated rider {rider.id}: Current balance = ₹{rider.current_balance}, Today's earnings reset to 0")  # Debug
+
+                            riders_processed += 1
+                        else:
+                            logger.info(f"Rider {rider.id} skipped (₹0 earnings)")
+                    except Exception as rider_exc:
+                        logger.error(f"Error processing rider {rider.id}: {str(rider_exc)}")
+                        continue  # Continue with next rider
 
                 logger.info(f"Reset complete. Processed {riders_processed} riders.")
-                print(f"Successfully reset {riders_processed} riders. "
+                print(f"🎉 Successfully reset {riders_processed} riders. "
                       f"Transferred ₹{total_transferred:.2f} to balances.")
 
             except Exception as e:
