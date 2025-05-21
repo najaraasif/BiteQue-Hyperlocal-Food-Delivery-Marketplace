@@ -15,7 +15,6 @@ from django.contrib.auth.views import LoginView
 import logging
 from django.db import transaction
 from datetime import datetime, timedelta
-from rider_app.utils import calculate_distance
 from django.db.models import Sum,F
 from merchant_app.models import Restaurant 
 from user_app.models import Order
@@ -323,11 +322,8 @@ def mark_delivered(request, order_id):
                     assignment.save()
 
                     restaurant = order.restaurant
-                    distance_km = Decimal('0.0')
-                    if restaurant.lat and restaurant.lon and order.dest_lat and order.dest_lon:
-                        distance_km = Decimal(str(calculate_distance(
-                            restaurant.lat, restaurant.lon, order.dest_lat, order.dest_lon
-                        )))
+                    distance_km = order.distance_km  # Use the already stored distance
+                    distance_earning = order.distance_earning  # Use the already stored earning
 
                     order_total = order.total
                     if order_total <= 200:
@@ -344,14 +340,11 @@ def mark_delivered(request, order_id):
                         commission_rate = Decimal('0.00')
 
                     commission_earning = order_total * commission_rate
-                    distance_earning = distance_km * Decimal('10')
                     total_earning = distance_earning + commission_earning
 
-                    order.distance_km = distance_km
-                    order.distance_earning = distance_earning
                     order.commission = commission_earning
                     order.total_earning = total_earning
-                    order.save(update_fields=['distance_km', 'distance_earning', 'commission', 'total_earning'])
+                    order.save(update_fields=['commission', 'total_earning'])
 
                     rider.today_earnings += total_earning
                     rider.save(update_fields=['today_earnings'])
@@ -421,6 +414,7 @@ def mark_delivered(request, order_id):
             return JsonResponse({'status': 'error', 'message': message}, status=500)
         messages.error(request, message)
         return redirect('rider:dashboard')
+
 
 
 @login_required
@@ -508,7 +502,8 @@ def rider_order_detail(request, order_id):
             return render(request, "rider_app/accept_order_prompt.html", {
                 "assignment": assignment,
                 "order": order,
-                "rider": rider  
+                "rider": rider,
+                "delivery_fee": assignment.order.distance_earning
             })
 
         return render(request, "rider_app/order_detail.html", {
@@ -516,7 +511,8 @@ def rider_order_detail(request, order_id):
             "assignment": assignment,
             "dest_lat": order.dest_lat,
             "dest_lon": order.dest_lon,
-            "rider": rider  
+            "rider": rider,
+            "delivery_fee": order.distance_earning
         })
         
     except Rider.DoesNotExist:

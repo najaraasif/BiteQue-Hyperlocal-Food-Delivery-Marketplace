@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-  
+
   <!-- 📦 New Orders -->
   <section>
     <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2 pb-4">
@@ -11,7 +11,7 @@
     </h2>
 
     {% if pending_orders %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2.5 gap-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
       {% for order in pending_orders %}
         <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200 hover:shadow-xl transition-all">
           <div class="space-y-1 text-sm text-gray-800">
@@ -24,9 +24,10 @@
             <p><strong>👤 Customer:</strong> {{ order.customer_name }}</p>
             <p><strong>📞 Contact:</strong> {{ order.customer_contact }}</p>
             <p><strong>💰 Total:</strong> ₹{{ order.total }}</p>
-            <p><strong>🏠 Address:</strong> {{ order.order_address }}</p>
+            <p><strong>🏠 Address:</strong> {{ order.delivery_address }}</p>
             <p><strong>📦 Status:</strong> <span class="bg-yellow-100 text-yellow-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></p>
             <p class="text-xs text-black-800"><strong>⏰ Date & Time:</strong> {{ order.created_at|date:"h:i A, d M, Y" }}</p>
+            <p><strong>📝 Special Instructions:</strong> {{ order.special_instructions }}</p>
           </div>
           <div class="mt-4 text-right">
             <a href="{% url 'confirm_order' order.id %}" class="bg-pink-600 text-white text-xs px-4 py-2 rounded-md hover:bg-pink-700 transition">✅ Confirm</a>
@@ -41,14 +42,13 @@
 
   <!-- ✅ Confirmed Orders -->
   <section class="mt-12">
-  
     <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2 pb-4">
       <span data-feather="check-circle" class="w-5 h-6 text-black-800"></span>
       <span>Confirmed Orders</span>
     </h2>
-    
+
     {% if confirmed_orders %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
       {% for order in confirmed_orders %}
         <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200 hover:shadow-xl transition-all">
           <div class="space-y-1 text-sm text-gray-800">
@@ -61,9 +61,10 @@
             <p><strong>👤 Customer:</strong> {{ order.customer_name }}</p>
             <p><strong>📞 Contact:</strong> {{ order.customer_contact }}</p>
             <p><strong>💰 Total:</strong> ₹{{ order.total }}</p>
-            <p><strong>🏠 Address:</strong> {{ order.order_address }}</p>
+            <p><strong>🏠 Address:</strong> {{ order.delivery_address }}</p>
             <p><strong>📦 Status:</strong> <span class="bg-green-100 text-green-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></p>
             <p class="text-xs text-black-800"><strong>⏰ Date & Time:</strong> {{ order.created_at|date:"h:i A, d M, Y" }}</p>
+            <p><strong>📝 Special Instructions:</strong> {{ order.special_instructions }}</p>
           </div>
           <div class="mt-4 text-right">
             <a href="{% url 'mark_order_ready' order.id %}" class="bg-green-600 text-white text-xs px-4 py-2 rounded-md hover:bg-green-700 transition">🚴‍♂️ Ready for Pickup</a>
@@ -76,83 +77,71 @@
     {% endif %}
   </section>
 
-  <!--  Order History -->
-  <section class="mt-12">
-    <div class="flex justify-between items-center mb-4">
+  <!-- Order History -->
+<section class="mt-12">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2">
+      <span data-feather="archive" class="w-5 h-6 text-black-800"></span>
+      <span>Order History</span>
+    </h2>
+    <form method="get" class="flex items-center space-x-3">
+      <input type="date" name="order_date" value="{{ order_date|default:'' }}" class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-pink-400 focus:outline-none">
+      <button type="submit" class="bg-pink-600 text-white text-xs px-3 py-1 rounded hover:bg-pink-700">Go</button>
+      {% if order_date %}
+        <a href="{% url 'download_filtered_orders' %}?order_date={{ order_date }}" class="ml-2 text-xs text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700">Download</a>
+      {% endif %}
+    </form>
+  </div>
 
-      <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2">
-        <span data-feather="archive" class="w-5 h-6 text-black-800"></span>
-        <span>Order History</span>
-      </h2>
-            <form method="get" class="flex items-center space-x-3">
-        <label for="order_date" class="text-sm text-gray-600">Filter by Date:</label>
-        <input type="date" id="order_date" name="order_date" value="{{ request.GET.order_date|default:'' }}" class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-pink-400 focus:outline-none">
-        <button type="submit" class="bg-pink-600 text-white text-xs px-3 py-1 rounded hover:bg-pink-700">Go</button>
-      </form>
+  <table class="min-w-full text-sm text-left border border-gray-200 rounded-lg">
+    <thead class="bg-gray-50 text-gray-700 uppercase text-xs tracking-wider">
+      <tr>
+        <th class="px-4 py-2">ID</th>
+        <th class="px-4 py-2">Customer</th>
+        <th class="px-4 py-2">Contact</th>
+        <th class="px-4 py-2">Items</th>
+        <th class="px-4 py-2">Total ₹</th>
+        <th class="px-4 py-2">Address</th>
+        <th class="px-4 py-2">Status</th>
+        <th class="px-4 py-2">Date</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-100">
+      {% for order in order_history %}
+      <tr class="hover:bg-pink-50 transition">
+        <td class="px-4 py-2">#{{ order.id }}</td>
+        <td class="px-4 py-2">{{ order.customer_name }}</td>
+        <td class="px-4 py-2">{{ order.customer_contact }}</td>
+        <td class="px-4 py-2">
+          {% for item in order.menu_items.all %}
+            {{ item.name }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </td>
+        <td class="px-4 py-2">₹{{ order.total }}</td>
+        <td class="px-4 py-2">{{ order.order_address }}</td>
+        <td class="px-4 py-2"><span class="bg-gray-200 text-gray-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></td>
+        <td class="px-4 py-2">{{ order.created_at|date:"d M, Y H:i" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center py-4">No orders found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Pagination -->
+  {% if is_paginated %}
+    <div class="flex justify-end mt-4 space-x-2 text-sm">
+      {% if page_obj.has_previous %}
+        <a href="?{% if order_date %}order_date={{ order_date }}&{% endif %}page={{ page_obj.previous_page_number }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Previous</a>
+      {% endif %}
+
+      <span class="px-3 py-1 bg-pink-600 text-white rounded">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+      {% if page_obj.has_next %}
+        <a href="?{% if order_date %}order_date={{ order_date }}&{% endif %}page={{ page_obj.next_page_number }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next</a>
+      {% endif %}
     </div>
-
-    <div class="overflow-x-auto">
-      <table class="min-w-full text-sm text-left border border-gray-200 rounded-lg">
-        <thead class="bg-gray-50 text-gray-700 uppercase text-xs tracking-wider">
-          <tr>
-            <th class="px-4 py-2">ID</th>
-            <th class="px-4 py-2">Customer</th>
-            <th class="px-4 py-2">Contact</th>
-            <th class="px-4 py-2">Items</th>
-            <th class="px-4 py-2">Total ₹</th>
-            <th class="px-4 py-2">Address</th>
-            <th class="px-4 py-2">Status</th>
-            <th class="px-4 py-2">Date</th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-100">
-          {% with request.GET.order_date as selected_date %}
-            {% if selected_date %}
-              {% for order in order_history|dictsortreversed:"created_at" %}
-                {% if order.created_at|date:"Y-m-d" == selected_date %}
-                  <tr class="hover:bg-pink-50 transition">
-                    <td class="px-4 py-2">#{{ order.id }}</td>
-                    <td class="px-4 py-2">{{ order.customer_name }}</td>
-                    <td class="px-4 py-2">{{ order.customer_contact }}</td>
-                    <td class="px-4 py-2 truncate">
-                      {% for item in order.menu_items.all %}
-                        {{ item.name }}{% if not forloop.last %}, {% endif %}
-                      {% endfor %}
-                    </td>
-                    <td class="px-4 py-2">₹{{ order.total }}</td>
-                    <td class="px-4 py-2">{{ order.order_address }}</td>
-                    <td class="px-4 py-2">
-                      <span class="bg-gray-200 text-gray-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span>
-                    </td>
-                    <td class="px-4 py-2">{{ order.created_at|date:"d M, Y H:i" }}</td>
-                  </tr>
-                {% endif %}
-              {% endfor %}
-            {% else %}
-              {% for order in order_history|dictsortreversed:"created_at"|slice:":10" %}
-                <tr class="hover:bg-pink-50 transition">
-                  <td class="px-4 py-2">#{{ order.id }}</td>
-                  <td class="px-4 py-2">{{ order.customer_name }}</td>
-                  <td class="px-4 py-2">{{ order.customer_contact }}</td>
-                  <td class="px-4 py-2 truncate">
-                    {% for item in order.menu_items.all %}
-                      {{ item.name }}{% if not forloop.last %}, {% endif %}
-                    {% endfor %}
-                  </td>
-                  <td class="px-4 py-2">₹{{ order.total }}</td>
-                  <td class="px-4 py-2">{{ order.order_address }}</td>
-                  <td class="px-4 py-2">
-                    <span class="bg-gray-200 text-gray-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span>
-                  </td>
-                  <td class="px-4 py-2">{{ order.created_at|date:"d M, Y h:i A" }}</td>
-                </tr>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
+  {% endif %}
+</section>
 </div>
 {% endblock %}

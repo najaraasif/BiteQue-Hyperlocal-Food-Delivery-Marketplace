@@ -120,10 +120,13 @@ def geocode_address_google(address):
         return None, None
 
 
-# Order signal
 @receiver(pre_save, sender=Order)
 def geocode_order_address(sender, instance, **kwargs):
-    if instance.delivery_address and (instance.dest_lat is None or instance.dest_lon is None):
+    if (instance.delivery_address and 
+        (instance.dest_lat is None or instance.dest_lon is None) and
+        (not instance.pk or  
+         instance.delivery_address != Order.objects.get(pk=instance.pk).delivery_address)):
+        
         lat, lon = geocode_address_google(instance.delivery_address)
         if lat and lon:
             instance.dest_lat = lat

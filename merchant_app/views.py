@@ -18,6 +18,11 @@ from django.http import JsonResponse
 from .signals import send_mailersend_reset_email
 from rider_app.models import OrderAssignment, Rider
 import logging
+from django.db.models import Q
+from django.core.paginator import Paginator
+from django.http import HttpResponse
+import csv
+
 
 # for token lund genertation
 from django.contrib.auth.tokens import default_token_generator
@@ -187,15 +192,15 @@ def merchant_dashboard(request):
     })
 
 
-
-
 @login_required
 def merchant_order_view(request):
     restaurant = get_object_or_404(Restaurant, owner=request.user)
+    order_date = request.GET.get('order_date')
 
+    # Pending and Confirmed Orders remain unchanged
     pending_orders = Order.objects.filter(
         restaurant=restaurant,
-        status='pending'  # only 'pending' are active to be confirmed
+        status='pending'
     ).order_by('-created_at')
 
     confirmed_orders = Order.objects.filter(
@@ -203,18 +208,75 @@ def merchant_order_view(request):
         status='confirmed'
     ).order_by('-created_at')
 
-    order_history = Order.objects.filter(
-        restaurant=restaurant,
-        status='delivered'
-    ).order_by('-created_at')
+    # Filter order history
+    order_history = Order.objects.filter(restaurant=restaurant).exclude(
+        Q(status='pending') | Q(status='confirmed')
+    )
 
-    return render(request, 'merchantOrders.html', {
+    if order_date:
+        try:
+            date_obj = datetime.datetime.strptime(order_date, '%Y-%m-%d').date()
+            order_history = order_history.filter(created_at__date=date_obj)
+        except ValueError:
+            pass  # Invalid date format
+
+    order_history = order_history.order_by('-created_at')
+
+    # Pagination
+    paginator = Paginator(order_history, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
         'restaurant': restaurant,
         'pending_orders': pending_orders,
         'confirmed_orders': confirmed_orders,
-        'order_history': order_history,
-    })
+        'order_history': page_obj,  # Paginated history
+        'is_paginated': page_obj.has_other_pages(),
+        'page_obj': page_obj,
+        'order_date': order_date,
+    }
 
+    return render(request, 'merchantOrders.html', context)
+
+@login_required
+def download_filtered_orders(request):
+    restaurant = get_object_or_404(Restaurant, owner=request.user)
+    order_date = request.GET.get('order_date')
+
+    if not order_date:
+        return HttpResponse("Date parameter is missing.", status=400)
+
+    try:
+        date_obj = datetime.datetime.strptime(order_date, '%Y-%m-%d').date()
+    except ValueError:
+        return HttpResponse("Invalid date format.", status=400)
+
+    orders = Order.objects.filter(
+        restaurant=restaurant,
+        created_at__date=date_obj
+    ).exclude(status__in=['pending', 'confirmed']).order_by('-created_at')
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="orders_{order_date}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['ID', 'Customer', 'Contact', 'Items', 'Total', 'Address', 'Status', 'Date'])
+
+    for order in orders:
+        item_names = ', '.join(item.name for item in order.menu_items.all())
+        writer.writerow([
+            order.id,
+            order.customer_name,
+            order.customer_contact,
+            item_names,
+            order.total,
+            order.order_address,
+            order.get_status_display(),
+            order.created_at.strftime("%d %b, %Y %H:%M")
+        ])
+
+    return response
 @login_required
 def confirm_order(request, order_id):
     order = get_object_or_404(Order, id=order_id)
@@ -222,8 +284,6 @@ def confirm_order(request, order_id):
         order.status = 'confirmed'
         order.save()
     return redirect('merchant_orders')
-
-
 
 logger = logging.getLogger(__name__)
 @login_required

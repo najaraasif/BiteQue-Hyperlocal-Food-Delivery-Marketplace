@@ -113,7 +113,6 @@ class Order(models.Model):
         
         return self.delivery_pin == entered_pin
     
-    
 
 class userRegistration(models.Model):
     username = models.ForeignKey(User, on_delete=models.CASCADE)

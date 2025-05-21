@@ -19,6 +19,8 @@
         <p><strong>Customer:</strong> {{ order.customer_name }}</p>
         <p><strong>Delivery Address:</strong> {{ order.delivery_address }}</p>
         <p><strong>Restaurant:</strong> {{ order.restaurant.name }}</p>
+        <p><strong>Delivery Fee:</strong> ₹{{ delivery_fee|floatformat:2 }}</p>
+        <p><strong>Distance:</strong> {{ order.distance_km|floatformat:2 }} km</p>
     </div>
 
  

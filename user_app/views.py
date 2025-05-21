@@ -8,7 +8,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import Order, CustomerFeedback, MerchantNotification, userRegistration
 from .forms import userRegistrationForm
-from rider_app.utils import calculate_distance, geocode_address
+from rider_app.utils import geocode_address, get_osrm_distance
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.contrib.auth.forms import AuthenticationForm
@@ -64,7 +64,7 @@ def checkout(request):
             'name': menu_item.name,
             'quantity': quantity,
             'subtotal': subtotal,
-            'price': menu_item.price
+            'price': menu_item.price,
         })
 
         if not restaurant:
@@ -78,9 +78,10 @@ def checkout(request):
             order = Order.objects.create(
                 user=request.user,
                 restaurant=restaurant,
-                customer_name=request.user.get_full_name(),
+                customer_name=request.POST.get('customer_name'),
                 customer_contact=request.POST.get('contact_number'),
                 delivery_address=request.POST.get('delivery_address'),
+                special_instructions = request.POST.get('special_instructions'),
                 total=total_price,
                 dest_lat=Decimal(dest_lat) if dest_lat else None,
                 dest_lon=Decimal(dest_lon) if dest_lon else None
@@ -91,13 +92,19 @@ def checkout(request):
                 order.menu_items.add(menu_item)
             
             if dest_lat and dest_lon and restaurant.lat and restaurant.lon:
-                distance_km = calculate_distance(
-                    float(restaurant.lat), float(restaurant.lon),
-                    float(dest_lat), float(dest_lon)
-                )
-                order.distance_km = Decimal(distance_km)
-                order.distance_earning = Decimal(distance_km) * Decimal(10)
-                order.save()
+                try:
+                    # Use OSRM to calculate road distance
+                    distance_km = get_osrm_distance(
+                        origin_lat=float(restaurant.lat),
+                        origin_lon=float(restaurant.lon),
+                        dest_lat=float(dest_lat),
+                        dest_lon=float(dest_lon),
+                    )
+                    order.distance_km = Decimal(str(distance_km)).quantize(Decimal('0.00'))
+                    order.distance_earning = order.distance_km * Decimal('10')
+                    order.save(update_fields=['distance_km', 'distance_earning'])
+                except Exception as e:
+                    messages.error(request, f"Failed to calculate road distance: {str(e)}")
             
             request.session['cart'] = {}
             return redirect('order_confirmation', order_id=order.id)
@@ -238,27 +245,17 @@ def order_detail(request, order_id):
     ).prefetch_related(
         'menu_items'
     ), id=order_id, user=request.user)
-    
 
-    restaurant = order.restaurant
-    distance_km = Decimal('0.0')
-        
-    if restaurant.lat and restaurant.lon and order.dest_lat and order.dest_lon:
-            distance_km = Decimal(str(calculate_distance(
-                restaurant.lat, restaurant.lon,
-                order.dest_lat, order.dest_lon
-            )))
-        
-    delivery_fee = distance_km * Decimal('10')
+    delivery_fee = order.distance_earning  # Direct use of stored value
     gst_tax = order.total * Decimal('0.05')
     order_total = float(order.total + delivery_fee + gst_tax)
 
     context = {
         'order': order,
-        'gst': round(gst_tax,2),
-        'delivery_fee': round(delivery_fee,2),
-        'order_total': round(order_total,2),
-        'eta': order.created_at + timedelta(minutes=45),  
+        'gst': round(gst_tax, 2),
+        'delivery_fee': delivery_fee,
+        'order_total': round(order_total, 2),
+        'eta': order.created_at + timedelta(minutes=45),
         'rider': order.assignment.rider if hasattr(order, 'assignment') else None
     }
     return render(request, 'order_detail.html', context)

@@ -20,6 +20,8 @@ urlpatterns = [
     path('merchant/orders/', views.merchant_order_view, name='merchant_orders'),
     path('merchant/orders/confirm/<int:order_id>/', views.confirm_order, name='confirm_order'),
     path('merchant/orders/ready/<int:order_id>/', views.mark_order_ready, name='mark_order_ready'),
+    path('merchant/orders/download/', views.download_filtered_orders, name='download_filtered_orders'),
+
 
 
     path('merchant-dashboard/menu/', views.menu_dashboard_view, name='menu_dashboard'),

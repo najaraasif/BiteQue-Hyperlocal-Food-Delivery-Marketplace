@@ -16,13 +16,13 @@
     
     <!-- Net Sales -->
     <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
-      <p class="text-xs text-gray-500">Your Net Sales</p>
+      <p class="text-xs text-gray-500">Your Net Share</p>
       <p class="mt-1 text-xl font-semibold text-green-600">₹{{ merchant_share|floatformat:2 }}</p>
     </div>
 
     <!-- Last Week Sales -->
     <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
-      <p class="text-xs text-gray-500">Last Week Sales</p>
+      <p class="text-xs text-gray-500">Last Week</p>
       <p class="mt-1 text-xl font-semibold text-green-600">₹{{ weekly_merchant_share|floatformat:2 }}</p>
     </div>
 
@@ -34,7 +34,7 @@
 
     <!-- Pending -->
     <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
-      <p class="text-xs text-gray-500">Pending Amount</p>
+      <p class="text-xs text-gray-500">Pending Amount (Share)</p>
       <p class="mt-1 text-xl font-semibold text-red-600">₹{{ pending_amount|floatformat:2 }}</p>
     </div>
   </div>

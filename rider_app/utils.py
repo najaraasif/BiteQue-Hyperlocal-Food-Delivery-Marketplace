@@ -34,7 +34,7 @@ def geocode_address(address):
     
 import math
 
-def calculate_distance(lat1, lon1, lat2, lon2):
+"""def calculate_distance(lat1, lon1, lat2, lon2):
    
     lat1 = math.radians(float(lat1))
     lon1 = math.radians(float(lon1))
@@ -47,4 +47,19 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     radius_of_earth = 6371  
-    return radius_of_earth * c
+    return radius_of_earth * c """
+
+
+def get_osrm_distance(origin_lat, origin_lon, dest_lat, dest_lon):
+    OSRM_SERVER_URL = settings.OSRM_SERVER_URL  # Ensure this is configured
+    url = f"{OSRM_SERVER_URL}/route/v1/driving/{origin_lon},{origin_lat};{dest_lon},{dest_lat}?overview=false"
+    
+    response = requests.get(url)
+    data = response.json()
+    
+    if data.get('code') != 'Ok':
+        raise ValueError("OSRM route calculation failed")
+    
+    distance_meters = data['routes'][0]['distance']
+    distance_km = distance_meters / 1000  # Convert meters to kilometers
+    return round(distance_km, 2)
