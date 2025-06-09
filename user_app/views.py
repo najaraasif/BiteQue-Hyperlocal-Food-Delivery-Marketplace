@@ -52,18 +52,22 @@ def checkout(request):
     cart_items = []
     total_price = 0
     restaurant = None
-
+    total_platform_gst = 0
+    packaging_charges = 20
     for item_id, item_data in cart.items():
         menu_item = get_object_or_404(RestaurantMenu, id=item_id)
         quantity = item_data['quantity']
         subtotal = menu_item.price * quantity
-        total_price += subtotal
+        gst = menu_item.price * Decimal('0.05')
+        total_platform_gst += gst
+        
+        total_price = subtotal + packaging_charges + gst
 
         cart_items.append({
             'id': menu_item.id,
             'name': menu_item.name,
             'quantity': quantity,
-            'subtotal': subtotal,
+            'subtotal': round(subtotal, 2),
             'price': menu_item.price,
         })
 
@@ -115,6 +119,8 @@ def checkout(request):
     
     context = {
         'cart_items': cart_items,
+        'packaging_charges': packaging_charges,
+        'platform_gst': round(total_platform_gst, 2),
         'total_price': total_price,
         'restaurant': restaurant,
         'OSRM_SERVER_URL': settings.OSRM_SERVER_URL,  
