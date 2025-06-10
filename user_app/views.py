@@ -8,7 +8,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import Order, CustomerFeedback, MerchantNotification, userRegistration
 from .forms import userRegistrationForm
-from rider_app.utils import geocode_address, get_osrm_distance
+from rider_app.utils import calculate_osrm_distance, geocode_address
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.contrib.auth.forms import AuthenticationForm
@@ -44,6 +44,7 @@ from decimal import Decimal
 from django.conf import settings
 
 
+
 def checkout(request):
     if not request.user.is_authenticated:
         return redirect(f"{reverse('user_login')}?next={request.path}")
@@ -54,14 +55,16 @@ def checkout(request):
     restaurant = None
     total_platform_gst = 0
     packaging_charges = 20
+
     for item_id, item_data in cart.items():
         menu_item = get_object_or_404(RestaurantMenu, id=item_id)
         quantity = item_data['quantity']
         subtotal = menu_item.price * quantity
         gst = menu_item.price * Decimal('0.05')
         total_platform_gst += gst
-        
-        total_price = subtotal + packaging_charges + gst
+
+        total_price = subtotal 
+        final_total = total_price + packaging_charges + total_platform_gst
 
         cart_items.append({
             'id': menu_item.id,
@@ -69,6 +72,8 @@ def checkout(request):
             'quantity': quantity,
             'subtotal': round(subtotal, 2),
             'price': menu_item.price,
+            'total_price': final_total,
+
         })
 
         if not restaurant:
@@ -77,53 +82,54 @@ def checkout(request):
     if request.method == 'POST':
         dest_lat = request.POST.get('dest_lat') or None
         dest_lon = request.POST.get('dest_lon') or None
-        
+
         try:
             order = Order.objects.create(
                 user=request.user,
                 restaurant=restaurant,
+                landmark=request.POST.get('landmark'),
                 customer_name=request.POST.get('customer_name'),
                 customer_contact=request.POST.get('contact_number'),
                 delivery_address=request.POST.get('delivery_address'),
-                special_instructions = request.POST.get('special_instructions'),
+                special_instructions=request.POST.get('special_instructions'),
                 total=total_price,
                 dest_lat=Decimal(dest_lat) if dest_lat else None,
                 dest_lon=Decimal(dest_lon) if dest_lon else None
             )
-            
+
             for item in cart_items:
                 menu_item = RestaurantMenu.objects.get(id=item['id'])
                 order.menu_items.add(menu_item)
-            
+
             if dest_lat and dest_lon and restaurant.lat and restaurant.lon:
                 try:
-                    # Use OSRM to calculate road distance
-                    distance_km = get_osrm_distance(
-                        origin_lat=float(restaurant.lat),
-                        origin_lon=float(restaurant.lon),
-                        dest_lat=float(dest_lat),
-                        dest_lon=float(dest_lon),
+                    # Use OSRM with fallback to Haversine
+                    distance_km = calculate_osrm_distance(
+                        float(restaurant.lat),
+                        float(restaurant.lon),
+                        float(dest_lat),
+                        float(dest_lon),
                     )
                     order.distance_km = Decimal(str(distance_km)).quantize(Decimal('0.00'))
                     order.distance_earning = order.distance_km * Decimal('10')
                     order.save(update_fields=['distance_km', 'distance_earning'])
                 except Exception as e:
                     messages.error(request, f"Failed to calculate road distance: {str(e)}")
-            
+
             request.session['cart'] = {}
             return redirect('order_confirmation', order_id=order.id)
-            
+
         except Exception as e:
             messages.error(request, f"Error creating order: {str(e)}")
             return redirect('checkout')
-    
+
     context = {
         'cart_items': cart_items,
         'packaging_charges': packaging_charges,
         'platform_gst': round(total_platform_gst, 2),
         'total_price': total_price,
         'restaurant': restaurant,
-        'OSRM_SERVER_URL': settings.OSRM_SERVER_URL,  
+        'OSRM_SERVER_URL': settings.OSRM_SERVER_URL,
         'GOOGLE_MAPS_API_KEY': settings.GOOGLE_MAPS_API_KEY
     }
     return render(request, 'checkout.html', context)
@@ -209,6 +215,7 @@ def create_order(request):
             user=request.user,
             restaurant=restaurant,
             customer_name=request.POST.get('customer_name'),
+            landmark=request.POST.get('landmark'),
             delivery_address=request.POST.get('delivery_address'),
             customer_contact = request.POST.get('customer_contact'),
             items =  request.POST.get('menu_items'),
@@ -225,7 +232,6 @@ def create_order(request):
             order.save()
         
         return redirect('')
-    #return render(request, 'create_order.html')
 
 
 def userLogin(request):
@@ -252,14 +258,16 @@ def order_detail(request, order_id):
         'menu_items'
     ), id=order_id, user=request.user)
 
-    delivery_fee = order.distance_earning  # Direct use of stored value
+    delivery_fee = order.distance_earning + Decimal('0.60')
     gst_tax = order.total * Decimal('0.05')
-    order_total = float(order.total + delivery_fee + gst_tax)
+    pakaging_charges = 20
+    order_total = float(order.total + delivery_fee + gst_tax + pakaging_charges)
 
     context = {
         'order': order,
         'gst': round(gst_tax, 2),
         'delivery_fee': delivery_fee,
+        'pakaging_charges': pakaging_charges,
         'order_total': round(order_total, 2),
         'eta': order.created_at + timedelta(minutes=45),
         'rider': order.assignment.rider if hasattr(order, 'assignment') else None
@@ -281,7 +289,8 @@ def user_active_orders(request):
     context = {
         'user': request.user,
         'orders': orders,  
-        'active_orders': orders.filter(status__in=active_statuses),
+        'active_orders' : orders.filter(status__in=active_statuses).order_by('-created_at'),
+
     }
     return render(request, 'partials/active_orders.html', context)
 
@@ -400,3 +409,6 @@ def user_logout(request):
 def order_confirmation(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
     return render(request, 'order_confirmation.html', {'order': order})
+
+
+

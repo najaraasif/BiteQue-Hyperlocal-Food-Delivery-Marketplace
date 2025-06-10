@@ -19,7 +19,7 @@ class Order(models.Model):
     restaurant = models.ForeignKey('merchant_app.Restaurant', on_delete=models.CASCADE, related_name='orders')
     customer_name = models.CharField(max_length=100)
     customer_contact = models.CharField(max_length=15)
-    order_address = models.TextField()
+    landmark = models.TextField(max_length=100)
     menu_items = models.ManyToManyField('merchant_app.RestaurantMenu', related_name='orders')
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -147,17 +147,3 @@ class MerchantNotification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
 
-#Homepage --
-
-#user registration model()
-#profile dashboard model()
-#order model ()
-#login and logout model()
-#setting model (profile pic, Name, addresses, phone number, email()
-#Address model()
-#Order status  model()
-#check out model()
-#cart model()
-
-#Menus 
-#Payment integration

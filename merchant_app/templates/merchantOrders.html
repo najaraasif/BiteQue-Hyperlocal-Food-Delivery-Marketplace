@@ -25,6 +25,7 @@
             <p><strong>📞 Contact:</strong> {{ order.customer_contact }}</p>
             <p><strong>💰 Total:</strong> ₹{{ order.total }}</p>
             <p><strong>🏠 Address:</strong> {{ order.delivery_address }}</p>
+            <p><strong>🏠 Landmark:</strong> {{ order.landmark }}</p>
             <p><strong>📦 Status:</strong> <span class="bg-yellow-100 text-yellow-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></p>
             <p class="text-xs text-black-800"><strong>⏰ Date & Time:</strong> {{ order.created_at|date:"h:i A, d M, Y" }}</p>
             <p><strong>📝 Special Instructions:</strong> {{ order.special_instructions }}</p>
@@ -62,6 +63,7 @@
             <p><strong>📞 Contact:</strong> {{ order.customer_contact }}</p>
             <p><strong>💰 Total:</strong> ₹{{ order.total }}</p>
             <p><strong>🏠 Address:</strong> {{ order.delivery_address }}</p>
+            <p><strong>🏠 Landmark:</strong> {{ order.landmark }}</p>
             <p><strong>📦 Status:</strong> <span class="bg-green-100 text-green-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></p>
             <p class="text-xs text-black-800"><strong>⏰ Date & Time:</strong> {{ order.created_at|date:"h:i A, d M, Y" }}</p>
             <p><strong>📝 Special Instructions:</strong> {{ order.special_instructions }}</p>
@@ -102,6 +104,7 @@
         <th class="px-4 py-2">Items</th>
         <th class="px-4 py-2">Total ₹</th>
         <th class="px-4 py-2">Address</th>
+        <th class="px-4 py-2">Landmark</th>
         <th class="px-4 py-2">Status</th>
         <th class="px-4 py-2">Date</th>
       </tr>
@@ -118,7 +121,8 @@
           {% endfor %}
         </td>
         <td class="px-4 py-2">₹{{ order.total }}</td>
-        <td class="px-4 py-2">{{ order.order_address }}</td>
+        <td class="px-4 py-2">{{ order.delivery_address }}</td>
+        <td class="px-4 py-2">{{ order.landmark }}</td>
         <td class="px-4 py-2"><span class="bg-gray-200 text-gray-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></td>
         <td class="px-4 py-2">{{ order.created_at|date:"d M, Y H:i" }}</td>
       </tr>

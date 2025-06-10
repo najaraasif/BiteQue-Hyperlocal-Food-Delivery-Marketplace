@@ -15,7 +15,7 @@ class CustomerFeedbackAdmin(admin.ModelAdmin):
 
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['id', 'customer_name', 'customer_contact', 'restaurant', 'get_menu_items', 'total', 'status', 'created_at', 'order_address', 'delivery_address','dest_lat','dest_lon']
+    list_display = ['id', 'customer_name', 'customer_contact', 'restaurant', 'get_menu_items', 'total', 'status', 'created_at', 'landmark', 'delivery_address','dest_lat','dest_lon']
     list_filter = ['status', 'created_at', 'restaurant']
     search_fields = ['customer_name', 'restaurant__name']
 

@@ -84,7 +84,7 @@ class userRegistrationForm(forms.Form):
 class OrderForm(forms.ModelForm):
     class Meta:
         model = Order
-        fields = ['restaurant', 'customer_name', 'customer_contact', 'order_address', 'menu_items','status','delivery_address', 'dest_lat','dest_lon']
+        fields = ['restaurant', 'customer_name', 'customer_contact', 'landmark', 'menu_items','status','delivery_address', 'dest_lat','dest_lon']
         widgets = {
             'menu_items': forms.CheckboxSelectMultiple(),
         }
