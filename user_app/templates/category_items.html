@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-10">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Items in "{{ category_name }}"</h2>
+
+    <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {% for item in items %}
+        <div class="bg-white rounded-xl shadow hover:shadow-md transition overflow-hidden">
+            {% if item.image %}
+            <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-36 object-cover">
+            {% else %}
+            <div class="w-full h-36 bg-gray-100 flex items-center justify-center text-gray-400">No Image</div>
+            {% endif %}
+
+            <div class="p-3">
+                <h3 class="text-lg font-semibold text-gray-800 truncate">{{ item.name }}</h3>
+                <p class="text-sm text-gray-600 mb-2 line-clamp-2">{{ item.description|truncatechars:80 }}</p>
+
+                <!-- Horizontal Price and Prep Time -->
+                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                    <div>₹ <span class="text-green-600 font-medium">{{ item.price }}</span></div>
+                    <div>⏱️ <span class="text-green-500">{{ item.prep_time }} mins</span></div>
+                </div>
+                <!-- Size Info -->
+                <div class="text-sm text-gray-600 mb-2">
+                    📏 <span class="text-green-500">{{ item.sizes_categories }}</span>
+                </div>
+
+                <div class="flex gap-2 mt-2">
+                    <a href="{% url 'add_to_cart' item.id %}" class="flex-1 bg-[#FF0B55] text-white text-xs py-2 rounded-full text-center hover:bg-pink-600 transition">Add to Cart</a>
+                    <a href="{% url 'order_now' item.id %}" class="flex-1 bg-[#FF0B55] text-white text-xs py-2 rounded-full text-center hover:bg-pink-600 transition">Order Now</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</main>
+{% endblock %}

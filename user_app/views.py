@@ -35,6 +35,7 @@ from merchant_app.models import Review
 from django.db.models import Avg  
 from django.template.loader import render_to_string
 from django.http import JsonResponse
+from django.utils.text import slugify
 
 def home(request):
     categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
@@ -45,9 +46,10 @@ def home(request):
     query = request.GET.get('q')  
     if query:
         items = items.filter(name__icontains=query)
-        
+
     for restaurant in approved_restaurants:
         restaurant.avg_rating = restaurant.reviews.aggregate(avg=Avg('rating'))['avg'] or 0
+    
     context = {
         'categories': categories,
         'approved_restaurants': approved_restaurants,
@@ -57,6 +59,23 @@ def home(request):
     }
     return render(request, 'home.html', context)
 
+
+def category_items(request, category_slug):
+    # Fetch original category name
+    categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
+    category_lookup = {slugify(cat): cat for cat in categories}
+    category = category_lookup.get(category_slug)
+
+    if not category:
+        return render(request, '404.html', status=404)
+
+    items = RestaurantMenu.objects.filter(category=category)
+
+    context = {
+        'category_name': category,
+        'items': items,
+    }
+    return render(request, 'category_items.html', context)
 
 
 from decimal import Decimal, InvalidOperation

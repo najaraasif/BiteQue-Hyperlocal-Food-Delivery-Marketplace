@@ -17,22 +17,26 @@
         </div>
     </form>
 
-<!-- Categories -->
-<section class="my-12">
-    <h2 class="text-2xl font-bold mb-6 text-gray-800">Explore Categories</h2>
-    <div class="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
-        {% for category in categories %}
-        <div class="flex-shrink-0 snap-start text-center w-24 sm:w-28 md:w-32">
-            <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 mx-auto relative overflow-hidden rounded-full shadow-sm hover:shadow-md transition duration-300 ease-in-out bg-white">
-                <img src="/media/images/{{ category|slugify }}.jpg"
-                     alt="{{ category }}"
-                     class="w-full h-full object-cover">
-            </div>
-            <p class="mt-3 text-sm font-medium text-gray-700 truncate">{{ category }}</p>
-        </div>
-        {% endfor %}
-    </div>
+<!-- 🌟 Explore Categories Section -->
+<section class="my-10 px-4 sm:px-6">
+  <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 text-center">Explore Categories</h2>
+
+  <div class="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-3">
+    {% for category in categories %}
+    <a href="{% url 'category_items' category|slugify %}" class="flex-shrink-0 snap-start w-24 sm:w-28 text-center group">
+      <div class="w-24 h-24 sm:w-28 sm:h-28 mx-auto relative overflow-hidden rounded-full bg-gradient-to-tr from-pink-50 to-yellow-100 shadow-md group-hover:shadow-xl transition duration-300 ease-in-out">
+        <img src="/media/images/{{ category|slugify }}.jpg"
+             alt="{{ category }}"
+             class="w-full h-full object-cover rounded-full transform group-hover:scale-105 transition-transform duration-300 ease-in-out">
+      </div>
+      <p class="mt-2 text-xs sm:text-sm font-medium text-gray-700 truncate">{{ category }}</p>
+    </a>
+    {% endfor %}
+  </div>
 </section>
+
+
+
 
 
     <!-- Restaurants Grid -->
@@ -69,9 +73,9 @@
             {% for item in items %}
             <div class="menu-card bg-white rounded-xl shadow-sm hover:shadow-md transition duration-300 overflow-hidden" data-name="{{ item.name|lower }}">
                 {% if item.image %}
-                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-32 object-cover" />
+                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-42 object-cover" />
                 {% else %}
-                <div class="w-full h-32 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">No Image</div>
+                <div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">No Image</div>
                 {% endif %}
 
                 <div class="p-3">

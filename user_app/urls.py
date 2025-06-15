@@ -8,6 +8,7 @@ from user_app import views
 
 urlpatterns = [
     path('',home, name='home' ),
+    path('category/<slug:category_slug>/', views.category_items, name='category_items'),
     path('user-registration/',UserRegistration_view, name='user_registration' ),
     path('registration-success/',registration_success, name='registration_success' ),
     path('about/',about, name='about' ),
