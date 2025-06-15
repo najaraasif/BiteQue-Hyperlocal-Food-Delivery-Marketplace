@@ -209,3 +209,39 @@ class UpdateOrderStatusForm(forms.ModelForm):
         widgets = {
             'status': forms.Select(choices=Order.STATUS_CHOICES),
         }
+
+from .models import Review
+
+class ReviewForm(forms.ModelForm):
+    class Meta:
+        model = Review
+        fields = ['rating', 'comment']
+        widgets = {
+            'rating': forms.Select(choices=[(i, i) for i in range(1, 6)], attrs={'class': 'form-select'}),
+            'comment': forms.Textarea(attrs={'rows': 3, 'class': 'form-textarea'}),
+        }
+    
+from django import forms
+from .models import Ticket, TicketMessage
+
+class TicketCreateForm(forms.ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ['subject', 'category', 'status']
+        widgets = {
+            'subject': forms.TextInput(attrs={'placeholder': 'Enter ticket subject', 'class': 'form-control'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class TicketMessageForm(forms.ModelForm):
+    class Meta:
+        model = TicketMessage
+        fields = ['message','image']
+        widgets = {
+            'message': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Write your message here...', 'class': 'form-control'}),
+        }
+        labels = {
+            'message': 'Message',
+        }

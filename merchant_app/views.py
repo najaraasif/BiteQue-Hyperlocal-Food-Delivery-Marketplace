@@ -516,8 +516,8 @@ def merchant_revenue_report(request):
 
     orders = Order.objects.filter(restaurant=restaurant, status='delivered')
 
-    total_revenue = orders.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
-    today_revenue = orders.filter(created_at__date=today.date()).aggregate(Sum('total'))['total__sum'] or 0
+    total_revenue = orders.aggregate(total=Sum('total'))['total'] or 0 
+    today_revenue = orders.filter(created_at__date=today.date()).aggregate(Sum('total'))['total__sum'] or Decimal('0.00')
     week_revenue = orders.filter(created_at__gte=start_7_days).aggregate(Sum('total'))['total__sum'] or 0
     month_revenue = orders.filter(created_at__gte=start_30_days).aggregate(Sum('total'))['total__sum'] or 0
 
@@ -605,15 +605,28 @@ def order_reports(request):
 
 
 @login_required
-def feedback_list(request):
+
+
+@login_required
+def customer_feedback(request):
     restaurant = get_object_or_404(Restaurant, owner=request.user)
-    feedbacks = CustomerFeedback.objects.filter(restaurant=restaurant).select_related(
-        'order', 'customer'
-    ).order_by('-created_at')
-    
+
+    show_all = request.GET.get('all') == '1'
+
+    if show_all:
+        reviews = restaurant.reviews.select_related('user').order_by('-created_at')
+    else:
+        reviews = restaurant.reviews.select_related('user').order_by('-created_at')[:10]
+
+    feedbacks = CustomerFeedback.objects.filter(
+        restaurant=restaurant
+    ).select_related('order', 'customer').order_by('-created_at')
+
     context = {
-        'feedbacks': feedbacks,
         'restaurant': restaurant,
+        'reviews': reviews,
+        'feedbacks': feedbacks,
+        'show_all_reviews': show_all,
     }
     return render(request, 'customer_feedback.html', context)
 
@@ -659,3 +672,106 @@ def merchant_password_reset_confirm(request, uidb64, token):
         return render(request, 'password_reset_confirm.html', {'validlink': True})
     else:
         return render(request, 'password_reset_confirm.html', {'validlink': False})
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import Ticket, TicketMessage
+from .forms import TicketCreateForm, TicketMessageForm
+from django.contrib import messages
+
+@login_required
+def merchant_support(request):
+    tickets = Ticket.objects.filter(merchant=request.user).order_by('-updated_at')
+    ticket_id = request.GET.get('ticket_id')
+
+    # Select the ticket or default to first
+    if ticket_id:
+        try:
+            selected_ticket = Ticket.objects.get(ticket_id=ticket_id, merchant=request.user)
+        except Ticket.DoesNotExist:
+            selected_ticket = tickets.first()
+    else:
+        selected_ticket = tickets.first()
+
+    # Handle new ticket creation
+    if request.method == 'POST' and 'create_ticket' in request.POST:
+        ticket_form = TicketCreateForm(request.POST)
+        message_form = TicketMessageForm(request.POST, request.FILES)  # ✅ Include request.FILES here
+        if ticket_form.is_valid() and message_form.is_valid():
+            ticket = ticket_form.save(commit=False)
+            ticket.merchant = request.user
+            ticket.save()
+            initial_message = message_form.save(commit=False)
+            initial_message.ticket = ticket
+            initial_message.sender = request.user
+            initial_message.save()
+            messages.success(request, f"Ticket created successfully with ID {ticket.ticket_id}")
+            return redirect('support_portal')
+    else:
+        ticket_form = TicketCreateForm()
+        message_form = TicketMessageForm()
+
+    # Handle reply submission with status check
+    if request.method == 'POST' and 'reply_ticket' in request.POST:
+        if selected_ticket.status == 'closed':
+            messages.error(request, "Cannot reply to a closed ticket.")
+            reply_form = TicketMessageForm()  # show empty form
+        else:
+            reply_form = TicketMessageForm(request.POST, request.FILES)  # ✅ Also fix here
+            if reply_form.is_valid():
+                reply = reply_form.save(commit=False)
+                reply.ticket = selected_ticket
+                reply.sender = request.user
+                reply.save()
+                selected_ticket.save()  # trigger updated_at update
+                messages.success(request, "Reply sent successfully.")
+                return redirect(f'/merchant/support/?ticket_id={selected_ticket.ticket_id}')
+    else:
+        reply_form = TicketMessageForm()
+
+    messages_qs = selected_ticket.messages.all() if selected_ticket else []
+
+    context = {
+        'tickets': tickets,
+        'selected_ticket': selected_ticket,
+        'messages': messages_qs,
+        'ticket_form': ticket_form,
+        'reply_form': reply_form,
+        'message_form': message_form,
+    }
+
+    return render(request, 'merchant_support.html', context)
+
+from django.template.loader import get_template
+from django.http import HttpResponse
+from xhtml2pdf import pisa
+import io
+
+def export_payments_pdf(request):
+    merchant = request.user
+    restaurant = Restaurant.objects.get(owner=merchant)
+
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    payments = MerchantPayment.objects.filter(merchant=merchant)
+
+    if start_date:
+        payments = payments.filter(payment_date__date__gte=start_date)
+    if end_date:
+        payments = payments.filter(payment_date__date__lte=end_date)
+
+    template_path = 'merchantPaymentPDF.html'
+    context = {'payments': payments, 'restaurant': restaurant}
+
+    # Render the template
+    template = get_template(template_path)
+    html = template.render(context)
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Payment_History_{restaurant.name}.pdf"'
+
+    pisa_status = pisa.CreatePDF(io.BytesIO(html.encode('UTF-8')), dest=response)
+    if pisa_status.err:
+        return HttpResponse('We had some errors with PDF generation <pre>' + html + '</pre>')
+    return response

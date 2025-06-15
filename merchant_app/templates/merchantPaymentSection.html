@@ -16,50 +16,60 @@
     
     <!-- Net Sales -->
     <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
-      <p class="text-xs text-gray-500">Your Net Share</p>
-      <p class="mt-1 text-xl font-semibold text-green-600">₹{{ merchant_share|floatformat:2 }}</p>
+      <p class="text-xs text-gray-500">Pending Amount</p>
+      <p class="mt-1 text-xl font-semibold text-red-500">₹{{ pending_amount|floatformat:2 }}</p>
     </div>
 
     <!-- Last Week Sales -->
     <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
-      <p class="text-xs text-gray-500">Last Week</p>
-      <p class="mt-1 text-xl font-semibold text-green-600">₹{{ weekly_merchant_share|floatformat:2 }}</p>
+      <p class="text-xs text-gray-500">Amount Paid</p>
+      <p class="mt-1 text-xl font-semibold text-green-600">₹{{ paid_amount|floatformat:2 }}</p>
     </div>
 
     <!-- Paid -->
     <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
-      <p class="text-xs text-gray-500">Amount Paid</p>
-      <p class="mt-1 text-xl font-semibold text-yellow-600">₹{{ paid_amount|floatformat:2 }}</p>
+      <p class="text-xs text-gray-500">Last Week Sales</p>
+      <p class="mt-1 text-xl font-semibold text-green-600">₹{{ weekly_merchant_share|floatformat:2 }}</p>
     </div>
 
     <!-- Pending -->
     <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 hover:shadow-md transition">
-      <p class="text-xs text-gray-500">Pending Amount (Share)</p>
-      <p class="mt-1 text-xl font-semibold text-red-600">₹{{ pending_amount|floatformat:2 }}</p>
+      <p class="text-xs text-gray-500">Net Sales</p>
+      <p class="mt-1 text-xl font-semibold text-green-600">₹{{ merchant_share|floatformat:2 }}</p>
     </div>
   </div>
 
+<!-- Payment Section Container -->
+<div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 space-y-6">
+  
   <!-- Filter Bar -->
-  <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-    <form method="get" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-      <div>
-        <label for="start_date" class="block text-xs font-medium text-gray-700">Start Date</label>
-        <input type="date" name="start_date" value="{{ request.GET.start_date }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs">
-      </div>
-      <div>
-        <label for="end_date" class="block text-xs font-medium text-gray-700">End Date</label>
-        <input type="date" name="end_date" value="{{ request.GET.end_date }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs">
-      </div>
-      <div class="sm:col-span-2">
-        <button type="submit" class="w-full sm:w-auto px-4 py-1.5 text-white bg-indigo-600 hover:bg-indigo-700 font-medium text-sm rounded-md transition">
-          🔍 Filter
-        </button>
-      </div>
-    </form>
-  </div>
+  <form method="get" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+    <div>
+      <label for="start_date" class="block text-xs font-medium text-gray-700">Start Date</label>
+      <input type="date" name="start_date" value="{{ request.GET.start_date }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs">
+    </div>
+    <div>
+      <label for="end_date" class="block text-xs font-medium text-gray-700">End Date</label>
+      <input type="date" name="end_date" value="{{ request.GET.end_date }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs">
+    </div>
+<div class="flex items-center gap-4">
+  <!-- Filter Button -->
+  <button type="submit"
+    class="flex items-center justify-center gap-1 px-4 py-2 bg-red-500  text-white text-sm font-medium rounded-full shadow transition duration-200">
+    <span>Filter</span>
+  </button>
+
+  <!-- Download Button -->
+  <a href="{% url 'export_payments_pdf' %}?start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}"
+     class="flex items-center justify-center gap-1 px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-full shadow transition duration-200">
+    <span>Download PDF</span>
+  </a>
+</div>
+
+  </form>
 
   <!-- Payment History Table -->
-  <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 overflow-x-auto">
+  <div class="overflow-x-auto">
     <h3 class="text-base font-semibold text-gray-800 mb-3">📄 Latest Payments</h3>
 
     <table class="min-w-full divide-y divide-gray-200 text-xs text-left">
@@ -74,7 +84,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
-        {% for payment in payments|slice:":10" %}
+        {% for payment in payments %}
         <tr class="hover:bg-gray-50">
           <td class="px-3 py-2 text-gray-700">{{ payment.payment_date|date:"Y-m-d" }}</td>
           <td class="px-3 py-2 font-medium text-green-600">₹{{ payment.amount_paid|floatformat:2 }}</td>
@@ -93,12 +103,33 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="6" class="text-center py-3 text-gray-500 italic">No payments found.</td>
+          <td colspan="6" class="text-center py-3 text-gray-500 ">No payments found yet.</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+
+    <!-- Pagination Controls -->
+    <div class="mt-4 flex justify-center space-x-2">
+      {% with query_params=request.GET.urlencode %}
+        {% if page_obj.has_previous %}
+          <a href="?{% if query_params %}{{ query_params|cut:'page='|cut:'&' }}&{% endif %}page={{ page_obj.previous_page_number }}"
+             class="px-4 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100">
+            ⬅ Previous
+          </a>
+        {% endif %}
+
+        {% if page_obj.has_next %}
+          <a href="?{% if query_params %}{{ query_params|cut:'page='|cut:'&' }}&{% endif %}page={{ page_obj.next_page_number }}"
+             class="px-4 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700">
+            See More ➡
+          </a>
+        {% endif %}
+      {% endwith %}
+    </div>
   </div>
+</div>
+
 
 </section>
 {% endblock %}

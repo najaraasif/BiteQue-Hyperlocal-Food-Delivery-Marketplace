@@ -54,7 +54,6 @@ class RestaurantMenu(models.Model):
     prep_time = models.PositiveIntegerField()
     sizes_categories = models.ForeignKey(SizeCategory,on_delete=models.CASCADE, related_name='menu_items')  # 👈 new field
 
-
     def __str__(self):
         return f"{self.name} - {self.restaurant.name}"
 
@@ -115,3 +114,65 @@ class MerchantEarning(models.Model):
         verbose_name = "Merchant Earning"
         verbose_name_plural = "Merchant Earnings"
         unique_together = ('merchant', 'restaurant')
+
+class Review(models.Model):
+    restaurant = models.ForeignKey('Restaurant', on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.IntegerField(choices=[(i, str(i)) for i in range(1, 6)])
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Review by {self.user.username} for {self.restaurant.name}"
+    
+from django.db import models
+from django.contrib.auth.models import User
+import uuid
+import string
+import random
+def generate_ticket_id():
+    length = 7
+    chars = string.digits  
+    while True:
+        new_id = ''.join(random.choices(chars, k=length))
+        if not Ticket.objects.filter(ticket_id=new_id).exists():
+            return new_id
+        
+class Ticket(models.Model):
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('in_progress', 'In Progress'),
+        ('closed', 'Closed'),
+    ]
+
+    CATEGORY_CHOICES = [
+        ('technical', 'Technical Issue'),
+        ('billing', 'Billing'),
+        ('general', 'General Inquiry'),
+        ('other', 'Other'),
+    ]
+
+    ticket_id = models.CharField(max_length=6, unique=True, editable=False, default=generate_ticket_id)
+    merchant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tickets')
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    subject = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.ticket_id} - {self.subject} ({self.get_status_display()})"
+
+
+class TicketMessage(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    image = models.ImageField(upload_to='support_images/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Message by {self.sender} on {self.created_at.strftime('%Y-%m-%d %H:%M')}"

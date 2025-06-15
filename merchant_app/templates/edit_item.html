@@ -27,7 +27,7 @@
       <!-- Name -->
       <div>
         <label for="{{ form.name.id_for_label }}" class="block text-gray-700 mb-1">Item Name</label>
-        <div class="border rounded px-2 py-1">
+        <div>
           {{ form.name }}
         </div>
       </div>
@@ -36,13 +36,13 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label for="{{ form.category.id_for_label }}" class="block text-gray-700 mb-1">Category</label>
-          <div class="border rounded px-2 py-1">
+          <div>
             {{ form.category }}
           </div>
         </div>
         <div>
-          <label for="{{ form.sizes_categories.id_for_label }}" class="block text-gray-700 mb-1">Size Category</label>
-          <div class="border rounded px-2 py-1">
+          <label for="{{ form.sizes_categories.id_for_label }}" class="block text-gray-700 mb-1">Size</label>
+          <div>
             {{ form.sizes_categories }}
           </div>
         </div>
@@ -51,7 +51,7 @@
       <!-- Description -->
       <div>
         <label for="{{ form.description.id_for_label }}" class="block text-gray-700 mb-1">Description</label>
-        <div class="border rounded px-2 py-1">
+        <div>
           {{ form.description }}
         </div>
       </div>
@@ -60,13 +60,13 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label for="{{ form.price.id_for_label }}" class="block text-gray-700 mb-1">Price</label>
-          <div class="border rounded px-2 py-1">
+          <div>
             {{ form.price }}
           </div>
         </div>
         <div>
           <label for="{{ form.prep_time.id_for_label }}" class="block text-gray-700 mb-1">Preparation Time (mins)</label>
-          <div class="border rounded px-2 py-1">
+          <div>
             {{ form.prep_time }}
           </div>
         </div>
@@ -75,7 +75,7 @@
       <!-- Image -->
       <div>
         <label for="{{ form.image.id_for_label }}" class="block text-gray-700 mb-1">Image</label>
-        <div class="border rounded px-2 py-1">
+        <div>
           {{ form.image }}
         </div>
       </div>
@@ -89,7 +89,7 @@
       <!-- Submit -->
       <div class="pt-2 text-right">
         <button type="submit"
-          class="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-sm font-medium transition">
+          class="bg-red-500 text-white px-4 py-1.5 rounded text-sm font-medium transition">
           Update Item
         </button>
       </div>

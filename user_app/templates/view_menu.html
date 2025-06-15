@@ -2,30 +2,284 @@
 {% load static %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Restaurant Menu</h2>
-    <div class="row">
-        {% for item in menus %}
-        <div class="col-md-4">
-            <div class="card mb-3">
-                {% if item.image %}
-                    <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.name }}">
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- 🧑‍🍳 Restaurant Header -->
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-8 border border-gray-100">
+            <!-- Mobile: Full width hero image -->
+            <div class="relative h-68 md:h-56 lg:hidden">
+                {% if restaurant.image %}
+                    <img src="{{ restaurant.image.url }}" alt="{{ restaurant.name }}" 
+                         class="w-full h-full object-cover">
                 {% else %}
-                    <img src="{% static 'default_dish.jpg' %}" class="card-img-top" alt="No image">
+                    <img src="{% static 'default_restaurant.png' %}" alt="Restaurant" 
+                         class="w-full h-full object-cover">
                 {% endif %}
-                <div class="card-body">
-                    <h5 class="card-title">{{ item.name }}</h5>
-                    <p class="card-text"><strong>Category:</strong> {{ item.category }}</p>
-                    <p class="card-text">{{ item.description }}</p>
-                    <p class="card-text"><strong>Prep Time:</strong> {{ item.prep_time }} mins</p>
-                    <p class="card-text"><strong>Price:</strong> ₹{{ item.price }}</p>
-                    <p class="card-text"><strong>Ingredients:</strong> {{ item.ingredients }}</p>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+                <div class="absolute top-4 right-4 w-8 h-8 {% if restaurant.is_available %}bg-green-500{% else %}bg-red-500{% endif %} rounded-full border-3 border-white shadow-lg"></div>
+                <div class="absolute bottom-4 left-4 right-4">
+                    <h1 class="text-2xl font-bold text-white mb-1 drop-shadow-lg">{{ restaurant.name }}</h1>
+                    <p class="text-white/90 text-sm flex items-center gap-1 drop-shadow">
+                        📍 {{ restaurant.address }}, {{ restaurant.city }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Mobile: Content below image -->
+            <div class="p-6 lg:hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="flex items-center gap-2 font-medium text-sm px-3 py-1 rounded-full {% if restaurant.is_available %}text-green-700 bg-green-100{% else %}text-red-700 bg-red-100{% endif %}">
+                        ⏰ {% if restaurant.is_available %}Open Now{% else %}Closed{% endif %}
+                    </span>
+                    <div class="flex items-center gap-2 bg-yellow-50 px-3 py-2 rounded-lg">
+                        <span class="text-yellow-500">★</span>
+                        <span class="font-semibold text-gray-800">{{ average_rating }} / 5</span>
+                    </div>
+                </div>
+                
+                <p class="text-gray-600 mb-4">{{ restaurant.email }}</p>
+                
+                <div class="flex gap-3">
+                    {% if restaurant.contact_number %}
+                        <a href="tel:{{ restaurant.contact_number }}" 
+                           class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c] transition-colors">
+                            📞 Call Now
+                        </a>
+                    {% endif %}
+                    {% if restaurant.address %}
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ restaurant.name }},{{ restaurant.address }}" 
+                           target="_blank"
+                           class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c] transition-colors">
+                            📍 View Map
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Desktop: Original horizontal layout -->
+            <div class="hidden lg:flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 p-6">
+                <!-- Restaurant Info -->
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6 flex-1">
+                    <div class="relative">
+                        {% if restaurant.image %}
+                            <img src="{{ restaurant.image.url }}" alt="{{ restaurant.name }}" 
+                                 class="w-24 h-24 rounded-2xl object-cover shadow-md">
+                        {% else %}
+                            <img src="{% static 'default_restaurant.png' %}" alt="Restaurant" 
+                                 class="w-24 h-24 rounded-2xl object-cover shadow-md">
+                        {% endif %}
+                        <div class="absolute -top-2 -right-2 w-6 h-6 {% if restaurant.is_available %}bg-green-500{% else %}bg-red-500{% endif %} rounded-full border-2 border-white"></div>
+                    </div>
+                    
+                    <div class="flex-1">
+                        <h1 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-2">{{ restaurant.name }}</h1>
+                        <p class="text-gray-600 mb-1">{{ restaurant.address }}, {{ restaurant.city }}</p>
+                        <p class="text-gray-600 mb-3">{{ restaurant.email }}</p>
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <span class="inline-flex items-center px-3 py-1 {% if restaurant.is_available %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %} rounded-full text-sm font-medium">
+                                <span class="w-2 h-2 {% if restaurant.is_available %}bg-green-500{% else %}bg-red-500{% endif %} rounded-full mr-2"></span>
+                                {% if restaurant.is_available %}Open Now{% else %}Closed{% endif %}
+                            </span>
+                            <div class="flex items-center gap-1 bg-yellow-100 rounded-full">
+                                <span class="text-yellow-500">★</span>
+                                <span class="font-semibold text-gray-800">{{ average_rating}} / 5</span>
+                                <span class="text-gray-500 text-sm">(ratings)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex gap-3 w-full sm:w-auto">
+                    {% if restaurant.contact_number %}
+                        <a href="tel:{{ restaurant.contact_number }}" 
+                           class="flex-1 sm:flex-none px-4 py-3 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c] transition-all transform hover:scale-105 text-center">
+                            📞 Call Now
+                        </a>
+                    {% endif %}
+                    {% if restaurant.address %}
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ restaurant.name }},{{ restaurant.address }}" 
+                           target="_blank"
+                           class="flex-1 sm:flex-none px-4 py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-all transform hover:scale-105 text-center">
+                            📍 View Map
+                        </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
-        {% empty %}
-        <p>No menu items available for this restaurant.</p>
-        {% endfor %}
+
+        <!-- 🔍 Menu Filter Section -->
+        <div class="mb-8">
+            <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 text-center mb-6">
+                Explore Menu
+            </h2>
+            
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                        <select id="categoryFilter"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF0B55]">
+                            <option value="">All Categories</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat|lower }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Menu</label>
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            <input type="text" id="searchInput" placeholder="Search by name..."
+                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF0B55]">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🍽️ Menu Grid -->
+        <div id="menuGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-16">
+            {% for item in menus %}
+            <div class="menu-item bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden transform hover:scale-105"
+                 data-name="{{ item.name|lower }}" data-category="{{ item.category|lower }}">
+                <div class="relative h-48 overflow-hidden">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.name }}"
+                             class="w-full h-full object-cover transition-transform duration-300 hover:scale-110">
+                    {% else %}
+                        <img src="{% static 'default_dish.jpg' %}" alt="No image"
+                             class="w-full h-full object-cover opacity-70 transition-transform duration-300 hover:scale-110">
+                    {% endif %}
+                    <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium text-gray-700">
+                        {{ item.prep_time }} mins
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="mb-3">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">{{ item.name }}</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">{{ item.description }}</p>
+                    </div>
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded-full">{{ item.category }}</span>
+                        <span class="text-xl font-bold text-[#FF0B55]">₹{{ item.price }}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <form method="POST" action="{% url 'add_to_cart' item.id %}" class="flex-1">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 text-sm">
+                                Add to Cart
+                            </button>
+                        </form>
+                        <a href="{% url 'order_now' item.id %}"
+                           class="flex-1 py-2 px-4 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c] text-sm text-center">
+                            Order Now
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- ❌ No Results Message -->
+        <div id="noResults" class="hidden text-center py-16 bg-white rounded-2xl shadow-lg">
+            <div class="text-6xl mb-4">🔍</div>
+            <p class="text-gray-500 mb-4">No menu items found.</p>
+            <button onclick="clearFilters()" class="px-6 py-3 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c]">
+                Reset Filters
+            </button>
+        </div>
+
+        <!-- 💬 Customer Reviews Section -->
+<!-- 💬 Customer Reviews Section -->
+<div class="mt-16">
+    <h3 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-8 text-center">Customer Reviews</h3>
+
+    {% if restaurant.reviews.all %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {% for review in restaurant.reviews.all %}
+                <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                {{ review.user.username|first|upper }}
+                            </div>
+                            <span class="font-semibold text-gray-800">{{ review.user.username }}</span>
+                        </div>
+                        <div class="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg">
+                            <span class="text-yellow-500">★</span>
+                            <span class="font-medium text-yellow-600">{{ review.rating }}</span>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 leading-relaxed mb-3">{{ review.comment }}</p>
+                    <p class="text-xs text-gray-400">{{ review.created_at|date:"F j, Y" }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-16 bg-white rounded-2xl shadow-lg mb-8">
+            <div class="text-6xl mb-4">💬</div>
+            <p class="text-gray-500 mb-4">No reviews yet.</p>
+        </div>
+    {% endif %}
+
+    <!-- ✅ Always show review button -->
+    <div class="text-center">
+        <a href="{% url 'submit_review' restaurant.id %}" class="px-6 py-3 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c] transition-colors">
+            Write a Review
+        </a>
     </div>
 </div>
+    </div>
+</div>
+
+<!-- ✅ Real-Time Search & Category Script -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const items = document.querySelectorAll('.menu-item');
+    const noResults = document.getElementById('noResults');
+
+    function filterMenu() {
+        const query = searchInput.value.toLowerCase().trim();
+        const selectedCategory = categoryFilter.value;
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const name = item.getAttribute('data-name');
+            const category = item.getAttribute('data-category');
+
+            const matchesName = !query || name.includes(query);
+            const matchesCategory = !selectedCategory || category === selectedCategory;
+
+            if (matchesName && matchesCategory) {
+                item.style.display = 'block';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        noResults.classList.toggle('hidden', visibleCount > 0);
+    }
+
+    function clearFilters() {
+        searchInput.value = '';
+        categoryFilter.value = '';
+        filterMenu();
+    }
+
+    searchInput.addEventListener('input', filterMenu);
+    categoryFilter.addEventListener('change', filterMenu);
+
+    window.clearFilters = clearFilters;
+});
+</script>
 {% endblock %}

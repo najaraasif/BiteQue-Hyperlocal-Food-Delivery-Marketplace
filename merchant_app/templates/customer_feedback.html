@@ -1,45 +1,92 @@
 {% extends 'dashboardBase.html' %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="flex items-center justify-between mb-6">
-    <h2 class="text-2xl font-semibold text-gray-800">Customer Feedback</h2>
-    <span class="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded-full">
-      {{ feedbacks|length }} feedback{{ feedbacks|length|pluralize }}
-    </span>
-  </div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
 
-  {% if feedbacks %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {% for feedback in feedbacks %}
-        <div class="bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-          <div class="p-5 space-y-3">
-            <div class="flex justify-between items-center">
-              <h3 class="text-lg font-medium text-blue-700">Order #{{ feedback.order.id }}</h3>
-              <span class="text-yellow-500 font-semibold">{{ feedback.rating }}★</span>
-            </div>
+  <!-- 📋 Feedback Section -->
+  <section>
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-bold text-gray-900">Customer Feedback</h2>
+      <span class="inline-flex items-center px-3 py-1 text-sm font-semibold bg-gray-100 text-gray-700 rounded-full">
+        {{ feedbacks|length }} Feedback{{ feedbacks|length|pluralize }}
+      </span>
+    </div>
 
-            <p class="text-sm text-gray-600">
-              <span class="font-semibold">Customer:</span> {{ feedback.customer.username }}
-            </p>
-
-            {% if feedback.comments %}
-              <p class="text-gray-700 text-sm">{{ feedback.comments }}</p>
-            {% else %}
-              <p class="italic text-gray-400 text-sm">No comments provided.</p>
-            {% endif %}
-
-            <div class="text-right">
-              <p class="text-xs text-gray-500">Submitted on {{ feedback.created_at|date:"M d, Y H:i" }}</p>
+    {% if feedbacks %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for feedback in feedbacks %}
+          <div class="bg-white border border-gray-100 shadow-sm rounded-2xl transition hover:shadow-md">
+            <div class="p-5 space-y-3">
+              <div class="flex justify-between items-center">
+                <h3 class="text-base font-semibold text-gray-800">Order #{{ feedback.order.id }}</h3>
+                <span class="text-yellow-500 font-bold">{{ feedback.rating }}★</span>
+              </div>
+              <p class="text-sm text-gray-600">
+                <span class="font-medium">Customer:</span> {{ feedback.customer.username }}
+              </p>
+              <p class="text-gray-700 text-sm">
+                {{ feedback.comments|default:"No comments provided." }}
+              </p>
+              <p class="text-right text-xs text-gray-400">
+                {{ feedback.created_at|date:"M d, Y · H:i" }}
+              </p>
             </div>
           </div>
-        </div>
-      {% endfor %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="bg-white text-center py-10 rounded-2xl shadow-sm">
+        <p class="text-gray-500 text-base">No feedback available yet.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- ⭐ Reviews Section -->
+  <section>
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-bold text-gray-900">Recent Reviews</h2>
+      <span class="text-sm text-gray-500">
+        {% if show_all_reviews %}
+          Showing all reviews
+        {% else %}
+          Showing latest 5
+        {% endif %}
+      </span>
     </div>
-  {% else %}
-    <div class="mt-6 text-center">
-      <p class="text-gray-500 text-lg">No feedback available yet.</p>
-    </div>
-  {% endif %}
+
+    {% if reviews %}
+      <div class="space-y-4">
+        {% for review in reviews %}
+          <div class="bg-white border border-gray-100 p-5 rounded-xl shadow-sm hover:shadow-md transition">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center font-semibold">
+                  {{ review.user.username|first|upper }}
+                </div>
+                <span class="font-medium text-gray-800">{{ review.user.username }}</span>
+              </div>
+              <span class="text-yellow-500 font-semibold">{{ review.rating }}★</span>
+            </div>
+            <p class="text-gray-700 text-sm mb-2">{{ review.comment }}</p>
+            <p class="text-xs text-gray-400">{{ review.created_at|date:"F j, Y" }}</p>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- 🔄 See More / Less Toggle -->
+      <div class="mt-6 text-center">
+        {% if show_all_reviews %}
+          <a href="?all=0" class="text-sm font-medium text-red-500 hover:underline">Show less</a>
+        {% else %}
+          <a href="?all=1" class="text-sm font-medium text-red-500 hover:underline">See all reviews</a>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="bg-white py-10 text-center rounded-xl shadow-sm">
+        <p class="text-gray-500">No reviews available yet.</p>
+      </div>
+    {% endif %}
+  </section>
+
 </div>
 {% endblock %}

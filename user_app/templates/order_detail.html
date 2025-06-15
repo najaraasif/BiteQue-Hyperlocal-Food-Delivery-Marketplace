@@ -76,45 +76,50 @@
         </div>
 
         <!-- Order Items -->
-        <div class="p-6">
-            <h2 class="text-lg font-bold text-gray-800 mb-3">Your Items</h2>
-            <div class="space-y-3">
-                {% for item in order.menu_items.all %}
-                <div class="flex justify-between py-2">
-                    <div>
-                        <p class="font-medium">{{ item.name }}</p>
-                        <p class="text-sm text-gray-600">{{ item.description|truncatechars:40 }}</p>
-                    </div>
-                    <p class="font-medium">₹{{ item.price }}</p>
-                </div>
-                {% endfor %}
-            </div>
+<div class="p-6">
+    <h2 class="text-lg font-bold text-gray-800 mb-3">Your Items</h2>
+    <div class="space-y-3">
+        {% for item in order_items %}
+<div class="flex justify-between py-2 border-b pb-2">
+    <div>
+        <p class="font-medium">{{ item.item.name }}</p>
+        <p class="text-sm text-gray-600">Quantity: {{ item.quantity }}</p>
+        <p class="text-sm text-gray-600">
+            ₹{{ item.item.price|floatformat:2 }} × {{ item.quantity }} = 
+            <span class="font-semibold">₹{{ item.subtotal|floatformat:2 }}</span>
+        </p>
+    </div>
+    <p class="font-medium text-right text-gray-800">₹{{ item.subtotal|floatformat:2 }}</p>
+</div>
+{% endfor %}
 
-            <!-- Order Summary -->
-            <div class="mt-6 border-t pt-4">
-                <div class="flex justify-between py-1">
-                    <span>Subtotal</span>
-                    <span>₹{{ order.total }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                    <span>Delivery Fee</span>
-                    <span>₹{{ delivery_fee|floatformat:2 }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                    <span>Platform Tax</span>
-                    <span>₹{{ gst }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                    <span>Pakaging Charges</span>
-                    <span>₹{{ pakaging_charges}}</span>
-                </div>
-                <div class="flex justify-between py-1 font-bold text-lg mt-2">
-                    <span>Total</span>
-                    <span>₹{{ order_total }}</span>
+    </div>
 
-                </div>
-            </div>
+    <!-- Order Summary -->
+    <div class="mt-6 border-t pt-4">
+        <div class="flex justify-between py-1">
+            <span>Subtotal</span>
+            <span>₹{{ order.total }}</span>
         </div>
+        <div class="flex justify-between py-1">
+            <span>Delivery Fee</span>
+            <span>₹{{ delivery_fee|floatformat:2 }}</span>
+        </div>
+        <div class="flex justify-between py-1">
+            <span>Platform Tax</span>
+            <span>₹{{ gst }}</span>
+        </div>
+        <div class="flex justify-between py-1">
+            <span>Pakaging Charges</span>
+            <span>₹{{ pakaging_charges }}</span>
+        </div>
+        <div class="flex justify-between py-1 font-bold text-lg mt-2">
+            <span>Total</span>
+            <span>₹{{ order_total }}</span>
+        </div>
+    </div>
+</div>
+
 
         <!-- Support Button -->
         <div class="px-6 pb-6">

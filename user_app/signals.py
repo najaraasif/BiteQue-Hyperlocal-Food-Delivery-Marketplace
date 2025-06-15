@@ -4,8 +4,6 @@ from .models import Order
 from rider_app.models import Rider, OrderAssignment
 from geopy.geocoders import Nominatim
 
-
-
 @receiver(post_save, sender=Order)
 def create_assignments(sender, instance, **kwargs):
     if instance.status == 'ready':

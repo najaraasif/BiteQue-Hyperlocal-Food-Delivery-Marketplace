@@ -13,26 +13,26 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Total Revenue -->
     <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-[#FF0B55]">
-      <p class="text-sm text-gray-500 mb-1">Total Revenue</p>
-      <p class="text-2xl font-semibold text-gray-800">₹{{ total_revenue }}</p>
+      <p class="text-sm text-gray-500 mb-1">Today</p>
+      <p class="text-2xl font-semibold text-red-500">₹{{ today_revenue }}</p>
     </div>
 
     <!-- Monthly Revenue -->
-    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-[#FF0B55]">
-      <p class="text-sm text-gray-500 mb-1">This Month</p>
-      <p class="text-2xl font-semibold text-gray-800">₹{{ month_revenue }}</p>
-    </div>
-
-    <!-- Weekly Revenue -->
     <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-[#FF0B55]">
       <p class="text-sm text-gray-500 mb-1">This Week</p>
       <p class="text-2xl font-semibold text-gray-800">₹{{ week_revenue }}</p>
     </div>
 
+    <!-- Weekly Revenue -->
+    <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-[#FF0B55]">
+      <p class="text-sm text-gray-500 mb-1">This Month</p>
+      <p class="text-2xl font-semibold text-gray-800">₹{{ month_revenue }}</p>
+    </div>
+
     <!-- Today's Revenue -->
     <div class="bg-white rounded-lg shadow-md p-5 border-t-4 border-[#FF0B55]">
-      <p class="text-sm text-gray-500 mb-1">Today</p>
-      <p class="text-2xl font-semibold text-gray-800">₹{{ today_revenue }}</p>
+      <p class="text-sm text-gray-500 mb-1">Total Revenue</p>
+      <p class="text-2xl font-semibold text-gray-800">₹{{ total_revenue }}</p>
     </div>
   </div>
 

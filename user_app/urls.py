@@ -1,7 +1,7 @@
 from django.urls import path
-from .views import home, about, contact, privacy, careers, terms, ResponsibleDisclosure, addRestaurant, rideWithUs
+from .views import home, about, contact, payment_success, privacy, careers, terms, ResponsibleDisclosure, addRestaurant, rideWithUs
 from .views import userLogin, user_view_menu, UserRegistration_view,user_logout
-from .views  import registration_success, user_profile,order_confirmation, order_detail, profile_section, dashboard_home,user_active_orders,order_user_history,support, view_cart, add_to_cart, remove_from_cart
+from .views  import registration_success, user_profile,order_confirmation, order_detail, profile_section, dashboard_home,user_active_orders,order_user_history,support, view_cart, add_to_cart, remove_from_cart, change_quantity
 from django.contrib.auth.views import LogoutView
 
 from user_app import views
@@ -32,10 +32,14 @@ urlpatterns = [
     path('user/cart/', view_cart, name='view_cart'),
     path('user/cart/add/<int:item_id>/', add_to_cart, name='add_to_cart'),
     path('user/cart/remove/<int:item_id>/', remove_from_cart, name='remove_from_cart'),
+    path('user/cart/<int:item_id>/<str:action>/', change_quantity, name='change_quantity'),
+    path('order-now/<int:item_id>/', views.order_now, name='order_now'),
+
     path('logout/', user_logout, name='user_logout'),
     path('checkout/', views.checkout, name='checkout'),
     path('order-confirmation/<int:order_id>/', order_confirmation, name='order_confirmation'),
+    path('payment/success/', payment_success, name='payment_success'),
 
-
+    path('restaurant/<int:restaurant_id>/review/', views.submit_review, name='submit_review'),
 
 ]

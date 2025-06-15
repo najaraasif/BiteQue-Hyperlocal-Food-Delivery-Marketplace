@@ -35,10 +35,14 @@ urlpatterns = [
     path('merchant/bank-accounts/delete/<int:account_id>/', views.delete_bank_account, name='delete_bank_account'),
 
     path('merchant/payments/', views.merchant_payment_section_view, name='merchant_payment_section'),
+    path('merchant/payments/export/', views.export_payments_pdf, name='export_payments_pdf'),
+
 
     path('merchant/revenue-report/', views.merchant_revenue_report, name='merchant_revenue_report'),
     path('merchant/order-report/', views.order_reports, name='order_report'),
-    path('merchant/feedbacks/', views.feedback_list, name='customer_feedback'),
+    path('merchant/feedbacks/', views.customer_feedback, name='customer_feedback'),
+    path('merchant/support/', views.merchant_support, name='support_portal'),
+
 
 
     path('merchant/check_notifications/', views.check_notifications, name='check_notifications'),

@@ -19,71 +19,108 @@ from django.contrib.auth import logout
 from django.shortcuts import render
 from django.urls import reverse
 
+from django.views.decorators.csrf import csrf_exempt
 
+from decimal import Decimal,ROUND_HALF_UP
+from django.conf import settings
+import razorpay
+
+from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import redirect
+from django.contrib import messages
+from .models import Order
+from merchant_app.models import Review     
+from django.db.models import Avg  
+from django.template.loader import render_to_string
+from django.http import JsonResponse
 
 def home(request):
     categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
     approved_restaurants = Restaurant.objects.filter(is_approved=True)
     sizes = SizeCategory.objects.all()
     items = RestaurantMenu.objects.filter(restaurant__in=approved_restaurants)
-    
+
     query = request.GET.get('q')  
     if query:
         items = items.filter(name__icontains=query)
-
+        
+    for restaurant in approved_restaurants:
+        restaurant.avg_rating = restaurant.reviews.aggregate(avg=Avg('rating'))['avg'] or 0
     context = {
         'categories': categories,
         'approved_restaurants': approved_restaurants,
         'items': items,  
         'size': sizes,
+
     }
     return render(request, 'home.html', context)
 
 
-from decimal import Decimal
+
+from decimal import Decimal, InvalidOperation
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.http import JsonResponse
 from django.conf import settings
-
-
+import razorpay
+from .models import Order,OrderMenuItem  
 
 def checkout(request):
     if not request.user.is_authenticated:
         return redirect(f"{reverse('user_login')}?next={request.path}")
 
     cart = request.session.get('cart', {})
+    if not cart:
+        return redirect('home')
+
     cart_items = []
-    total_price = 0
+    item_subtotal = Decimal('0.00')
+    total_platform_gst = Decimal('0.00')
+    packaging_charges = Decimal('20.00')
+    delivery_fee = Decimal('0.00')
+    distance_km = Decimal('0.00')
     restaurant = None
-    total_platform_gst = 0
-    packaging_charges = 20
 
     for item_id, item_data in cart.items():
         menu_item = get_object_or_404(RestaurantMenu, id=item_id)
-        quantity = item_data['quantity']
+        quantity = item_data.get('quantity', 1)
         subtotal = menu_item.price * quantity
-        gst = menu_item.price * Decimal('0.05')
+        gst = (menu_item.price * Decimal('0.05')) * quantity
+        item_subtotal += subtotal
         total_platform_gst += gst
 
-        total_price = subtotal 
-        final_total = total_price + packaging_charges + total_platform_gst
+        if not restaurant:
+            restaurant = menu_item.restaurant
 
         cart_items.append({
             'id': menu_item.id,
             'name': menu_item.name,
             'quantity': quantity,
-            'subtotal': round(subtotal, 2),
             'price': menu_item.price,
-            'total_price': final_total,
-
+            'subtotal': round(subtotal, 2),
         })
 
-        if not restaurant:
-            restaurant = menu_item.restaurant
-
-    if request.method == 'POST':
-        dest_lat = request.POST.get('dest_lat') or None
-        dest_lon = request.POST.get('dest_lon') or None
-
+    if request.method == 'POST' and request.POST.get('create_order') == '1':
         try:
+            dest_lat = request.POST.get('dest_lat')
+            dest_lon = request.POST.get('dest_lon')
+            delivery_fee_str = request.POST.get('calculated_delivery_fee', '0')
+            distance_km_str = request.POST.get('calculated_distance_km', '0')
+
+            try:
+                delivery_fee = Decimal(delivery_fee_str).quantize(Decimal('0.00'))
+                distance_km = Decimal(distance_km_str).quantize(Decimal('0.00'))
+            except InvalidOperation:
+                delivery_fee = Decimal('0.00')
+                distance_km = Decimal('0.00')
+
+            combined_total = item_subtotal + total_platform_gst + packaging_charges
+            final_total = (combined_total + delivery_fee).quantize(Decimal('0.00'))
+            razorpay_amount = int(final_total * 100)  # in paisa
+
+            # Create the order
             order = Order.objects.create(
                 user=request.user,
                 restaurant=restaurant,
@@ -92,47 +129,115 @@ def checkout(request):
                 customer_contact=request.POST.get('contact_number'),
                 delivery_address=request.POST.get('delivery_address'),
                 special_instructions=request.POST.get('special_instructions'),
-                total=total_price,
+                total=item_subtotal,
+                item_gst=total_platform_gst,
+                packaging_charges=packaging_charges,
+                final_total=final_total,
+                distance_km=distance_km,
+                distance_earning=delivery_fee,
                 dest_lat=Decimal(dest_lat) if dest_lat else None,
-                dest_lon=Decimal(dest_lon) if dest_lon else None
+                dest_lon=Decimal(dest_lon) if dest_lon else None,
+                is_paid=False
             )
 
-            for item in cart_items:
-                menu_item = RestaurantMenu.objects.get(id=item['id'])
-                order.menu_items.add(menu_item)
+            # ✅ Add each item to the OrderMenuItem model with quantity and price
+            for item_id, item_data in cart.items():
+                menu_item = RestaurantMenu.objects.get(id=item_id)
+                quantity = item_data.get('quantity', 1)
+                OrderMenuItem.objects.create(
+                    order=order,
+                    menu_item=menu_item,
+                    quantity=quantity,
+                    price=menu_item.price
+                )
 
-            if dest_lat and dest_lon and restaurant.lat and restaurant.lon:
-                try:
-                    # Use OSRM with fallback to Haversine
-                    distance_km = calculate_osrm_distance(
-                        float(restaurant.lat),
-                        float(restaurant.lon),
-                        float(dest_lat),
-                        float(dest_lon),
-                    )
-                    order.distance_km = Decimal(str(distance_km)).quantize(Decimal('0.00'))
-                    order.distance_earning = order.distance_km * Decimal('10')
-                    order.save(update_fields=['distance_km', 'distance_earning'])
-                except Exception as e:
-                    messages.error(request, f"Failed to calculate road distance: {str(e)}")
+            # Razorpay order create
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            razorpay_order = client.order.create({
+                'amount': razorpay_amount,
+                'currency': 'INR',
+                'payment_capture': '1',
+                'notes': {
+                    'order_id': str(order.id),
+                    'actual_amount': str(order.final_total)
+                }
+            })
 
-            request.session['cart'] = {}
-            return redirect('order_confirmation', order_id=order.id)
+            order.razorpay_order_id = razorpay_order['id']
+            order.save(update_fields=['razorpay_order_id'])
+
+            return JsonResponse({
+                'success': True,
+                'razorpay_key': settings.RAZORPAY_KEY_ID,
+                'razorpay_order_id': razorpay_order['id'],
+                'razorpay_amount': razorpay_amount,
+                'amount': str(order.final_total),
+                'order_id': order.id
+            })
 
         except Exception as e:
-            messages.error(request, f"Error creating order: {str(e)}")
-            return redirect('checkout')
+            return JsonResponse({'success': False, 'error': str(e)})
 
+    # GET request view rendering
     context = {
         'cart_items': cart_items,
         'packaging_charges': packaging_charges,
         'platform_gst': round(total_platform_gst, 2),
-        'total_price': total_price,
+        'total_price': (item_subtotal + total_platform_gst + packaging_charges).quantize(Decimal('0.00')),
+        'delivery_fee': delivery_fee,
         'restaurant': restaurant,
         'OSRM_SERVER_URL': settings.OSRM_SERVER_URL,
-        'GOOGLE_MAPS_API_KEY': settings.GOOGLE_MAPS_API_KEY
+        'GOOGLE_MAPS_API_KEY': settings.GOOGLE_MAPS_API_KEY,
+        'user': request.user,
     }
+
     return render(request, 'checkout.html', context)
+
+
+
+
+
+
+@csrf_exempt
+def payment_success(request):
+    if request.method == 'POST':
+        print("✅ POST Received:", request.POST.dict())  # Debug
+
+        params_dict = {
+            'razorpay_order_id': request.POST.get('razorpay_order_id'),
+            'razorpay_payment_id': request.POST.get('razorpay_payment_id'),
+            'razorpay_signature': request.POST.get('razorpay_signature')
+        }
+
+        try:
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            client.utility.verify_payment_signature(params_dict)
+
+            order = Order.objects.get(razorpay_order_id=params_dict['razorpay_order_id'])
+            if order.is_paid:
+                return redirect('order_confirmation', order_id=order.id)
+
+            # Update order
+            order.razorpay_payment_id = params_dict['razorpay_payment_id']
+            order.razorpay_signature = params_dict['razorpay_signature']
+            order.is_paid = True
+            order.save(update_fields=['razorpay_payment_id', 'razorpay_signature', 'is_paid'])
+
+            if 'cart' in request.session:
+                del request.session['cart']
+
+            return redirect('order_confirmation', order_id=order.id)
+
+        except razorpay.errors.SignatureVerificationError:
+            messages.error(request, "Invalid payment signature.")
+        except Order.DoesNotExist:
+            messages.error(request, "Order not found.")
+        except Exception as e:
+            messages.error(request, f"Payment failed: {str(e)}")
+
+    return redirect('checkout')
+
+
 
 
 
@@ -250,29 +355,55 @@ def userLogin(request):
 def user_profile(request):
     return render(request, 'dashboard_home.html')
 
+
+from collections import defaultdict
+from decimal import Decimal
+from django.utils.timezone import timedelta
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import Order
+
 @login_required
 def order_detail(request, order_id):
-    order = get_object_or_404(Order.objects.select_related(
-        'restaurant__owner'
-    ).prefetch_related(
-        'menu_items'
-    ), id=order_id, user=request.user)
+    order = get_object_or_404(
+        Order.objects.select_related('restaurant__owner').prefetch_related('order_items__menu_item'),
+        id=order_id,
+        user=request.user
+    )
 
+    # Calculate subtotal from OrderMenuItem entries
+    unique_items = []
+    item_subtotal = Decimal('0.00')
+    for order_item in order.order_items.all():
+        subtotal = order_item.price * order_item.quantity
+        unique_items.append({
+            'item': order_item.menu_item,
+            'quantity': order_item.quantity,
+            'subtotal': subtotal
+        })
+        item_subtotal += subtotal
+
+    gst_tax = item_subtotal * Decimal('0.05')
     delivery_fee = order.distance_earning + Decimal('0.60')
-    gst_tax = order.total * Decimal('0.05')
-    pakaging_charges = 20
-    order_total = float(order.total + delivery_fee + gst_tax + pakaging_charges)
+    packaging_charges = Decimal('20.00')
+    order_total = item_subtotal + gst_tax + delivery_fee + packaging_charges
 
     context = {
         'order': order,
+        'order_items': unique_items,
+        'item_subtotal': round(item_subtotal, 2),
         'gst': round(gst_tax, 2),
-        'delivery_fee': delivery_fee,
-        'pakaging_charges': pakaging_charges,
+        'delivery_fee': round(delivery_fee, 2),
+        'pakaging_charges': packaging_charges,
         'order_total': round(order_total, 2),
         'eta': order.created_at + timedelta(minutes=45),
         'rider': order.assignment.rider if hasattr(order, 'assignment') else None
     }
+
     return render(request, 'order_detail.html', context)
+
+
+
 
 @login_required
 def dashboard_home(request):
@@ -353,8 +484,6 @@ def feedback_thanks(request):
 
 
 def add_to_cart(request, item_id):
-    menu_item = get_object_or_404(RestaurantMenu, id=item_id)
-
     cart = request.session.get('cart', {})
 
     if str(item_id) in cart:
@@ -367,7 +496,6 @@ def add_to_cart(request, item_id):
 
     return redirect('home')
 
-
 def view_cart(request):
     cart = request.session.get('cart', {})
     cart_items = []
@@ -375,12 +503,13 @@ def view_cart(request):
 
     for item_id, item_data in cart.items():
         menu_item = get_object_or_404(RestaurantMenu, id=item_id)
-        quantity = item_data['quantity']
+        quantity = item_data.get('quantity', 1)
         subtotal = menu_item.price * quantity
         total_price += subtotal
 
         cart_items.append({
-            'item': menu_item,
+            'id': item_id,
+            'item': menu_item,  # pass full object here
             'quantity': quantity,
             'subtotal': subtotal,
         })
@@ -393,13 +522,33 @@ def view_cart(request):
 
 def remove_from_cart(request, item_id):
     cart = request.session.get('cart', {})
-
     if str(item_id) in cart:
         del cart[str(item_id)]
         request.session['cart'] = cart
         request.session.modified = True
+    return redirect('view_cart')
+
+
+def change_quantity(request, item_id, action):
+    cart = request.session.get('cart', {})
+    item_id = str(item_id)
+
+    if item_id in cart:
+        if action == 'increase':
+            cart[item_id]['quantity'] += 1
+        elif action == 'decrease':
+            if cart[item_id]['quantity'] > 1:
+                cart[item_id]['quantity'] -= 1
+            else:
+                del cart[item_id]
+
+        request.session['cart'] = cart
+        request.session.modified = True
 
     return redirect('view_cart')
+
+
+
 
 
 def user_logout(request):
@@ -408,7 +557,66 @@ def user_logout(request):
 
 def order_confirmation(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    if not order.is_paid:
+        messages.warning(request, "Payment not completed yet")
+        return redirect('checkout')
+        
     return render(request, 'order_confirmation.html', {'order': order})
 
 
+@login_required(login_url='user_login')
+def order_now(request, item_id):
+    menu_item = get_object_or_404(RestaurantMenu, id=item_id)
 
+    request.session['cart'] = {
+        str(menu_item.id): {'quantity': 1}
+    }
+    request.session.modified = True
+
+    return redirect('checkout')
+
+def user_view_menu(request, restaurant_id):
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+    menus = RestaurantMenu.objects.filter(restaurant_id=restaurant_id, available=True)
+    categories = menus.values_list('category', flat=True).distinct()
+
+    category = request.GET.get('category')
+    query = request.GET.get('q')
+
+    if category:
+        menus = menus.filter(category=category)
+    if query:
+        menus = menus.filter(name__icontains=query)
+
+    average_rating = restaurant.reviews.aggregate(avg=Avg('rating'))['avg'] or 0
+
+    return render(request, 'view_menu.html', {
+        'menus': menus,
+        'categories': categories,
+        'restaurant': restaurant,
+        'average_rating': round(average_rating, 1)
+    })
+
+from merchant_app.models import Restaurant, Review
+from merchant_app.forms import ReviewForm
+
+@login_required
+def submit_review(request, restaurant_id):
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+
+    if request.method == 'POST':
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.restaurant = restaurant
+            review.user = request.user
+            review.save()
+            return redirect('user_view_menu', restaurant_id=restaurant.id)
+    else:
+        form = ReviewForm()
+
+    return render(request, 'submit_review.html', {
+        'form': form,
+        'restaurant': restaurant
+    })
