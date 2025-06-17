@@ -119,7 +119,17 @@
         </div>
     </div>
 </div>
-
+{% if order.status == 'delivered' %}
+<div class="mt-6 text-center">
+    {% if not feedback %}
+        <a href="{% url 'write_feedback' order.id %}" class="inline-block bg-[#FF0B55] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-700 transition">
+            Write Feedback
+        </a>
+    {% else %}
+        <p class="text-green-600 text-sm font-medium">✅ Feedback Submitted</p>
+    {% endif %}
+</div> </br>
+{% endif %}
 
         <!-- Support Button -->
         <div class="px-6 pb-6">

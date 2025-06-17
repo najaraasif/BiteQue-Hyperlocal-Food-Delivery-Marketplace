@@ -33,11 +33,16 @@
                 <a href="{% url 'home' %}">BiteQue</a>
                 </h1>
                 </div>
-                <div class="hidden md:flex items-center space-x-2 bg-white/10 px-3 py-1.5 rounded-full">
-                    <hero-icon name="map-pin" class="w-4 h-4 text-white"></hero-icon>
-                    <span class="text-white text-sm font-medium">Kupwara, Kashmir</span>
-                    <hero-icon name="chevron-down" class="w-4 h-4 text-white"></hero-icon>
-                </div>
+                    <!-- Auto-Detected Location Display -->
+            <div class="hidden md:flex items-center space-x-2 bg-white/10 px-3 py-1.5 rounded-full">
+                <hero-icon name="map-pin" class="w-4 h-4 text-white"></hero-icon>
+                <span id="home-user-location" class="text-white text-sm font-medium">Detecting location...</span>
+                <hero-icon name="chevron-down" class="w-4 h-4 text-white"></hero-icon>
+            </div>
+
+
+
+
             </div>
 
             <!-- Navigation Links -->
@@ -175,24 +180,48 @@
             </div>
         </div>
     </footer>
+<script src="https://maps.googleapis.com/maps/api/js?key=***REMOVED***&libraries=places&callback=initMap" async defer></script>
 
-    <script>
-        // Initialize Hero Icons
-        document.querySelectorAll('hero-icon').forEach(icon => {
-            const name = icon.getAttribute('name');
-            icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                ${document.querySelector(`[id="${name}"]`).innerHTML}
-            </svg>`;
-        });
+<script>
+let geocoder;
+
+function initMap() {
+    geocoder = new google.maps.Geocoder();
+
+    if (!navigator.geolocation) {
+        document.getElementById('home-user-location').textContent = 'Geolocation not supported';
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const latlng = { lat, lng };
+
+            geocoder.geocode({ location: latlng }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    const address = results[0].formatted_address;
+                    document.getElementById('home-user-location').textContent = address;
+                } else {
+                    document.getElementById('home-user-location').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                }
+            });
+        },
+        (error) => {
+            console.error("Geolocation error:", error);
+            document.getElementById('home-user-location').textContent = 'Permission denied or unavailable';
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
+}
+</script>
+
     </script>
-    <script>
-        // Initialize Hero Icons
-        document.querySelectorAll('hero-icon').forEach(icon => {
-            const name = icon.getAttribute('name');
-            icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                ${document.querySelector(`[id="${name}"]`).innerHTML}
-            </svg>`;
-        });
-    </script>
+    
 </body>
 </html>

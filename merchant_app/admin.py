@@ -1,7 +1,7 @@
 from os import __all__
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import merchantRegistration, Restaurant, RestaurantMenu, BankAccount, MerchantPayment, MerchantEarning, SizeCategory
+from .models import merchantRegistration, Restaurant, RestaurantMenu, BankAccount, MerchantPayment, MerchantEarning, SizeCategory, Review
 from .signals import send_merchant_verification_email, send_merchant_restaurant_email
 from rider_app.models import OrderAssignment, Rider
 
@@ -74,6 +74,7 @@ class MerchantEarningAdmin(admin.ModelAdmin):
     
 
 admin.site.register(SizeCategory)
+admin.site.register(Review)
 admin.site.register(merchantRegistration, merchantRegistrationAdmin)
 admin.site.register(Restaurant, RestaurantAdmin)
 admin.site.register(RestaurantMenu, RestaurantMenuAdmin)

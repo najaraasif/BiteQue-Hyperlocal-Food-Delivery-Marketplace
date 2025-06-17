@@ -102,3 +102,14 @@ class CustomerFeedbackForm(forms.Form):
             'feedback_text': forms.Textarea(attrs={'placeholder': 'Write your feedback here...'}),
             'rating': forms.NumberInput(attrs={'min': 1, 'max': 5}),
         }
+from django import forms
+from .models import CustomerFeedback
+
+class OrderFeedbackForm(forms.ModelForm):
+    class Meta:
+        model = CustomerFeedback
+        fields = ['rating', 'comments']
+        widgets = {
+            'rating': forms.Select(attrs={'class': 'form-select'}),
+            'comments': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 4, 'placeholder': 'Write your feedback...'}),
+        }

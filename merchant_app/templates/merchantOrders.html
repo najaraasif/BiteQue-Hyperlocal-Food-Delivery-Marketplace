@@ -7,7 +7,7 @@
   <section>
     <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2 pb-4">
       <span data-feather="clock" class="w-5 h-6 text-black-800"></span>
-      <span>Pending Orders</span>
+      <span>Pending</span>
     </h2>
 
     {% if pending_orders %}
@@ -15,10 +15,10 @@
       {% for order in pending_orders %}
         <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200 hover:shadow-xl transition-all">
           <div class="space-y-1 text-sm text-gray-800">
-            <p class="text-xs text-gray-500">Order ID: <span class="font-semibold text-pink-600">#{{ order.id }}</span></p>
+            <p class="text-xs text-gray-500">Order ID: <span class="font-semibold text-red-500">#{{ order.id }}</span></p>
             <p><strong>🍽️ Items:</strong> 
               {% for item in order.menu_items.all %}
-                <span class="text-pink-600">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
+                <span class="text-red-500">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
               {% endfor %}
             </p>
             <p><strong>👤 Customer:</strong> {{ order.customer_name }}</p>
@@ -31,7 +31,7 @@
             <p><strong>📝 Special Instructions:</strong> {{ order.special_instructions }}</p>
           </div>
           <div class="mt-4 text-right">
-            <a href="{% url 'confirm_order' order.id %}" class="bg-pink-600 text-white text-xs px-4 py-2 rounded-md hover:bg-pink-700 transition">✅ Confirm</a>
+            <a href="{% url 'confirm_order' order.id %}" class="bg-red-500 text-white text-xs px-4 py-2 rounded-md hover:bg-red-700 transition">✅ Confirm</a>
           </div>
         </div>
       {% endfor %}
@@ -45,7 +45,7 @@
   <section class="mt-12">
     <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2 pb-4">
       <span data-feather="check-circle" class="w-5 h-6 text-black-800"></span>
-      <span>Confirmed Orders</span>
+      <span>Confirmed</span>
     </h2>
 
     {% if confirmed_orders %}
@@ -56,7 +56,7 @@
             <p class="text-xs text-gray-500">Order #{{ order.id }}</p>
             <p><strong>🍽️ Items:</strong> 
               {% for item in order.menu_items.all %}
-                <span class="text-pink-600">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
+                <span class="text-red-500">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
               {% endfor %}
             </p>
             <p><strong>👤 Customer:</strong> {{ order.customer_name }}</p>
@@ -69,7 +69,7 @@
             <p><strong>📝 Special Instructions:</strong> {{ order.special_instructions }}</p>
           </div>
           <div class="mt-4 text-right">
-            <a href="{% url 'mark_order_ready' order.id %}" class="bg-green-600 text-white text-xs px-4 py-2 rounded-md hover:bg-green-700 transition">🚴‍♂️ Ready for Pickup</a>
+            <a href="{% url 'mark_order_ready' order.id %}" class="bg-green-500 text-white text-xs px-4 py-2 rounded-md hover:bg-red-700 transition">🚴‍♂️ Ready for Pickup</a>
           </div>
         </div>
       {% endfor %}
@@ -112,7 +112,7 @@
     <tbody class="bg-white divide-y divide-gray-100">
       {% for order in order_history %}
       <tr class="hover:bg-pink-50 transition">
-        <td class="px-4 py-2">#{{ order.id }}</td>
+        <td class="px-4 py-2 text-red-500 ">#{{ order.id }}</td>
         <td class="px-4 py-2">{{ order.customer_name }}</td>
         <td class="px-4 py-2">{{ order.customer_contact }}</td>
         <td class="px-4 py-2">

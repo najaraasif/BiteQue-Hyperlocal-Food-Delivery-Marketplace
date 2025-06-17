@@ -28,6 +28,8 @@ urlpatterns = [
     path('user/home/', dashboard_home, name='dashboard_home'),
     path('user/active/', user_active_orders, name='user_active_orders'),
     path('user/history/', order_user_history, name='order_user_history'),
+    path('order/<int:order_id>/feedback/', views.write_order_feedback, name='write_feedback'),
+
     path('user/support', support, name='support'),
 
     path('user/cart/', view_cart, name='view_cart'),

@@ -151,7 +151,7 @@ def merchant_dashboard(request):
     now = timezone.now()
 
     # Active orders
-    pending_orders = Order.objects.filter(restaurant=restaurant, status='pending')
+    pending_orders = Order.objects.filter(restaurant=restaurant, status='pending').order_by('-created_at')
     confirmed_orders = Order.objects.filter(restaurant=restaurant, status='confirmed')
 
     # Completed orders today

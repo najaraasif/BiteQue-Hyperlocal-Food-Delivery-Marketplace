@@ -1,38 +1,84 @@
 {% extends 'base.html' %}
 {% block content %}
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-10">
-    <h2 class="text-3xl font-bold text-gray-800 mb-6">Items in "{{ category_name }}"</h2>
 
-    <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {% for item in items %}
-        <div class="bg-white rounded-xl shadow hover:shadow-md transition overflow-hidden">
-            {% if item.image %}
-            <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-36 object-cover">
-            {% else %}
-            <div class="w-full h-36 bg-gray-100 flex items-center justify-center text-gray-400">No Image</div>
-            {% endif %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+  <h2 class="text-[28px] sm:text-[32px] font-bold text-[#02060c] mb-8 text-center tracking-tight">
+    {{ category_name }} Dishes
+  </h2>
 
-            <div class="p-3">
-                <h3 class="text-lg font-semibold text-gray-800 truncate">{{ item.name }}</h3>
-                <p class="text-sm text-gray-600 mb-2 line-clamp-2">{{ item.description|truncatechars:80 }}</p>
-
-                <!-- Horizontal Price and Prep Time -->
-                <div class="flex justify-between text-sm text-gray-600 mb-1">
-                    <div>₹ <span class="text-green-600 font-medium">{{ item.price }}</span></div>
-                    <div>⏱️ <span class="text-green-500">{{ item.prep_time }} mins</span></div>
-                </div>
-                <!-- Size Info -->
-                <div class="text-sm text-gray-600 mb-2">
-                    📏 <span class="text-green-500">{{ item.sizes_categories }}</span>
-                </div>
-
-                <div class="flex gap-2 mt-2">
-                    <a href="{% url 'add_to_cart' item.id %}" class="flex-1 bg-[#FF0B55] text-white text-xs py-2 rounded-full text-center hover:bg-pink-600 transition">Add to Cart</a>
-                    <a href="{% url 'order_now' item.id %}" class="flex-1 bg-[#FF0B55] text-white text-xs py-2 rounded-full text-center hover:bg-pink-600 transition">Order Now</a>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
+  <!-- Filters -->
+  <form method="get" class="mb-6 flex flex-wrap justify-end gap-4">
+    <!-- Price Dropdown -->
+    <div>
+      <label for="price" class="mr-1 text-sm text-gray-700 font-medium">Sort by Price:</label>
+      <select name="price" id="price" onchange="this.form.submit()" class="border border-gray-300 text-sm rounded-md px-3 py-2 shadow-sm focus:ring-[#FF0B55] focus:border-[#FF0B55]">
+        <option value="">Default</option>
+        <option value="asc" {% if request.GET.price == 'asc' %}selected{% endif %}>Low to High</option>
+        <option value="desc" {% if request.GET.price == 'desc' %}selected{% endif %}>High to Low</option>
+      </select>
     </div>
+
+    <!-- Rating Dropdown -->
+    <div>
+      <label for="rating" class="mr-1 text-sm text-gray-700 font-medium">Min Rating:</label>
+      <select name="rating" id="rating" onchange="this.form.submit()" class="border border-gray-300 text-sm rounded-md px-3 py-2 shadow-sm focus:ring-[#FF0B55] focus:border-[#FF0B55]">
+        <option value="">Any</option>
+        {% for r in rating_options %}
+          <option value="{{ r }}" {% if request.GET.rating == r|stringformat:"s" %}selected{% endif %}>{{ r }}★ & up</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  <!-- Item Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    {% for item in items %}
+    <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition duration-300 relative overflow-hidden group">
+      
+      <!-- Item Image -->
+      {% if item.image %}
+        <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-40 object-cover transition duration-300 group-hover:scale-105">
+      {% else %}
+        <div class="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">No Image</div>
+      {% endif %}
+
+      <!-- Rating Badge -->
+      {% if item.avg_rating %}
+        <div class="absolute top-2 right-2 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+          ★ {{ item.avg_rating|floatformat:1 }}
+        </div>
+      {% endif %}
+
+      <!-- Item Info -->
+      <div class="p-4">
+        <h3 class="text-base font-semibold text-[#02060c] truncate">{{ item.name }}</h3>
+        <p class="text-sm text-gray-600 line-clamp-2 mb-1">{{ item.description|truncatechars:80 }}</p>
+
+        <p class="text-[13px] font-medium text-gray-800 mb-2">
+          🏬 {{ item.restaurant.name }}
+        </p>
+
+        <div class="text-xs text-gray-500 grid grid-cols-2 gap-y-1 mb-3">
+          <div class="flex items-center gap-1">
+            ₹<span class="text-green-600 font-medium">{{ item.price }}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            ⏱️ <span>{{ item.prep_time }} mins</span>
+          </div>
+          <div class="flex items-center gap-1 col-span-2">
+            📏 <span>{{ item.sizes_categories }}</span>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-2 mt-3">
+          <a href="{% url 'add_to_cart' item.id %}" class="flex-1 text-center text-white text-[12px] font-medium bg-[#FF0B55] hover:bg-[#e0094c] py-2 rounded-full transition">Add to Cart</a>
+          <a href="{% url 'order_now' item.id %}" class="flex-1 text-center text-[#FF0B55] border border-[#FF0B55] hover:bg-[#FF0B55] hover:text-white text-[12px] font-medium py-2 rounded-full transition">Order Now</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
 </main>
+
 {% endblock %}

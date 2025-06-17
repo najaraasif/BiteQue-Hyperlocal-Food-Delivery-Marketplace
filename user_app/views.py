@@ -36,6 +36,8 @@ from django.db.models import Avg
 from django.template.loader import render_to_string
 from django.http import JsonResponse
 from django.utils.text import slugify
+from .forms import OrderFeedbackForm
+
 
 def home(request):
     categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
@@ -60,8 +62,17 @@ def home(request):
     return render(request, 'home.html', context)
 
 
+
+
+
+
+from django.shortcuts import render
+from django.utils.text import slugify
+from django.db.models import Avg
+from .models import CustomerFeedback
+
 def category_items(request, category_slug):
-    # Fetch original category name
+    # Get all distinct categories and map slug to original
     categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
     category_lookup = {slugify(cat): cat for cat in categories}
     category = category_lookup.get(category_slug)
@@ -69,13 +80,52 @@ def category_items(request, category_slug):
     if not category:
         return render(request, '404.html', status=404)
 
+    # Fetch items by category
     items = RestaurantMenu.objects.filter(category=category)
+
+    # Price sort
+    price_order = request.GET.get('price')
+    if price_order == 'asc':
+        items = items.order_by('price')
+    elif price_order == 'desc':
+        items = items.order_by('-price')
+
+    # Ratings filter
+    min_rating = request.GET.get('rating')
+    if min_rating:
+        try:
+            min_rating = int(min_rating)
+            rated_restaurants = (
+                CustomerFeedback.objects
+                .values('restaurant')
+                .annotate(avg_rating=Avg('rating'))
+                .filter(avg_rating__gte=min_rating)
+                .values_list('restaurant', flat=True)
+            )
+            items = items.filter(restaurant__in=rated_restaurants)
+        except ValueError:
+            pass
+
+    # Get avg rating per restaurant and attach to each item
+    rating_data = CustomerFeedback.objects.values('restaurant') \
+        .annotate(avg_rating=Avg('rating')) \
+        .values_list('restaurant', 'avg_rating')
+    rating_map = dict(rating_data)
+
+    for item in items:
+        item.avg_rating = rating_map.get(item.restaurant.id)
 
     context = {
         'category_name': category,
         'items': items,
+        'rating_options': [5, 4, 3, 2, 1],
     }
+
     return render(request, 'category_items.html', context)
+
+
+
+
 
 
 from decimal import Decimal, InvalidOperation
@@ -382,6 +432,9 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import Order
 
+from .models import CustomerFeedback  # import if not already
+from django.core.exceptions import ObjectDoesNotExist
+
 @login_required
 def order_detail(request, order_id):
     order = get_object_or_404(
@@ -407,6 +460,12 @@ def order_detail(request, order_id):
     packaging_charges = Decimal('20.00')
     order_total = item_subtotal + gst_tax + delivery_fee + packaging_charges
 
+    # ✅ Check if feedback already exists
+    try:
+        feedback = CustomerFeedback.objects.get(order=order)
+    except CustomerFeedback.DoesNotExist:
+        feedback = None
+
     context = {
         'order': order,
         'order_items': unique_items,
@@ -416,11 +475,11 @@ def order_detail(request, order_id):
         'pakaging_charges': packaging_charges,
         'order_total': round(order_total, 2),
         'eta': order.created_at + timedelta(minutes=45),
-        'rider': order.assignment.rider if hasattr(order, 'assignment') else None
+        'rider': order.assignment.rider if hasattr(order, 'assignment') else None,
+        'feedback': feedback  # ✅ pass to template
     }
 
     return render(request, 'order_detail.html', context)
-
 
 
 
@@ -502,6 +561,8 @@ def feedback_thanks(request):
 
 
 
+from django.shortcuts import redirect
+
 def add_to_cart(request, item_id):
     cart = request.session.get('cart', {})
 
@@ -513,7 +574,8 @@ def add_to_cart(request, item_id):
     request.session['cart'] = cart
     request.session.modified = True
 
-    return redirect('home')
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
 
 def view_cart(request):
     cart = request.session.get('cart', {})
@@ -639,3 +701,28 @@ def submit_review(request, restaurant_id):
         'form': form,
         'restaurant': restaurant
     })
+
+
+from .models import CustomerFeedback
+
+@login_required
+def write_order_feedback(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    # Prevent duplicate feedback
+    if CustomerFeedback.objects.filter(order=order).exists():
+        return redirect('order_detail', order_id=order_id)
+
+    if request.method == 'POST':
+        form = OrderFeedbackForm(request.POST)
+        if form.is_valid():
+            feedback = form.save(commit=False)
+            feedback.order = order
+            feedback.customer = request.user
+            feedback.restaurant = order.restaurant
+            feedback.save()
+            return redirect('order_detail', order_id=order.id)
+    else:
+        form = OrderFeedbackForm()
+
+    return render(request, 'write_feedback.html', {'form': form, 'order': order})

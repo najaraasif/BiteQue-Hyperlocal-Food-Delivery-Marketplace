@@ -60,13 +60,13 @@
             {% for order in Pending_orders %}
             <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-300 p-5">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Order #{{ order.id }}</h3>
+                    <h3 class="text-lg font-semibold text-red-500">Order #{{ order.id }}</h3>
                     <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full uppercase tracking-wide">Pending</span>
                 </div>
                 <div class="space-y-2 text-sm text-gray-700">
-                    <p class="font-semibold text-[#FF0B55]"> Items Ordered:
+                    <p class="text-sm font-bold text-[#FF0B55]"> Items Ordered:
                         {% for item in order.menu_items.all %}
-                          <span class="font-bold text-xl text-[#FF0B55]">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
+                          <span class="text-[#FF0B55]">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
                         {% endfor %}
                       </p>
                     <p><span class="font-medium text-gray-900">Customer: </span><span class="font-bold ">{{ order.customer_name }}</span></p>
@@ -78,7 +78,7 @@
                     <p><span class="font-medium text-gray-900">Special Instructions: </span> <span class="font-bold ">{{ order.special_instructions }}</span></p>
 
                     <div class="mt-4 text-right">
-                        <a href="{% url 'merchant_orders' %}" class="bg-pink-600 text-white text-xs px-3 py-1 rounded-md shadow hover:bg-pink-700">Confirm in Orders section</a>
+                        <a href="{% url 'merchant_orders' %}" class="bg-red-500 text-white text-xs px-3 py-1 rounded-md shadow">Go to Orders</a>
                       </div>
                 </div>
             </div>
