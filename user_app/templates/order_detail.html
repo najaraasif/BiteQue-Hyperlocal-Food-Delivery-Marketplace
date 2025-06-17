@@ -121,14 +121,18 @@
 </div>
 {% if order.status == 'delivered' %}
 <div class="mt-6 text-center">
-    {% if not feedback %}
-        <a href="{% url 'write_feedback' order.id %}" class="inline-block bg-[#FF0B55] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-700 transition">
-            Write Feedback
-        </a>
-    {% else %}
-        <p class="text-green-600 text-sm font-medium">✅ Feedback Submitted</p>
-    {% endif %}
-</div> </br>
+  {% if not feedback %}
+    <a href="{% url 'write_feedback' order.id %}" 
+       class="inline-block bg-[#FF0B55] text-white px-6 py-3 rounded-lg text-base font-medium hover:bg-pink-700 transition transform hover:-translate-y-1">
+      <i class="fas fa-comment-alt mr-2"></i>Write Feedback
+    </a>
+  {% else %}
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4 inline-flex items-center">
+      <i class="fas fa-check-circle text-green-500 mr-2"></i>
+      <span class="text-green-700 font-medium">Feedback Submitted</span>
+    </div>
+  {% endif %}
+</div>
 {% endif %}
 
         <!-- Support Button -->

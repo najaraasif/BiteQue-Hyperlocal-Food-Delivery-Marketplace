@@ -12,6 +12,12 @@ from decimal import Decimal
 from venv import logger
 from rider_app.utils import geocode_address
 
+from django.db import models
+from django.contrib.auth.models import User
+import uuid
+import string
+import random
+
 
 
 class Order(models.Model):
@@ -20,11 +26,7 @@ class Order(models.Model):
     customer_name = models.CharField(max_length=100)
     customer_contact = models.CharField(max_length=15)
     landmark = models.TextField(max_length=100)
-    menu_items = models.ManyToManyField(
-        'merchant_app.RestaurantMenu',
-        through='OrderMenuItem',
-        related_name='orders'
-    )
+    menu_items = models.ManyToManyField('merchant_app.RestaurantMenu',through='OrderMenuItem',related_name='orders')
     total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     created_at = models.DateTimeField(auto_now_add=True)
     delivery_address = models.CharField(max_length=512)
@@ -154,16 +156,72 @@ class userRegistration(models.Model):
 
 
 
+
+
 class CustomerFeedback(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE)
     restaurant = models.ForeignKey('merchant_app.Restaurant', on_delete=models.CASCADE)
     customer = models.ForeignKey(User, on_delete=models.CASCADE)
-    rating = models.PositiveSmallIntegerField(choices=[(i, str(i)) for i in range(1, 6)])
-    comments = models.TextField(blank=True, null=True)
+
+    rating = models.PositiveSmallIntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        null=True,
+        blank=True,
+        help_text="Main overall rating given by the customer."
+    )
+
+    item_quality = models.PositiveSmallIntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        null=True,
+        blank=True,
+        help_text="Quality of the food items"
+    )
+    delivery_experience = models.PositiveSmallIntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        null=True,
+        blank=True,
+        help_text="Experience with the delivery process"
+    )
+    restaurant_rating = models.PositiveSmallIntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        null=True,
+        blank=True,
+        help_text="Rating for the restaurant overall"
+    )
+    rider_rating = models.PositiveSmallIntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        null=True,
+        blank=True,
+        help_text="Rating for the delivery rider"
+    )
+
+    item_ratings = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Dictionary of menu_item_id: rating"
+    )
+
+    comments = models.TextField(blank=True, null=True, help_text="General comments")
+    additional_comments = models.TextField(blank=True, null=True, help_text="Extra feedback")
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.customer.username} - Order #{self.order.id} - {self.rating}★"
+        return f"{self.customer.username} - Order #{self.order.id}"
+
+    @property
+    def overall_rating(self):
+        ratings = [
+            self.rating,
+            self.item_quality,
+            self.delivery_experience,
+            self.restaurant_rating,
+            self.rider_rating,
+            *self.item_ratings.values()
+        ]
+        valid_ratings = [r for r in ratings if r is not None]
+        return round(sum(valid_ratings) / len(valid_ratings), 2) if valid_ratings else None
+
 
     
 class MerchantNotification(models.Model):
@@ -171,3 +229,54 @@ class MerchantNotification(models.Model):
     message = models.CharField(max_length=255)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+def generate_ticket_id():
+    length = 7
+    chars = string.digits  
+    while True:
+        new_id = ''.join(random.choices(chars, k=length))
+        if not UserSupportTicket.objects.filter(ticket_id=new_id).exists():
+            return new_id
+        
+
+
+class UserSupportTicket(models.Model):
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('in_progress', 'In Progress'),
+        ('closed', 'Closed'),
+    ]
+
+    CATEGORY_CHOICES = [
+        ('technical', 'Technical Issue'),
+        ('billing', 'Billing'),
+        ('general', 'General Inquiry'),
+        ('other', 'Other'),
+    ]
+
+    ticket_id = models.CharField(max_length=6, unique=True, editable=False, default=generate_ticket_id)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_tickets')
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    subject = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.ticket_id} - {self.subject} ({self.get_status_display()})"
+
+
+class UserSupportMessage(models.Model):
+    ticket = models.ForeignKey(UserSupportTicket, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    image = models.ImageField(upload_to='user_support_images/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Message by {self.sender} on {self.created_at.strftime('%Y-%m-%d %H:%M')}"

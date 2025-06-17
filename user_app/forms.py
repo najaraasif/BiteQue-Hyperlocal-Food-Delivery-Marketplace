@@ -2,6 +2,8 @@ from django import forms
 from .models import Order, CustomerFeedback, userRegistration
 import re
 from django.contrib.auth.models import User
+from django import forms
+from .models import UserSupportTicket, UserSupportMessage
 
 class userRegistrationForm(forms.Form):
         username = forms.CharField(
@@ -112,4 +114,86 @@ class OrderFeedbackForm(forms.ModelForm):
         widgets = {
             'rating': forms.Select(attrs={'class': 'form-select'}),
             'comments': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 4, 'placeholder': 'Write your feedback...'}),
+        }
+
+
+from django import forms
+from .models import CustomerFeedback
+
+class ComprehensiveFeedbackForm(forms.ModelForm):
+    class Meta:
+        model = CustomerFeedback
+        fields = [
+            'item_quality', 
+            'delivery_experience',
+            'restaurant_rating',
+            'rider_rating',
+            'additional_comments'
+        ]
+        widgets = {
+            'item_quality': forms.RadioSelect(attrs={'class': 'star-rating'}),
+            'delivery_experience': forms.RadioSelect(attrs={'class': 'star-rating'}),
+            'restaurant_rating': forms.RadioSelect(attrs={'class': 'star-rating'}),
+            'rider_rating': forms.RadioSelect(attrs={'class': 'star-rating'}),
+            'additional_comments': forms.Textarea(attrs={
+                'class': 'form-textarea',
+                'rows': 4,
+                'placeholder': 'Any additional feedback...'
+            }),
+        }
+    def __init__(self, *args, **kwargs):
+        order = kwargs.pop('order', None)
+        super().__init__(*args, **kwargs)
+
+        if order:
+            self.order = order  # store reference if needed later
+
+            # Dynamically add rating fields for each item in the order
+            for item in order.order_items.all():
+                field_name = f'item_rating_{item.menu_item.id}'
+                self.fields[field_name] = forms.ChoiceField(
+                    choices=[(i, str(i)) for i in range(1, 6)],
+                    label=f"Rating for {item.menu_item.name}",
+                    widget=forms.RadioSelect(attrs={'class': 'star-rating'}),
+                    required=False
+                )
+
+
+    def get_item_ratings(self):
+        """
+        Extract item ratings from cleaned_data in the format:
+        {menu_item_id: rating}
+        """
+        item_ratings = {}
+        for field_name, value in self.cleaned_data.items():
+            if field_name.startswith('item_rating_') and value:
+                try:
+                    item_id = int(field_name.split('_')[-1])
+                    item_ratings[item_id] = int(value)
+                except (ValueError, IndexError):
+                    continue
+        return item_ratings
+
+
+
+class UserTicketCreateForm(forms.ModelForm):
+    class Meta:
+        model = UserSupportTicket
+        fields = ['subject', 'category']
+        widgets = {
+            'subject': forms.TextInput(attrs={'placeholder': 'Enter ticket subject', 'class': 'form-control'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+
+class UserTicketMessageForm(forms.ModelForm):
+    class Meta:
+        model = UserSupportMessage
+        fields = ['message','image']
+        widgets = {
+            'message': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Reply here...', 'class': 'form-control'}),
+        }
+        labels = {
+            'message': 'Message',
         }

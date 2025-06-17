@@ -43,9 +43,9 @@
       {% endif %}
 
       <!-- Rating Badge -->
-      {% if item.avg_rating %}
+      {% if item.average_rating %}
         <div class="absolute top-2 right-2 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-          ★ {{ item.avg_rating|floatformat:1 }}
+          ★ {{ item.average_rating|floatformat:1 }}
         </div>
       {% endif %}
 

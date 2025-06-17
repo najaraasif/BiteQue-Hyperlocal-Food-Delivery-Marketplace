@@ -22,7 +22,7 @@ urlpatterns = [
     path('restaurant/<int:restaurant_id>/menu/', user_view_menu, name='user_view_menu'),
     
     path('user-login/',userLogin, name='user_login' ),
-    path('user/', user_profile, name='user-dashboard'),
+    path('user/home/', dashboard_home, name='user-dashboard'),
     path('orders/<int:order_id>/', order_detail, name='order_detail'),
     path('user/profile', profile_section, name='profile-section'),
     path('user/home/', dashboard_home, name='dashboard_home'),
@@ -30,7 +30,7 @@ urlpatterns = [
     path('user/history/', order_user_history, name='order_user_history'),
     path('order/<int:order_id>/feedback/', views.write_order_feedback, name='write_feedback'),
 
-    path('user/support', support, name='support'),
+    path('user/support/', views.user_support, name='user_support_portal'),
 
     path('user/cart/', view_cart, name='view_cart'),
     path('user/cart/add/<int:item_id>/', add_to_cart, name='add_to_cart'),

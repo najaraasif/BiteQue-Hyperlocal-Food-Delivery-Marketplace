@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 from pyexpat.errors import messages
+from statistics import mean
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from merchant_app.models import RestaurantMenu
@@ -61,8 +62,28 @@ def home(request):
     }
     return render(request, 'home.html', context)
 
+@login_required
+def dashboard_home(request):
+    categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
+    approved_restaurants = Restaurant.objects.filter(is_approved=True)
+    sizes = SizeCategory.objects.all()
+    items = RestaurantMenu.objects.filter(restaurant__in=approved_restaurants)
 
+    query = request.GET.get('q')  
+    if query:
+        items = items.filter(name__icontains=query)
 
+    for restaurant in approved_restaurants:
+        restaurant.avg_rating = restaurant.reviews.aggregate(avg=Avg('rating'))['avg'] or 0
+    
+    context = {
+        'categories': categories,
+        'approved_restaurants': approved_restaurants,
+        'items': items,  
+        'size': sizes,
+
+    }
+    return render(request, 'dashboard_home.html', context)
 
 
 
@@ -72,7 +93,6 @@ from django.db.models import Avg
 from .models import CustomerFeedback
 
 def category_items(request, category_slug):
-    # Get all distinct categories and map slug to original
     categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
     category_lookup = {slugify(cat): cat for cat in categories}
     category = category_lookup.get(category_slug)
@@ -80,17 +100,14 @@ def category_items(request, category_slug):
     if not category:
         return render(request, '404.html', status=404)
 
-    # Fetch items by category
     items = RestaurantMenu.objects.filter(category=category)
 
-    # Price sort
     price_order = request.GET.get('price')
     if price_order == 'asc':
         items = items.order_by('price')
     elif price_order == 'desc':
         items = items.order_by('-price')
 
-    # Ratings filter
     min_rating = request.GET.get('rating')
     if min_rating:
         try:
@@ -106,14 +123,17 @@ def category_items(request, category_slug):
         except ValueError:
             pass
 
-    # Get avg rating per restaurant and attach to each item
-    rating_data = CustomerFeedback.objects.values('restaurant') \
-        .annotate(avg_rating=Avg('rating')) \
-        .values_list('restaurant', 'avg_rating')
-    rating_map = dict(rating_data)
-
     for item in items:
-        item.avg_rating = rating_map.get(item.restaurant.id)
+        feedbacks = CustomerFeedback.objects.filter(item_ratings__has_key=str(item.id))
+        ratings = []
+        for fb in feedbacks:
+            val = fb.item_ratings.get(str(item.id))
+            if val:
+                try:
+                    ratings.append(int(val))
+                except:
+                    continue
+        item.average_rating = round(mean(ratings), 1) if ratings else None
 
     context = {
         'category_name': category,
@@ -122,6 +142,7 @@ def category_items(request, category_slug):
     }
 
     return render(request, 'category_items.html', context)
+
 
 
 
@@ -483,10 +504,6 @@ def order_detail(request, order_id):
 
 
 
-@login_required
-def dashboard_home(request):
-    #menus = RestaurantMenu.objects.filter(restaurant_id=restaurant_id, available=True)
-    return render(request, 'dashboard_home.html')
 
 def profile_section(request):
     return render(request, 'profile_section.html')
@@ -703,26 +720,156 @@ def submit_review(request, restaurant_id):
     })
 
 
-from .models import CustomerFeedback
+
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
+from .models import Order, CustomerFeedback
+from .forms import ComprehensiveFeedbackForm
 
 @login_required
 def write_order_feedback(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
 
-    # Prevent duplicate feedback
     if CustomerFeedback.objects.filter(order=order).exists():
         return redirect('order_detail', order_id=order_id)
 
     if request.method == 'POST':
-        form = OrderFeedbackForm(request.POST)
+        form = ComprehensiveFeedbackForm(request.POST, order=order)
         if form.is_valid():
             feedback = form.save(commit=False)
             feedback.order = order
             feedback.customer = request.user
             feedback.restaurant = order.restaurant
+
+            ratings = [
+                feedback.item_quality,
+                feedback.delivery_experience,
+                feedback.restaurant_rating,
+                feedback.rider_rating
+            ]
+            valid_ratings = [r for r in ratings if r is not None]
+            if valid_ratings:
+                feedback.rating = round(sum(valid_ratings) / len(valid_ratings), 1)
+
+            feedback.item_ratings = form.get_item_ratings()
+
             feedback.save()
             return redirect('order_detail', order_id=order.id)
     else:
-        form = OrderFeedbackForm()
+        form = ComprehensiveFeedbackForm(order=order)
 
-    return render(request, 'write_feedback.html', {'form': form, 'order': order})
+    context = {
+        'form': form,
+        'order': order,
+        'order_items': order.order_items.all(),   
+    }
+    return render(request, 'write_feedback.html', context)
+
+
+
+def calculate_item_ratings():
+    """Calculate average ratings for all menu items"""
+    from .models import CustomerFeedback
+    from merchant_app.models import RestaurantMenu
+    
+    feedbacks = CustomerFeedback.objects.exclude(item_ratings={})
+    
+    item_ratings = defaultdict(list)
+    
+    for feedback in feedbacks:
+        for item_id, rating in feedback.item_ratings.items():
+            item_ratings[item_id].append(rating)
+    
+    item_averages = {}
+    for item_id, ratings in item_ratings.items():
+        item_averages[item_id] = sum(ratings) / len(ratings)
+    
+    for menu_item in RestaurantMenu.objects.all():
+        avg = item_averages.get(str(menu_item.id))
+        if avg:
+            menu_item.average_rating = avg
+            menu_item.save()
+
+    
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import UserSupportTicket, UserSupportMessage
+from .forms import UserTicketCreateForm, UserTicketMessageForm
+from django.contrib import messages
+
+@login_required
+def user_support(request):
+    tickets = UserSupportTicket.objects.filter(user=request.user).order_by('-updated_at')
+    ticket_id = request.GET.get('ticket_id')
+    selected_ticket = None
+
+    if ticket_id:
+        try:
+            selected_ticket = UserSupportTicket.objects.get(ticket_id=ticket_id, user=request.user)
+        except UserSupportTicket.DoesNotExist:
+            selected_ticket = tickets.first()
+    else:
+        selected_ticket = tickets.first()
+
+    # Prepare blank forms by default
+    ticket_form = UserTicketCreateForm()
+    message_form = UserTicketMessageForm()
+    reply_form = UserTicketMessageForm()
+
+    # Handle ticket creation
+    if request.method == 'POST' and 'create_ticket' in request.POST:
+        ticket_form = UserTicketCreateForm(request.POST)
+        message_form = UserTicketMessageForm(request.POST, request.FILES)
+
+        if ticket_form.is_valid() and message_form.is_valid():
+            ticket = ticket_form.save(commit=False)
+            ticket.user = request.user
+            ticket.save()
+
+            initial_message = message_form.save(commit=False)
+            initial_message.ticket = ticket
+            initial_message.sender = request.user
+            initial_message.save()
+
+            messages.success(request, f"✅ Ticket created successfully with ID #{ticket.ticket_id}")
+            return redirect(f'/user/support/?ticket_id={ticket.ticket_id}')
+        else:
+            messages.error(request, "❌ Please fix the form errors below.")
+
+    # Handle reply to existing ticket
+    elif request.method == 'POST' and 'reply_ticket' in request.POST:
+        if selected_ticket and selected_ticket.status == 'closed':
+            messages.error(request, "⚠️ This ticket is closed. You cannot reply.")
+        else:
+            reply_form = UserTicketMessageForm(request.POST, request.FILES)
+            if reply_form.is_valid():
+                reply = reply_form.save(commit=False)
+                reply.ticket = selected_ticket
+                reply.sender = request.user
+                reply.save()
+
+                # Update ticket timestamp
+                selected_ticket.save()
+
+                messages.success(request, "✅ Reply sent successfully.")
+                return redirect(f'/user/support/?ticket_id={selected_ticket.ticket_id}')
+            else:
+                messages.error(request, "❌ Please fix the reply form errors below.")
+
+    # Get messages for selected ticket
+    messages_qs = selected_ticket.messages.all() if selected_ticket else UserSupportMessage.objects.none()
+
+    context = {
+        'tickets': tickets,
+        'selected_ticket': selected_ticket,
+        'messages': messages_qs,
+        'ticket_form': ticket_form,
+        'reply_form': reply_form,
+        'message_form': message_form,
+        'no_tickets': not tickets.exists(),
+    }
+
+    return render(request, 'partials/user_support.html', context)
+
+

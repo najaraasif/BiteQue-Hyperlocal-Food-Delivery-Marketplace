@@ -227,11 +227,10 @@ from .models import Ticket, TicketMessage
 class TicketCreateForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ['subject', 'category', 'status']
+        fields = ['subject', 'category']
         widgets = {
-            'subject': forms.TextInput(attrs={'placeholder': 'Enter ticket subject', 'class': 'form-control'}),
-            'category': forms.Select(attrs={'class': 'form-select'}),
-            'status': forms.Select(attrs={'class': 'form-select'}),
+            'subject': forms.TextInput(attrs={'placeholder': 'Enter ticket subject', 'class': 'border border-black rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-red-400 form-control'}),
+            'category': forms.Select(attrs={'class': 'border border-black rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-red-400 form-select'}),
         }
 
 
@@ -240,7 +239,7 @@ class TicketMessageForm(forms.ModelForm):
         model = TicketMessage
         fields = ['message','image']
         widgets = {
-            'message': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Write your message here...', 'class': 'form-control'}),
+            'message': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Write your message here...', 'class': 'border border-black rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-red-400 form-control'}),
         }
         labels = {
             'message': 'Message',

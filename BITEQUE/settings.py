@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'rider_app',
     'merchant_app',
     'django.contrib.humanize',
+    "widget_tweaks",
 ]
 
 MIDDLEWARE = [

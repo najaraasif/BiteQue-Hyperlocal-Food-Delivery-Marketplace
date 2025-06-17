@@ -1,98 +1,106 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" x-data="{ mobileOpen: false }">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BiteQue | Food Delivery</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Hero Icons -->
-    <script src="https://unpkg.com/heroicons@latest/24/outline/index.js"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-header {
-            animation: fade-in 0.5s ease-out;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BiteQue | Food Delivery</title>
+
+  <!-- Tailwind CSS & Alpine.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
+
+  <!-- Optional Style -->
+  <style>
+    .mobile-menu { display: none; }
+    [x-cloak] { display: none; }
+  </style>
 </head>
 <body class="bg-gray-50 font-sans antialiased">
-    <!-- Header -->
-    <header class="bg-[#FF0B55] shadow-md sticky top-0 z-50 animate-header">
-    <nav class="container mx-auto px-6 py-4">
-        <div class="flex items-center justify-between">
-            <!-- Logo and Location -->
-            <div class="flex items-center space-x-8">
-                <div class="flex items-center space-x-2">
-                <hero-icon name="cake" class="w-6 h-6 text-white"></hero-icon>
-                <h1 class="text-2xl font-bold text-white tracking-tight">
-                <a href="{% url 'home' %}">BiteQue</a>
-                </h1>
-                </div>
-                    <!-- Auto-Detected Location Display -->
-            <div class="hidden md:flex items-center space-x-2 bg-white/10 px-3 py-1.5 rounded-full">
-                <hero-icon name="map-pin" class="w-4 h-4 text-white"></hero-icon>
-                <span id="home-user-location" class="text-white text-sm font-medium">Detecting location...</span>
-                <hero-icon name="chevron-down" class="w-4 h-4 text-white"></hero-icon>
-            </div>
 
-
-
-
-            </div>
-
-            <!-- Navigation Links -->
-            <div class="flex items-center space-x-6">
-                <!-- Enhanced Cart Icon -->
-                <a href="{% url 'view_cart' %}" class="relative group flex items-center space-x-2 text-white hover:text-white/90 transition-colors">
-    <div class="relative p-2 rounded-lg hover:bg-white/20 transition-colors bg-[#FF0B55]">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 7M7 13l-1.5 6H19m-6 0a1 1 0 11-2 0 1 1 0 012 0zm-6 0a1 1 0 112 0 1 1 0 01-2 0z" />
-        </svg>
-        <span class="absolute -top-1 -right-1 bg-white text-[#FF0B55] text-xs px-1.5 py-0.5 rounded-full font-bold shadow-md transform group-hover:scale-110 transition-transform min-w-[20px] flex items-center justify-center">
-            {{ request.session.cart|length|default:"0" }}
-        </span>
+<!-- HEADER -->
+<header class="bg-[#FF0B55] text-white sticky top-0 z-50 shadow-md">
+  <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+    <!-- Left: Logo & Location -->
+    <div class="flex items-center space-x-4">
+      <a href="{% url 'home' %}" class="text-2xl font-bold">🍔 BiteQue</a>
+      <div class="hidden sm:flex items-center text-sm space-x-2 bg-white/10 px-3 py-1.5 rounded-full">
+        <i class="fas fa-map-marker-alt text-white"></i>
+        <span id="home-user-location">Detecting...</span>
+      </div>
     </div>
-</a>
 
+    <!-- Right: Desktop Menu -->
+    <div class="hidden md:flex items-center space-x-6">
+      <a href="{% url 'view_cart' %}" class="relative">
+        <i class="fas fa-shopping-cart text-white text-lg"></i>
+        <span class="absolute -top-2 -right-2 text-xs bg-white text-[#FF0B55] rounded-full px-1">
+          {{ request.session.cart|length|default:"0" }}
+        </span>
+      </a>
 
+      {% if user.is_authenticated %}
+        <a href="{% url 'user-dashboard' %}" class="hover:underline">Dashboard</a>
+        <a href="{% url 'user_logout' %}" class="hover:underline">Logout</a>
+      {% else %}
+        <a href="{% url 'user_login' %}" class="hover:underline">Login</a>
+        <a href="{% url 'user_registration' %}" class="bg-white text-[#FF0B55] px-3 py-1 rounded-full font-semibold">Sign Up</a>
+      {% endif %}
+    </div>
 
+    <!-- Mobile Toggle -->
+    <button @click="mobileOpen = !mobileOpen" class="md:hidden text-white">
+      <i class="fas fa-bars text-xl"></i>
+    </button>
+  </div>
 
-                {% if user.is_authenticated %}
-                    <a href="{% url 'user-dashboard' %}" class="hidden md:flex items-center space-x-1.5 text-white hover:text-white/90">
-                        <hero-icon name="user-circle" class="w-5 h-5"></hero-icon>
-                        <span class="text-sm font-medium">Dashboard</span>
-                    </a>
-                    <a href="{% url 'user_logout' %}" class="px-3 py-2 text-white hover:text-white/90">
-                        Logout
-                    </a>
-                {% else %}
-                    <a href="{% url 'user_login' %}" class="hidden md:flex items-center space-x-1.5 text-white hover:text-white/90">
-                        <hero-icon name="user-circle" class="w-5 h-5"></hero-icon>
-                        <span class="text-sm font-medium">Login</span>
-                    </a>
-                    <a href="{% url 'user_registration' %}" class="px-4 py-2 bg-white text-[#FF0B55] rounded-full hover:bg-gray-100 font-medium">
-                        Sign Up
-                    </a>
-                {% endif %}
+  <!-- Mobile Menu -->
+<div x-show="mobileOpen" x-cloak class="md:hidden bg-white shadow-lg px-4 py-6 space-y-4 rounded-b-lg">
+  
+  <!-- User Location -->
+  <div class="flex items-center text-sm text-gray-700">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 text-[#FF0B55]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657A8 8 0 1116.657 17.66M12 12v.01" />
+    </svg>
+    <span id="home-user-location-mobile">Detecting location...</span>
+  </div>
 
-                <!-- Mobile Menu Button -->
-                <button class="md:hidden text-white">
-                    <hero-icon name="bars-3" class="w-6 h-6"></hero-icon>
-                </button>
-            </div>
-        </div>
-    </nav>
+  <!-- Cart -->
+  <a href="{% url 'view_cart' %}" class="flex items-center justify-between bg-[#FF0B55] text-white px-4 py-2 rounded-lg shadow-sm">
+    <div class="flex items-center space-x-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 7M7 13l-1.5 6H19m-6 0a1 1 0 11-2 0 1 1 0 012 0zm-6 0a1 1 0 112 0 1 1 0 01-2 0z" />
+      </svg>
+      <span class="text-sm font-medium">Cart</span>
+    </div>
+    <span class="bg-white text-[#FF0B55] px-2 py-0.5 text-xs font-semibold rounded-full">
+      {{ request.session.cart|length|default:"0" }}
+    </span>
+  </a>
+
+  <!-- Auth Links -->
+  <div class="space-y-2">
+    {% if user.is_authenticated %}
+      <a href="{% url 'user-dashboard' %}" class="block px-4 py-2 rounded-md text-gray-800 bg-gray-100 hover:bg-gray-200">Dashboard</a>
+      <a href="{% url 'user_logout' %}" class="block px-4 py-2 rounded-md text-gray-800 bg-gray-100 hover:bg-gray-200">Logout</a>
+    {% else %}
+      <a href="{% url 'user_login' %}" class="block px-4 py-2 rounded-md text-gray-800 bg-gray-100 hover:bg-gray-200">Login</a>
+      <a href="{% url 'user_registration' %}" class="block px-4 py-2 rounded-md text-white bg-[#FF0B55] hover:bg-[#e6094c] text-center font-semibold">Sign Up</a>
+    {% endif %}
+  </div>
+</div>
+
 </header>
-    {% block content %}
 
-    {% endblock %}
+{% block content %}{% endblock %}
 
-    <!-- Footer -->
+<!-- Footer -->
     <footer class="bg-gray-900 text-gray-300 mt-16">
         <div class="container mx-auto px-6 py-12">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-10">

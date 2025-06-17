@@ -73,6 +73,49 @@ class MerchantEarningAdmin(admin.ModelAdmin):
         return False  # Prevent deletion
     
 
+from django.contrib import admin
+from .models import Ticket, TicketMessage
+
+class TicketMessageInline(admin.TabularInline):
+    model = TicketMessage
+    extra = 1
+    readonly_fields = ('created_at',)
+    fields = ('sender', 'message', 'image', 'created_at')
+    show_change_link = True
+
+
+@admin.register(Ticket)
+class TicketAdmin(admin.ModelAdmin):
+    list_display = ('ticket_id', 'subject', 'merchant', 'category', 'status', 'created_at', 'updated_at')
+    list_filter = ('status', 'category', 'created_at')
+    search_fields = ('ticket_id', 'subject', 'merchant__username', 'messages__message')
+    inlines = [TicketMessageInline]
+    readonly_fields = ('ticket_id', 'created_at', 'updated_at')
+    list_per_page = 25
+    ordering = ['-created_at']
+
+    fieldsets = (
+        (None, {
+            'fields': ('ticket_id', 'merchant', 'category', 'status', 'subject')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+
+@admin.register(TicketMessage)
+class TicketMessageAdmin(admin.ModelAdmin):
+    list_display = ('ticket', 'sender', 'short_message', 'created_at')
+    list_filter = ('created_at', 'sender')
+    search_fields = ('ticket__ticket_id', 'sender__username', 'message')
+    readonly_fields = ('created_at',)
+
+    def short_message(self, obj):
+        return (obj.message[:75] + "...") if len(obj.message) > 75 else obj.message
+    short_message.short_description = 'Message Preview'
+
 admin.site.register(SizeCategory)
 admin.site.register(Review)
 admin.site.register(merchantRegistration, merchantRegistrationAdmin)

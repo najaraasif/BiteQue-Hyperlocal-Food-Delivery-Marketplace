@@ -6,17 +6,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/alpinejs@3.13.0/dist/cdn.min.js" defer></script>
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+
+
   <style>
     :root {
       --primary: #FF0B77;
     }
+    /* Add to your base.css */
+.star-rating {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+
+.star-rating input[type="radio"] {
+  display: none;
+}
+
+.star-rating label {
+  font-size: 24px;
+  color: #ccc;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating input[type="radio"]:checked ~ label {
+  color: #ffc107;
+}
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
   <!-- Header -->
   <header class="bg-[#FF0B77] shadow-md py-4 px-6 flex justify-between items-center">
-    <h1 class="text-xl md:text-2xl font-bold text-white">User Dashboard</h1>
+    <h1 class="text-xl md:text-2xl font-bold text-white">Dashboard</h1>
 
     <!-- Hamburger Button (Mobile Only) -->
     <button id="menu-toggle" class="text-white md:hidden focus:outline-none text-2xl">
@@ -28,15 +55,15 @@
   <div class="flex flex-col md:flex-row min-h-screen">
 
     <!-- Sidebar -->
-    <aside id="sidebar" class="w-full md:w-64 bg-white shadow-md py-6 px-4 md:px-6 hidden md:block transition-all duration-300 ease-in-out">
+    <aside id="sidebar" class="w-full md:w-64 shadow-md py-6 px-4 md:px-6 hidden md:block transition-all duration-300 ease-in-out bg-gradient-to-r from-red-50 to-pink-300">
       <nav class="space-y-3 text-sm md:text-base">
-        <a href="{% url 'dashboard_home' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">🏠 Home</a>
-        <a href="{% url 'profile-section' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">👤 Profile Info</a>
-        <a href="{% url 'user_active_orders' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">🔥 Active Orders</a>
-        <a href="{% url 'order_user_history' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">📜 Order History</a>
-        <a href="{% url 'support' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">💬 Support</a>
-        <a href="{% url 'view_cart' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">💬 Cart</a>
-        <a href="{% url 'user_logout' %}" class="block text-gray-700 hover:text-[#FF0B55] font-semibold">🚪 Logout</a>
+        <a href="{% url 'home' %}" class="block text-black hover:text-[#FF0B55] font-bold"> Home</a>
+        <a href="{% url 'profile-section' %}" class="block text-black hover:text-[#FF0B55] font-bold">Profile Info</a>
+        <a href="{% url 'user_active_orders' %}" class="block text-black hover:text-[#FF0B55] font-bold"> Active Orders</a>
+        <a href="{% url 'order_user_history' %}" class="block text-black hover:text-[#FF0B55] font-bold"> Order History</a>
+        <a href="{% url 'user_support_portal' %}" class="block text-black hover:text-[#FF0B55] font-bold"> Support</a>
+        <a href="{% url 'view_cart' %}" class="block text-black hover:text-[#FF0B55] font-bold"> Cart</a>
+        <a href="{% url 'user_logout' %}" class="block text-black hover:text-[#FF0B55] font-bold"> Logout</a>
       </nav>
     </aside>
 
