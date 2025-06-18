@@ -38,7 +38,7 @@ from django.template.loader import render_to_string
 from django.http import JsonResponse
 from django.utils.text import slugify
 from .forms import OrderFeedbackForm
-
+from merchant_app.views import send_push_to_merchant
 
 def home(request):
     categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
@@ -417,6 +417,7 @@ def create_order(request):
             total =  request.POST.get('total'),
 
         )
+
         menu_items = request.POST.getlist('menu_items')
         order.menu_items.set(menu_items)
         
@@ -425,7 +426,9 @@ def create_order(request):
             order.delivery_latitude = lat
             order.delivery_longitude = lng
             order.save()
-        
+        if restaurant.player_id:
+            send_push_to_merchant(restaurant.player_id, order.id)
+
         return redirect('')
 
 

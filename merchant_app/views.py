@@ -34,15 +34,23 @@ from django.urls import reverse
 from django.conf import settings
 import requests
 from django.contrib.auth import get_user_model
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
 
-def check_notifications(request):
-    if request.user.is_authenticated:
-        notif = MerchantNotification.objects.filter(merchant=request.user, is_read=False).first()
-        if notif:
-            notif.is_read = True  # mark as read
-            notif.save()
-            return JsonResponse({"notify": True, "message": notif.message})
-    return JsonResponse({"notify": False})
+@csrf_exempt
+def save_player_id(request):
+    if request.method == 'POST' and request.user.is_authenticated:
+        data = json.loads(request.body)
+        player_id = data.get('player_id')
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            restaurant.player_id = player_id
+            restaurant.save()
+            return JsonResponse({'status': 'success'})
+        except Restaurant.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Restaurant not found'}, status=404)
+    return JsonResponse({'status': 'unauthorized'}, status=401)
 
 def merchant_register_view(request):
     if request.method == 'POST':
@@ -190,6 +198,24 @@ def merchant_dashboard(request):
         'net_revenue': round(net_revenue, 2),
         'performance_rate': round(performance_rate, 1),
     })
+
+from django.conf import settings
+import requests, json
+
+def send_push_to_merchant(player_id, order_id):
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": "os_v2_app_oolw2ftisza53jxejhqnqdw4zqo2mzisydbu4v4eu7z2zqqlxs3uvv2zyfzjpsfmmo5bqgzbeok5nu6muytmwluult7uou3cpm5sc5y",
+    }
+    payload = {
+        "app_id": "73976d16-6896-41dd-a6e4-49e0d80edccc",
+        "include_player_ids": [player_id],
+        "headings": {"en": "New Order Received"},
+        "contents": {"en": f"You have a new order #{order_id}"},
+        "url": f"https://yourdomain.com/merchant/orders/{order_id}/"
+    }
+    response = requests.post("https://onesignal.com/api/v1/notifications", headers=headers, data=json.dumps(payload))
+    return response.ok
 
 
 @login_required

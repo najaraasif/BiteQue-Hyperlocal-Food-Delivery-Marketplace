@@ -102,4 +102,27 @@
     {% endif %}
 
 </div>
+<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
+<script>
+  window.OneSignal = window.OneSignal || [];
+  OneSignal.push(function () {
+    OneSignal.init({
+      appId: "73976d16-6896-41dd-a6e4-49e0d80edccc",
+    });
+
+    OneSignal.getUserId(function(playerId) {
+      if (playerId) {
+        fetch('/save-player-id/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}',
+          },
+          body: JSON.stringify({ player_id: playerId })
+        });
+      }
+    });
+  });
+</script>
+
 {% endblock %}

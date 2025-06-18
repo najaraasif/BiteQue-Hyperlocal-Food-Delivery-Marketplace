@@ -188,48 +188,6 @@
             </div>
         </div>
     </footer>
-<script src="https://maps.googleapis.com/maps/api/js?key=***REMOVED***&libraries=places&callback=initMap" async defer></script>
 
-<script>
-let geocoder;
-
-function initMap() {
-    geocoder = new google.maps.Geocoder();
-
-    if (!navigator.geolocation) {
-        document.getElementById('home-user-location').textContent = 'Geolocation not supported';
-        return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            const latlng = { lat, lng };
-
-            geocoder.geocode({ location: latlng }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    const address = results[0].formatted_address;
-                    document.getElementById('home-user-location').textContent = address;
-                } else {
-                    document.getElementById('home-user-location').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                }
-            });
-        },
-        (error) => {
-            console.error("Geolocation error:", error);
-            document.getElementById('home-user-location').textContent = 'Permission denied or unavailable';
-        },
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        }
-    );
-}
-</script>
-
-    </script>
-    
 </body>
 </html>

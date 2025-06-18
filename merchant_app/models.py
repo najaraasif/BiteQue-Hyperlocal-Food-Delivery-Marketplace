@@ -32,7 +32,7 @@ class Restaurant(models.Model):
     is_available = models.BooleanField(default=False)
     lat = models.DecimalField(max_digits=9, decimal_places=7, null=True, blank=True)
     lon = models.DecimalField(max_digits=9, decimal_places=7, null=True, blank=True)
-
+    player_id = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return f"{self.name} - {self.city}"
