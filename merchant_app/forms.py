@@ -149,7 +149,7 @@ class RestaurantForm(forms.ModelForm):
 class RestaurantMenuForm(forms.ModelForm):
     class Meta:
         model = RestaurantMenu
-        fields = ['name','sizes_categories', 'category', 'description', 'image', 'price', 'available', 'prep_time']
+        fields = ['name','sizes_categories', 'category', 'description', 'image', 'price', 'available', 'prep_time', 'veg_or_nonveg']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500',
@@ -162,6 +162,9 @@ class RestaurantMenuForm(forms.ModelForm):
                 'class': 'w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500',
                 'placeholder': 'Enter category eg; pizza',
             }),
+            'veg_or_nonveg': forms.Select(attrs={
+                    'class': 'w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500',
+                }),
             'description': forms.Textarea(attrs={
                 'class': 'w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500',
                 'placeholder': 'Describe the item',

@@ -36,7 +36,12 @@
           {{ form.sizes_categories }}
         </div>
       </div>
-
+    <div class="flex flex-col">
+      <label for="{{ form.veg_or_nonveg.id_for_label }}" class="text-sm font-medium text-gray-700 mb-1">Veg or Non-Veg</label>
+      <div class="relative">
+        {{ form.veg_or_nonveg }}
+      </div>
+    </div>
       <!-- Description -->
       <div class="flex flex-col">
         <label for="{{ form.description.id_for_label }}" class="text-sm font-medium text-gray-700 mb-1">Description</label>

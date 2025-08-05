@@ -52,39 +52,136 @@
         </div>
     </div>
 
-    <!-- Pending Orders -->
-    <div class="bg-white rounded-xl shadow p-6 mb-10">
-        <h2 class="text-2xl font-bold text-yellow-600 mb-6 border-b pb-2">Pending Orders</h2>
-        {% if Pending_orders %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {% for order in Pending_orders %}
-            <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-300 p-5">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-red-500">Order #{{ order.id }}</h3>
-                    <span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full uppercase tracking-wide">Pending</span>
-                </div>
-                <div class="space-y-2 text-sm text-gray-700">
-                    <p class="text-sm font-bold text-[#FF0B55]"> Items Ordered:
-                        {% for item in order.menu_items.all %}
-                          <span class="text-[#FF0B55]">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
-                        {% endfor %}
-                      </p>
-                    <p><span class="font-medium text-gray-900">Customer: </span><span class="font-bold ">{{ order.customer_name }}</span></p>
-                    <p><span class="font-medium text-gray-900">Contact: </span> <span class="font-bold ">{{ order.customer_contact }}</span></p>
-                    <p><span class="font-medium text-gray-900">Address: </span> <span class="font-bold ">{{ order.delivery_address }}</span></p>
-                    <p><span class="font-medium text-gray-900">Landmark: </span> <span class="font-bold ">{{ order.landmark }}</span></p>
-                    <p><span class="font-medium text-gray-900">Total: </span><span class="font-bold ">₹{{ order.total }}</span></p>
-                    <p><span class="font-medium text-gray-900">Date & Time: </span><span class="font-bold "> {{ order.created_at|date:"h:i A - d M, Y" }}</span></p>
-                    <p><span class="font-medium text-gray-900">Special Instructions: </span> <span class="font-bold ">{{ order.special_instructions }}</span></p>
 
-                    <div class="mt-4 text-right">
-                        <a href="{% url 'merchant_orders' %}" class="bg-red-500 text-white text-xs px-3 py-1 rounded-md shadow">Go to Orders</a>
-                      </div>
-                </div>
+{% if Pending_orders %}
+<!-- Filters and Controls -->
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold text-gray-800 dark:text-white">New Orders</h2>
+  <div class="flex items-center gap-4">
+    <!-- Filter Dropdown -->
+    <select id="orderFilter"
+      class="border-gray-300 text-sm rounded-md shadow-sm px-3 py-2 dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+      <option selected disabled>Sort by</option>
+      <option value="date">Date</option>
+      <option value="total">Total</option>
+      <option value="id">Order ID</option>
+    </select>
+  </div>
+</div>
+
+<!-- Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+  {% for order in Pending_orders %}
+  <!-- Order Card -->
+  <div
+    class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 ease-in-out p-3">
+
+    <!-- Card Header -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <!-- Heroicon: Receipt -->
+        <svg class="h-2 w-6 text-red-500" fill="none" stroke="currentColor" stroke-width="2"
+          viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 12h6m-6 4h6M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+        </svg>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">#Order {{ order.id }}</h3>
+      </div>
+      <span
+        class="text-xs font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-700 dark:text-yellow-100 px-3 py-1 rounded-full uppercase tracking-wider">
+        Pending
+      </span>
+    </div>
+
+    <!-- Order Body Enhanced -->
+    <div class="space-y-5 text-sm text-gray-700 dark:text-gray-300">
+      <!-- Items Ordered -->
+      <div>
+        <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-1 mb-2">
+          🍽️ Items Ordered
+        </h4>
+        <ul class="space-y-1 ml-2">
+          {% for item in order.menu_items.all %}
+          <li class="flex items-start justify-between bg-gray-50 dark:bg-gray-800/50 p-2 rounded-md shadow-sm">
+            <div class="flex flex-col">
+              <span class="font-semibold text-gray-800 dark:text-white">{{ item.name }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 italic">Size: {{ item.sizes_categories }}</span>
             </div>
-            {% endfor %}
-        </div>
-        
+            <span class="text-xs text-white bg-red-400 px-2 py-0.5 rounded-full font-medium self-center">Qty: 1</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Total Price -->
+      <div class="flex items-center gap-2">
+        <span class="text-lg font-bold text-green-600 dark:text-green-400">₹{{ order.total }}</span>
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Total Amount</span>
+      </div>
+
+      <!-- Date & Time -->
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" stroke-width="2"
+          viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span class="text-sm font-medium text-gray-800 dark:text-white">{{ order.created_at|date:"h:i A, d M, Y" }}</span>
+      </div>
+
+      <!-- Special Instructions -->
+      {% if order.special_instructions %}
+      <div class="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-300 dark:border-yellow-500 p-3 rounded-md">
+        <p class="text-sm text-yellow-700 dark:text-yellow-100 font-medium mt-1">
+          {{ order.special_instructions }}
+        </p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- CTA Button -->
+    <div class="mt-6 text-right">
+      <a href="{% url 'merchant_orders' %}"
+        class="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-sm font-medium px-4 py-2 rounded-md shadow-lg transition-all duration-200">
+        View Orders
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  {% empty %}
+  <!-- Skeleton Loader for Loading State -->
+  {% for _ in "123" %}
+  <div class="p-5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 animate-pulse space-y-4">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+      <div class="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div class="h-4 w-16 bg-yellow-200 dark:bg-yellow-600 rounded-full"></div>
+    </div>
+
+    <!-- Item Blocks -->
+    <div class="space-y-2">
+      <div class="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div class="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div class="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+    </div>
+
+    <!-- Total and Date -->
+    <div class="h-4 w-1/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+    <div class="h-4 w-2/5 bg-gray-200 dark:bg-gray-700 rounded"></div>
+
+    <!-- Button -->
+    <div class="mt-6 h-8 w-28 bg-red-200 dark:bg-red-600 rounded-md"></div>
+  </div>
+  {% endfor %}
+  {% endfor %}
+</div>
+
+
         {% else %}
         <p class="text-gray-500 text-center mt-6">No pending orders at the moment.</p>
         {% endif %}
@@ -101,8 +198,78 @@
 
     {% endif %}
 
+   <div class="bg-white p-6 rounded shadow mt-6" style="height: 400px;">
+    <h3 class="text-lg font-semibold mb-4">Top Selling Items</h3>
+
+    {% if top_items %}
+    <canvas id="topSellingChart"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Check if Chart instance already exists and destroy it
+        if (window.topSellingChartInstance) {
+            window.topSellingChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('topSellingChart').getContext('2d');
+        const topItemsNames = {{ top_items_names|safe }};
+        const topItemsQuantities = {{ top_items_quantities|safe }};
+
+        window.topSellingChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: topItemsNames,
+                datasets: [{
+                    label: 'Quantity Sold',
+                    data: topItemsQuantities,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Units Sold'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            autoSkip: false,
+                            maxRotation: 45,
+                            minRotation: 0
+                        },
+                        title: {
+                            display: true,
+                            text: 'Menu Items'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        enabled: true
+                    }
+                }
+            }
+        });
+    </script>
+    {% else %}
+    <p class="text-gray-500">No sales data available.</p>
+    {% endif %}
 </div>
+
 <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
   window.OneSignal = window.OneSignal || [];
   OneSignal.push(function () {

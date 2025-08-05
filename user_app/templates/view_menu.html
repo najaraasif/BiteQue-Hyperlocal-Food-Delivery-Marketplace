@@ -21,7 +21,7 @@
                 <div class="absolute bottom-4 left-4 right-4">
                     <h1 class="text-2xl font-bold text-white mb-1 drop-shadow-lg">{{ restaurant.name }}</h1>
                     <p class="text-white/90 text-sm flex items-center gap-1 drop-shadow">
-                        📍 {{ restaurant.address }}, {{ restaurant.city }}
+                         {{ restaurant.address }}, {{ restaurant.city }}
                     </p>
                 </div>
             </div>
@@ -38,23 +38,17 @@
                     </div>
                 </div>
                 
-                <p class="text-gray-600 mb-4">{{ restaurant.email }}</p>
                 
-                <div class="flex gap-3">
-                    {% if restaurant.contact_number %}
-                        <a href="tel:{{ restaurant.contact_number }}" 
-                           class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c] transition-colors">
-                            📞 Call Now
-                        </a>
-                    {% endif %}
-                    {% if restaurant.address %}
-                        <a href="https://www.google.com/maps/search/?api=1&query={{ restaurant.name }},{{ restaurant.address }}" 
-                           target="_blank"
-                           class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c] transition-colors">
-                            📍 View Map
-                        </a>
-                    {% endif %}
-                </div>
+<div class="w-full">
+    {% if restaurant.address %}
+        <a href="https://www.google.com/maps/search/?api=1&query={{ restaurant.name|urlencode }},{{ restaurant.address|urlencode }}" 
+           target="_blank"
+           class="flex items-center justify-center gap-2 w-full px-4 py-3 bg-[#FF0B55] text-white rounded-lg font-semibold shadow-sm hover:bg-[#e6004c] transition-transform transform hover:scale-105">
+             View Map
+        </a>
+    {% endif %}
+</div>
+
             </div>
 
             <!-- Desktop: Original horizontal layout -->
@@ -75,7 +69,6 @@
                     <div class="flex-1">
                         <h1 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-2">{{ restaurant.name }}</h1>
                         <p class="text-gray-600 mb-1">{{ restaurant.address }}, {{ restaurant.city }}</p>
-                        <p class="text-gray-600 mb-3">{{ restaurant.email }}</p>
                         <div class="flex items-center gap-4 flex-wrap">
                             <span class="inline-flex items-center px-3 py-1 {% if restaurant.is_available %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %} rounded-full text-sm font-medium">
                                 <span class="w-2 h-2 {% if restaurant.is_available %}bg-green-500{% else %}bg-red-500{% endif %} rounded-full mr-2"></span>
@@ -91,21 +84,16 @@
                 </div>
                 
                 <!-- Action Buttons -->
-                <div class="flex gap-3 w-full sm:w-auto">
-                    {% if restaurant.contact_number %}
-                        <a href="tel:{{ restaurant.contact_number }}" 
-                           class="flex-1 sm:flex-none px-4 py-3 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c] transition-all transform hover:scale-105 text-center">
-                            📞 Call Now
-                        </a>
-                    {% endif %}
-                    {% if restaurant.address %}
-                        <a href="https://www.google.com/maps/search/?api=1&query={{ restaurant.name }},{{ restaurant.address }}" 
-                           target="_blank"
-                           class="flex-1 sm:flex-none px-4 py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-all transform hover:scale-105 text-center">
-                            📍 View Map
-                        </a>
-                    {% endif %}
-                </div>
+<div class="w-full sm:w-auto">
+    {% if restaurant.address %}
+        <a href="https://www.google.com/maps/search/?api=1&query={{ restaurant.name|urlencode }},{{ restaurant.address|urlencode }}" 
+           target="_blank"
+           class="block w-full px-4 py-3 bg-gray-900 text-white rounded-lg font-semibold shadow-md hover:bg-gray-700 transition-all transform hover:scale-105 text-center">
+             View Location on Map
+        </a>
+    {% endif %}
+</div>
+
             </div>
         </div>
 
@@ -143,49 +131,51 @@
             </div>
         </div>
 
-        <!-- 🍽️ Menu Grid -->
-        <div id="menuGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-16">
-            {% for item in menus %}
-            <div class="menu-item bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden transform hover:scale-105"
-                 data-name="{{ item.name|lower }}" data-category="{{ item.category|lower }}">
-                <div class="relative h-48 overflow-hidden">
-                    {% if item.image %}
-                        <img src="{{ item.image.url }}" alt="{{ item.name }}"
-                             class="w-full h-full object-cover transition-transform duration-300 hover:scale-110">
-                    {% else %}
-                        <img src="{% static 'default_dish.jpg' %}" alt="No image"
-                             class="w-full h-full object-cover opacity-70 transition-transform duration-300 hover:scale-110">
-                    {% endif %}
-                    <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium text-gray-700">
-                        {{ item.prep_time }} mins
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div class="mb-3">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-2">{{ item.name }}</h3>
-                        <p class="text-gray-600 text-sm leading-relaxed">{{ item.description }}</p>
-                    </div>
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded-full">{{ item.category }}</span>
-                        <span class="text-xl font-bold text-[#FF0B55]">₹{{ item.price }}</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <form method="POST" action="{% url 'add_to_cart' item.id %}" class="flex-1">
-                            {% csrf_token %}
-                            <button type="submit"
-                                    class="w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 text-sm">
-                                Add to Cart
-                            </button>
-                        </form>
-                        <a href="{% url 'order_now' item.id %}"
-                           class="flex-1 py-2 px-4 bg-[#FF0B55] text-white rounded-lg font-medium hover:bg-[#e6004c] text-sm text-center">
-                            Order Now
-                        </a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
+<!-- 🍽️ Menu Grid (Styled like Featured Menu Items) -->
+<div id="menuGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-16">
+    {% for item in menus %}
+    <div class="menu-card bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden"
+         data-name="{{ item.name|lower }}" data-category="{{ item.category|lower }}">
+        <!-- Image -->
+        <div class="h-40 w-full overflow-hidden">
+            {% if item.image %}
+                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-full object-cover" />
+            {% else %}
+                <div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">No Image</div>
+            {% endif %}
         </div>
+
+        <!-- Content -->
+        <div class="p-3">
+            <h3 class="text-sm font-semibold text-gray-800 truncate">{{ item.name }}</h3>
+            <p class="text-gray-600 text-xs mt-1 mb-2 line-clamp-2">{{ item.description|truncatechars:60 }}</p>
+
+            <div class="grid grid-cols-2 text-[11px] text-gray-500 gap-y-1 mb-3">
+                <div class="flex items-center gap-1">₹<span class="text-green-500">{{ item.price }}</span></div>
+                <div class="flex items-center gap-1">⏱️ <span class="text-green-500">{{ item.prep_time }} mins</span></div>
+                <div class="flex items-center gap-1">🍴 <span class="text-green-500">{{ item.category }}</span></div>
+                <div class="flex items-center gap-1">📏 <span class="text-green-500">{{ item.sizes_categories }}</span></div>
+            </div>
+
+            <div class="flex justify-between gap-2">
+                <form method="POST" action="{% url 'add_to_cart' item.id %}" class="w-1/2">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="w-full text-center bg-[#FF0B55] text-white text-xs py-1.5 rounded-full hover:bg-pink-600 transition">
+                        Add
+                    </button>
+                </form>
+                <a href="{% url 'order_now' item.id %}"
+                   class="w-1/2 text-center bg-[#FF0B55] text-white text-xs py-1.5 rounded-full hover:bg-pink-600 transition">
+                    Order
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+
 
         <!-- ❌ No Results Message -->
         <div id="noResults" class="hidden text-center py-16 bg-white rounded-2xl shadow-lg">

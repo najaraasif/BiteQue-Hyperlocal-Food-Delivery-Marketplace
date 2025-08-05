@@ -4,80 +4,270 @@
 <div class="container mx-auto px-4 py-8">
 
   <!-- 📦 New Orders -->
-  <section>
-    <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2 pb-4">
-      <span data-feather="clock" class="w-5 h-6 text-black-800"></span>
-      <span>Pending</span>
-    </h2>
+  {% if pending_orders %}
+<!-- Filters and Controls -->
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Pending Orders</h2>
+  <div class="flex items-center gap-4">
+    <!-- Filter Dropdown -->
+    <select id="orderFilter"
+      class="border-gray-300 text-sm rounded-md shadow-sm px-3 py-2 dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+      <option selected disabled>Sort by</option>
+      <option value="date">Date</option>
+      <option value="total">Total</option>
+      <option value="id">Order ID</option>
+    </select>
+  </div>
+</div>
 
-    {% if pending_orders %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-      {% for order in pending_orders %}
-        <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200 hover:shadow-xl transition-all">
-          <div class="space-y-1 text-sm text-gray-800">
-            <p class="text-xs text-gray-500">Order ID: <span class="font-semibold text-red-500">#{{ order.id }}</span></p>
-            <p><strong>🍽️ Items:</strong> 
-              {% for item in order.menu_items.all %}
-                <span class="text-red-500">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
-              {% endfor %}
-            </p>
-            <p><strong>👤 Customer:</strong> {{ order.customer_name }}</p>
-            <p><strong>📞 Contact:</strong> {{ order.customer_contact }}</p>
-            <p><strong>💰 Total:</strong> ₹{{ order.total }}</p>
-            <p><strong>🏠 Address:</strong> {{ order.delivery_address }}</p>
-            <p><strong>🏠 Landmark:</strong> {{ order.landmark }}</p>
-            <p><strong>📦 Status:</strong> <span class="bg-yellow-100 text-yellow-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></p>
-            <p class="text-xs text-black-800"><strong>⏰ Date & Time:</strong> {{ order.created_at|date:"h:i A, d M, Y" }}</p>
-            <p><strong>📝 Special Instructions:</strong> {{ order.special_instructions }}</p>
-          </div>
-          <div class="mt-4 text-right">
-            <a href="{% url 'confirm_order' order.id %}" class="bg-red-500 text-white text-xs px-4 py-2 rounded-md hover:bg-red-700 transition">✅ Confirm</a>
-          </div>
-        </div>
-      {% endfor %}
+<!-- Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+  {% for order in pending_orders %}
+  <!-- Order Card -->
+  <div
+    class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 ease-in-out p-3">
+
+    <!-- Card Header -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <!-- Heroicon: Receipt -->
+        <svg class="h-2 w-6 text-red-500" fill="none" stroke="currentColor" stroke-width="2"
+          viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 12h6m-6 4h6M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+        </svg>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">#Order {{ order.id }}</h3>
+      </div>
+      <span
+        class="text-xs font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-700 dark:text-yellow-100 px-3 py-1 rounded-full uppercase tracking-wider">
+        Pending
+      </span>
     </div>
-    {% else %}
-      <p class="text-sm text-gray-500">No new orders at the moment.</p>
-    {% endif %}
-  </section>
+
+    <!-- Order Body Enhanced -->
+    <div class="space-y-5 text-sm text-gray-700 dark:text-gray-300">
+      <!-- Items Ordered -->
+      <div>
+        <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-1 mb-2">
+          🍽️ Items Ordered
+        </h4>
+        <ul class="space-y-1 ml-2">
+          {% for item in order.menu_items.all %}
+          <li class="flex items-start justify-between bg-gray-50 dark:bg-gray-800/50 p-2 rounded-md shadow-sm">
+            <div class="flex flex-col">
+              <span class="font-semibold text-gray-800 dark:text-white">{{ item.name }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 italic">Size: {{ item.sizes_categories }}</span>
+            </div>
+            <span class="text-xs text-white bg-red-400 px-2 py-0.5 rounded-full font-medium self-center">Qty: 1</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Total Price -->
+      <div class="flex items-center gap-2">
+        <span class="text-lg font-bold text-green-600 dark:text-green-400">₹{{ order.total }}</span>
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Total Amount</span>
+      </div>
+
+      <!-- Date & Time -->
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" stroke-width="2"
+          viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span class="text-sm font-medium text-gray-800 dark:text-white">{{ order.created_at|date:"h:i A, d M, Y" }}</span>
+      </div>
+
+      <!-- Special Instructions -->
+      {% if order.special_instructions %}
+      <div class="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-300 dark:border-yellow-500 p-3 rounded-md">
+        <p class="text-sm text-yellow-700 dark:text-yellow-100 font-medium mt-1">
+          {{ order.special_instructions }}
+        </p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- CTA Button -->
+    <div class="mt-6 text-right">
+      <a href="{% url 'confirm_order' order.id %}"
+        class="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-sm font-medium px-4 py-2 rounded-md shadow-lg transition-all duration-200">
+        Confirm Order
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  {% empty %}
+  <!-- Skeleton Loader for Loading State -->
+  {% for _ in "123" %}
+  <div class="p-5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 animate-pulse space-y-4">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+      <div class="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div class="h-4 w-16 bg-yellow-200 dark:bg-yellow-600 rounded-full"></div>
+    </div>
+
+    <!-- Item Blocks -->
+    <div class="space-y-2">
+      <div class="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div class="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div class="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+    </div>
+
+    <!-- Total and Date -->
+    <div class="h-4 w-1/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+    <div class="h-4 w-2/5 bg-gray-200 dark:bg-gray-700 rounded"></div>
+
+    <!-- Button -->
+    <div class="mt-6 h-8 w-28 bg-red-200 dark:bg-red-600 rounded-md"></div>
+  </div>
+  {% endfor %}
+  {% endfor %}
+</div>
+ {% else %}
+        <p class="text-gray-500 text-center mt-6">No pending orders at the moment.</p>
+        {% endif %}
+        
 
   <!-- ✅ Confirmed Orders -->
-  <section class="mt-12">
-    <h2 class="text-2xl font-semibold text-black-800 flex items-center space-x-2 pb-4">
-      <span data-feather="check-circle" class="w-5 h-6 text-black-800"></span>
-      <span>Confirmed</span>
-    </h2>
-
     {% if confirmed_orders %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-      {% for order in confirmed_orders %}
-        <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200 hover:shadow-xl transition-all">
-          <div class="space-y-1 text-sm text-gray-800">
-            <p class="text-xs text-gray-500">Order #{{ order.id }}</p>
-            <p><strong>🍽️ Items:</strong> 
-              {% for item in order.menu_items.all %}
-                <span class="text-red-500">{{ item.name }}{% if not forloop.last %} & {% endif %}</span>
-              {% endfor %}
-            </p>
-            <p><strong>👤 Customer:</strong> {{ order.customer_name }}</p>
-            <p><strong>📞 Contact:</strong> {{ order.customer_contact }}</p>
-            <p><strong>💰 Total:</strong> ₹{{ order.total }}</p>
-            <p><strong>🏠 Address:</strong> {{ order.delivery_address }}</p>
-            <p><strong>🏠 Landmark:</strong> {{ order.landmark }}</p>
-            <p><strong>📦 Status:</strong> <span class="bg-green-100 text-green-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></p>
-            <p class="text-xs text-black-800"><strong>⏰ Date & Time:</strong> {{ order.created_at|date:"h:i A, d M, Y" }}</p>
-            <p><strong>📝 Special Instructions:</strong> {{ order.special_instructions }}</p>
-          </div>
-          <div class="mt-4 text-right">
-            <a href="{% url 'mark_order_ready' order.id %}" class="bg-green-500 text-white text-xs px-4 py-2 rounded-md hover:bg-red-700 transition">🚴‍♂️ Ready for Pickup</a>
-          </div>
-        </div>
-      {% endfor %}
+<!-- Filters and Controls -->
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Confirmed Orders</h2>
+  <div class="flex items-center gap-4">
+    <!-- Filter Dropdown -->
+    <select id="orderFilter"
+      class="border-gray-300 text-sm rounded-md shadow-sm px-3 py-2 dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+      <option selected disabled>Sort by</option>
+      <option value="date">Date</option>
+      <option value="total">Total</option>
+      <option value="id">Order ID</option>
+    </select>
+  </div>
+</div>
+
+<!-- Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+  {% for order in confirmed_orders %}
+  <!-- Order Card -->
+  <div
+    class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 ease-in-out p-3">
+
+    <!-- Card Header -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <!-- Heroicon: Receipt -->
+        <svg class="h-2 w-6 text-red-500" fill="none" stroke="currentColor" stroke-width="2"
+          viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 12h6m-6 4h6M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+        </svg>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">#Order {{ order.id }}</h3>
+      </div>
+      <span
+        class="text-xs font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-700 dark:text-yellow-100 px-3 py-1 rounded-full uppercase tracking-wider">
+        Pending
+      </span>
     </div>
-    {% else %}
-      <p class="text-sm text-gray-500">No confirmed orders yet.</p>
-    {% endif %}
-  </section>
+
+    <!-- Order Body Enhanced -->
+    <div class="space-y-5 text-sm text-gray-700 dark:text-gray-300">
+      <!-- Items Ordered -->
+      <div>
+        <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-1 mb-2">
+          🍽️ Items Ordered
+        </h4>
+        <ul class="space-y-1 ml-2">
+          {% for item in order.menu_items.all %}
+          <li class="flex items-start justify-between bg-gray-50 dark:bg-gray-800/50 p-2 rounded-md shadow-sm">
+            <div class="flex flex-col">
+              <span class="font-semibold text-gray-800 dark:text-white">{{ item.name }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 italic">Size: {{ item.sizes_categories }}</span>
+            </div>
+            <span class="text-xs text-white bg-red-400 px-2 py-0.5 rounded-full font-medium self-center">Qty: 1</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Total Price -->
+      <div class="flex items-center gap-2">
+        <span class="text-lg font-bold text-green-600 dark:text-green-400">₹{{ order.total }}</span>
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Total Amount</span>
+      </div>
+
+      <!-- Date & Time -->
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" stroke-width="2"
+          viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span class="text-sm font-medium text-gray-800 dark:text-white">{{ order.created_at|date:"h:i A, d M, Y" }}</span>
+      </div>
+
+      <!-- Special Instructions -->
+      {% if order.special_instructions %}
+      <div class="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-300 dark:border-yellow-500 p-3 rounded-md">
+        <p class="text-sm text-yellow-700 dark:text-yellow-100 font-medium mt-1">
+          {{ order.special_instructions }}
+        </p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- CTA Button -->
+    <div class="mt-6 text-right">
+      <a href="{% url 'mark_order_ready' order.id %}"
+        class="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-sm font-medium px-4 py-2 rounded-md shadow-lg transition-all duration-200">
+        Ready for Pickup
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  {% empty %}
+  <!-- Skeleton Loader for Loading State -->
+  {% for _ in "123" %}
+  <div class="p-5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 animate-pulse space-y-4">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+      <div class="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div class="h-4 w-16 bg-yellow-200 dark:bg-yellow-600 rounded-full"></div>
+    </div>
+
+    <!-- Item Blocks -->
+    <div class="space-y-2">
+      <div class="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div class="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div class="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+    </div>
+
+    <!-- Total and Date -->
+    <div class="h-4 w-1/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+    <div class="h-4 w-2/5 bg-gray-200 dark:bg-gray-700 rounded"></div>
+
+    <!-- Button -->
+    <div class="mt-6 h-8 w-28 bg-red-200 dark:bg-red-600 rounded-md"></div>
+  </div>
+  {% endfor %}
+  {% endfor %}
+</div>
+ {% else %}
+        <p class="text-gray-500 text-center mt-6">No confirmed orders at the moment.</p>
+        {% endif %}
+
 
   <!-- Order History -->
 <section class="mt-12">
@@ -99,12 +289,8 @@
     <thead class="bg-gray-50 text-gray-700 uppercase text-xs tracking-wider">
       <tr>
         <th class="px-4 py-2">ID</th>
-        <th class="px-4 py-2">Customer</th>
-        <th class="px-4 py-2">Contact</th>
         <th class="px-4 py-2">Items</th>
         <th class="px-4 py-2">Total ₹</th>
-        <th class="px-4 py-2">Address</th>
-        <th class="px-4 py-2">Landmark</th>
         <th class="px-4 py-2">Status</th>
         <th class="px-4 py-2">Date</th>
       </tr>
@@ -113,16 +299,12 @@
       {% for order in order_history %}
       <tr class="hover:bg-pink-50 transition">
         <td class="px-4 py-2 text-red-500 ">#{{ order.id }}</td>
-        <td class="px-4 py-2">{{ order.customer_name }}</td>
-        <td class="px-4 py-2">{{ order.customer_contact }}</td>
         <td class="px-4 py-2">
           {% for item in order.menu_items.all %}
             {{ item.name }}{% if not forloop.last %}, {% endif %}
           {% endfor %}
         </td>
         <td class="px-4 py-2">₹{{ order.total }}</td>
-        <td class="px-4 py-2">{{ order.delivery_address }}</td>
-        <td class="px-4 py-2">{{ order.landmark }}</td>
         <td class="px-4 py-2"><span class="bg-gray-200 text-gray-800 px-2 py-0.5 text-xs rounded-full">{{ order.get_status_display }}</span></td>
         <td class="px-4 py-2">{{ order.created_at|date:"d M, Y H:i" }}</td>
       </tr>
@@ -148,4 +330,36 @@
   {% endif %}
 </section>
 </div>
-{% endblock %}
+
+<!-- Order Report Filter Bar -->
+<form method="get" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end mt-6">
+  <div>
+    <label for="start_date" class="block text-xs font-medium text-gray-700">Start Date</label>
+    <input type="date" name="start_date" value="{{ request.GET.start_date }}"
+           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs">
+  </div>
+
+  <div>
+    <label for="end_date" class="block text-xs font-medium text-gray-700">End Date</label>
+    <input type="date" name="end_date" value="{{ request.GET.end_date }}"
+           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-xs">
+  </div>
+
+  <div class="flex items-center gap-4 col-span-2">
+    <!-- Filter Button -->
+    <button type="submit"
+            class="flex items-center justify-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-full shadow transition duration-200">
+      <span>Filter Orders</span>
+    </button>
+
+    <!-- Download PDF Button -->
+<a href="{% url 'export_orders_pdf' %}?start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}"
+   class="flex items-center justify-center gap-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-full shadow transition duration-200">
+  <span>Download Order Report (PDF)</span>
+</a>
+
+  </div>
+</form>
+
+
+  {% endblock %}

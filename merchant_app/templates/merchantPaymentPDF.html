@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            margin: 20px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .restaurant-name {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .report-date-range {
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 12px;
+        }
+
+        th, td {
+            border: 1px solid #777;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #e2e2e2;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Payment History</h1>
+    <div class="restaurant-name">{{ restaurant.name }}</div>
+
+    {% if payments %}
+        <div class="report-date-range">
+            {% if request.GET.start_date %} From: {{ request.GET.start_date }} {% endif %}
+            {% if request.GET.end_date %} To: {{ request.GET.end_date }} {% endif %}
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Amount (INR)</th>
+                    <th>Transaction ID</th>
+                    <th>Payment Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ payment.amount }}</td>
+                    <td>{{ payment.transaction_id }}</td>
+                    <td>{{ payment.payment_date|date:"d-m-Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p style="text-align:center; color: red; font-size: 14px;">No payments found in the selected date range.</p>
+    {% endif %}
+
+    <div class="footer">
+        Report generated on {{ now|date:"d-m-Y H:i:s" }} by {{ restaurant.owner.username }}
+    </div>
+
+</body>
+</html>

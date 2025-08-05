@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <title>Merchant Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Feather Icons CDN -->
+<script src="https://unpkg.com/feather-icons"></script>
+<!-- Tailwind Dark Mode support (add this in tailwind.config.js if you're customizing) -->
+<script>
+  document.documentElement.classList.add(localStorage.theme === 'dark' ? 'dark' : '');
+</script>
+
 
   <!-- Tailwind CSS CDN -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
@@ -28,58 +35,83 @@
 <body class="bg-gray-100 font-sans">
 
 <div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 h-screen bg-gray-800 text-white shadow-xl flex flex-col border-r border-white/10 dark:border-gray-800">
+  <!-- Logo/Header -->
+  <div class="h-20 flex items-center justify-center bg-white/10 backdrop-blur-md border-b border-white/20">
+    <h1 class="text-2xl font-bold text-white tracking-wide">Control Panel</h1>
+  </div>
 
-  <!-- Sidebar -->
-  <aside class="w-64 bg-white shadow-xl flex flex-col border-r border-gray-200">
-    <div class="h-20 flex items-center justify-center bg-[#FF0B55]">
-      <h1 class="text-2xl font-bold text-black-800 tracking-wide">Control Panel</h1>
-    </div>
-    <nav class="flex-1 px-6 py-6 space-y-4 text-sm font-medium text-gray-800">
-      <a href="{% url 'merchant_dashboard' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="home" class="mr-3 text-[#FF0B55]"></span> Dashboard
-      </a>
-      <a href="{% url 'merchant_orders' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="box" class="mr-3 text-[#FF0B55]"></span> Orders 
-      </a>
-      <a href="{% url 'merchant_payment_section' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="dollar-sign" class="mr-3 text-[#FF0B55]"></span> Payments
-      </a>
-      <a href="{% url 'order_report' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="file-text" class="mr-3 text-[#FF0B55]"></span> Order Reports
-      </a>
-      <a href="{% url 'merchant_revenue_report' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="bar-chart-2" class="mr-3 text-[#FF0B55]"></span> Revenue Reports
-      </a>
-      <a href="{% url 'bank_account_list' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="briefcase" class="mr-3 text-[#FF0B55]"></span> Bank Account
-      </a>
-      <a href="{% url 'menu_dashboard' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="list" class="mr-3 text-[#FF0B55]"></span> Your Menu
-      </a>
-      <a href="{% url 'customer_feedback' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="message-circle" class="mr-3 text-[#FF0B55]"></span> Reviews & Feedbacks
-      </a>
-            <a href="{% url 'support_portal' %}" class="flex items-center hover:text-[#FF0B55] hover:translate-x-1 transition duration-200">
-        <span data-feather="help-circle" class="mr-3 text-[#FF0B55]"></span> Support
-      </a>
-    </nav>
-  </aside>
+  <!-- Navigation -->
+  <nav class="flex-1 px-4 py-6 space-y-2 text-sm font-medium">
+    <a href="{% url 'merchant_dashboard' %}"
+       class="flex items-center px-4 py-3 rounded-md transition-all duration-200 border-l-4 {% if request.resolver_match.url_name == 'merchant_dashboard' %}bg-white/20 border-white font-semibold{% else %}border-transparent hover:bg-white/10{% endif %}">
+      <i data-feather="home" class="mr-3 w-5 h-5"></i> Dashboard
+    </a>
+
+    <a href="{% url 'merchant_orders' %}"
+       class="flex items-center px-4 py-3 rounded-md transition-all duration-200 border-l-4 {% if request.resolver_match.url_name == 'merchant_orders' %}bg-white/20 border-white font-semibold{% else %}border-transparent hover:bg-white/10{% endif %}">
+      <i data-feather="box" class="mr-3 w-5 h-5"></i> Orders
+    </a>
+
+    <a href="{% url 'merchant_payment_section' %}"
+       class="flex items-center px-4 py-3 rounded-md transition-all duration-200 border-l-4 {% if request.resolver_match.url_name == 'merchant_payment_section' %}bg-white/20 border-white font-semibold{% else %}border-transparent hover:bg-white/10{% endif %}">
+      <i data-feather="dollar-sign" class="mr-3 w-5 h-5"></i> Payments
+    </a>
+
+    <a href="{% url 'order_report' %}"
+       class="flex items-center px-4 py-3 rounded-md transition-all duration-200 border-l-4 {% if request.resolver_match.url_name == 'order_report' %}bg-white/20 border-white font-semibold{% else %}border-transparent hover:bg-white/10{% endif %}">
+      <i data-feather="file-text" class="mr-3 w-5 h-5"></i> Order Reports
+    </a>
+
+    <a href="{% url 'merchant_revenue_report' %}"
+       class="flex items-center px-4 py-3 rounded-md transition-all duration-200 border-l-4 {% if request.resolver_match.url_name == 'merchant_revenue_report' %}bg-white/20 border-white font-semibold{% else %}border-transparent hover:bg-white/10{% endif %}">
+      <i data-feather="bar-chart-2" class="mr-3 w-5 h-5"></i> Revenue Reports
+    </a>
+
+    <a href="{% url 'bank_account_list' %}"
+       class="flex items-center px-4 py-3 rounded-md transition-all duration-200 border-l-4 {% if request.resolver_match.url_name == 'bank_account_list' %}bg-white/20 border-white font-semibold{% else %}border-transparent hover:bg-white/10{% endif %}">
+      <i data-feather="briefcase" class="mr-3 w-5 h-5"></i> Bank Account
+    </a>
+
+    <a href="{% url 'menu_dashboard' %}"
+       class="flex items-center px-4 py-3 rounded-md transition-all duration-200 border-l-4 {% if request.resolver_match.url_name == 'menu_dashboard' %}bg-white/20 border-white font-semibold{% else %}border-transparent hover:bg-white/10{% endif %}">
+      <i data-feather="list" class="mr-3 w-5 h-5"></i> Your Menu
+    </a>
+
+    <a href="{% url 'customer_feedback' %}"
+       class="flex items-center px-4 py-3 rounded-md transition-all duration-200 border-l-4 {% if request.resolver_match.url_name == 'customer_feedback' %}bg-white/20 border-white font-semibold{% else %}border-transparent hover:bg-white/10{% endif %}">
+      <i data-feather="message-circle" class="mr-3 w-5 h-5"></i> Reviews & Feedback
+    </a>
+
+    <a href="{% url 'support_portal' %}"
+       class="flex items-center px-4 py-3 rounded-md transition-all duration-200 border-l-4 {% if request.resolver_match.url_name == 'support_portal' %}bg-white/20 border-white font-semibold{% else %}border-transparent hover:bg-white/10{% endif %}">
+      <i data-feather="help-circle" class="mr-3 w-5 h-5"></i> Support
+    </a>
+  </nav>
+</aside>
+<script>
+  feather.replace();
+</script>
+
+
+
 
   <!-- Main Area -->
   <div class="flex-1 flex flex-col bg-gray-50">
 
     <!-- Top Navbar -->
-    <header class="h-20 bg-white shadow flex items-center justify-between px-8 border-b border-gray-200">
+    <header class="h-20 bg-gray-800 shadow flex items-center justify-between px-8 border-b border-gray-200">
       <style>
         .welcome-message {
           font-size: 1.35rem;
           font-weight: 750;
-          color: black;
+          color: white;
           font-style: italic;
         }
       </style>
       <div class="welcome-message">
-        Welcome Back Merchant! Your business tools are ready.
+        Welcome Back! Your business tools are ready.
       </div>
 
       <div class="flex items-center space-x-6">

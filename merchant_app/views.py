@@ -7,7 +7,7 @@ from .forms import MerchantRegistrationForm, RestaurantForm, RestaurantMenuForm,
 from .models import merchantRegistration, Restaurant, RestaurantMenu, BankAccount, MerchantPayment, MerchantEarning
 from django.db import IntegrityError
 from django.contrib import messages
-from user_app.models import Order, CustomerFeedback, MerchantNotification
+from user_app.models import Order, CustomerFeedback, MerchantNotification, OrderMenuItem
 from django.utils import timezone
 from django.db.models import Sum
 from decimal import Decimal
@@ -172,7 +172,7 @@ def merchant_dashboard(request):
     order_history = completed_today_qs  # This is now a queryset, suitable for template display
     total_orders_today = completed_today_qs.count()
     total_revenue_today = completed_today_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
-    net_revenue = total_revenue_today * Decimal('0.8')  # Restaurant earns 80%
+    net_revenue = total_revenue_today * Decimal('0.84')  # Restaurant earns 80%
 
     # Weekly performance
     one_week_ago = now - timedelta(days=7)
@@ -182,10 +182,21 @@ def merchant_dashboard(request):
         created_at__gte=one_week_ago
     )
     weekly_revenue = weekly_orders.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
-    net_week_revenue = weekly_revenue * Decimal('0.8')
+    net_week_revenue = weekly_revenue * Decimal('0.84')
 
     # Safe calculation of performance rate
     performance_rate = ((net_revenue / net_week_revenue) * 100) if net_revenue > 0 else Decimal('0.00')
+
+    # Top 5 items by quantity sold
+    top_items = OrderMenuItem.objects.filter(
+        order__restaurant=restaurant
+    ).values('menu_item__name').annotate(
+        total_quantity=Sum('quantity')
+    ).order_by('-total_quantity')[:5]
+
+    # Prepare labels and data
+    top_items_names = [item['menu_item__name'] for item in top_items]
+    top_items_quantities = [item['total_quantity'] for item in top_items]
 
     return render(request, 'merchantDashboard.html', {
         'restaurant': restaurant,
@@ -197,6 +208,9 @@ def merchant_dashboard(request):
         'total_revenue_today': round(total_revenue_today, 2),
         'net_revenue': round(net_revenue, 2),
         'performance_rate': round(performance_rate, 1),
+        'top_items_names': json.dumps(top_items_names),
+        'top_items_quantities': json.dumps(top_items_quantities),
+        'top_items': top_items,
     })
 
 from django.conf import settings
@@ -491,9 +505,9 @@ def merchant_payment_section_view(request):
     weekly_revenue = weekly_orders.aggregate(total=Sum('total'))['total'] or 0
 
     # Merchant share is 80%
-    merchant_share = total_revenue * Decimal('0.80')
-    weekly_merchant_share = weekly_revenue * Decimal('0.80')
-    weekly_platform_share = weekly_revenue * Decimal('0.20')  # Fixed this logic, platform gets 20%
+    merchant_share = total_revenue * Decimal('0.84')
+    weekly_merchant_share = weekly_revenue * Decimal('0.84')
+    weekly_platform_share = weekly_revenue * Decimal('0.16')  # Fixed this logic, platform gets 20%
 
     # Paid amount so far
     payments = MerchantPayment.objects.filter(merchant=merchant).order_by('-payment_date')
@@ -543,9 +557,17 @@ def merchant_revenue_report(request):
     orders = Order.objects.filter(restaurant=restaurant, status='delivered')
 
     total_revenue = orders.aggregate(total=Sum('total'))['total'] or 0 
+    total_net_revenue = total_revenue * Decimal('0.84')  # Restaurant earns 84%
+
     today_revenue = orders.filter(created_at__date=today.date()).aggregate(Sum('total'))['total__sum'] or Decimal('0.00')
+    total_today_revenue = total_revenue * Decimal('0.84')  # Restaurant earns 84%
+
     week_revenue = orders.filter(created_at__gte=start_7_days).aggregate(Sum('total'))['total__sum'] or 0
+    total_week_revenue = total_revenue * Decimal('0.84')  # Restaurant earns 84%
+
     month_revenue = orders.filter(created_at__gte=start_30_days).aggregate(Sum('total'))['total__sum'] or 0
+    total_month_revenue = total_revenue * Decimal('0.84')  # Restaurant earns 84%
+
 
     trend_labels = []
     trend_data = []
@@ -566,10 +588,10 @@ def merchant_revenue_report(request):
         trend_data.insert(0, float(daily_total))
 
     context = {
-        'total_revenue': total_revenue,
-        'today_revenue': today_revenue,
-        'week_revenue': week_revenue,
-        'month_revenue': month_revenue,
+        'total_revenue': total_net_revenue,
+        'today_revenue': total_today_revenue,
+        'week_revenue': total_week_revenue,
+        'month_revenue': total_month_revenue,
         'chart_labels': json.dumps(labels),
         'chart_data': json.dumps(data),
     }
@@ -800,4 +822,34 @@ def export_payments_pdf(request):
     pisa_status = pisa.CreatePDF(io.BytesIO(html.encode('UTF-8')), dest=response)
     if pisa_status.err:
         return HttpResponse('We had some errors with PDF generation <pre>' + html + '</pre>')
+    return response
+
+
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa  # Or you can use reportlab if preferred
+from .models import Order
+from datetime import datetime
+
+def export_orders_pdf(request):
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    orders = Order.objects.all()
+
+    if start_date and end_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            orders = orders.filter(order_date__range=[start_date, end_date])
+        except ValueError:
+            pass  # fallback to all orders if date parsing fails
+
+    html = render_to_string('merchantOrderPDF.html', {'orders': orders})
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="orders_report.pdf"'
+    pisa_status = pisa.CreatePDF(html, dest=response)
+
+    if pisa_status.err:
+        return HttpResponse('Error generating PDF', status=500)
     return response

@@ -25,6 +25,7 @@ urlpatterns = [
 
 
 
+
     path('merchant-dashboard/menu/', views.menu_dashboard_view, name='menu_dashboard'),
     path('menu/add/', views.add_item, name='add_item'),
     path('menu/edit/<int:item_id>/', views.edit_item, name='edit_menu_item'),
@@ -37,6 +38,8 @@ urlpatterns = [
 
     path('merchant/payments/', views.merchant_payment_section_view, name='merchant_payment_section'),
     path('merchant/payments/export/', views.export_payments_pdf, name='export_payments_pdf'),
+    path('merchant/payments/export-orders', views.export_orders_pdf, name='export_orders_pdf'),
+
 
 
     path('merchant/revenue-report/', views.merchant_revenue_report, name='merchant_revenue_report'),

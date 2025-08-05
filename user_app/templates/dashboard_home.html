@@ -2,120 +2,103 @@
 {% load static %}
 {% block content %}
 
-<body class="bg-gray-50">
+<body class="bg-gray-50 text-gray-800">
 
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<main class="w-full px-0 sm:px-4 md:px-6 lg:px-8 mx-auto">
 
-    <!-- Search Bar -->
-    <form action="{% url 'home' %}" method="GET" class="my-8">
-        <div class="relative rounded-full shadow-sm">
-            <input type="text" name="q" value="{{ request.GET.q }}"
-                   class="w-full px-6 py-4 rounded-full border-0 ring-1 ring-gray-300 focus:ring-2 focus:ring-red-600"
-                   placeholder="Search restaurants or dishes...">
-            <button type="submit" class="absolute right-3 top-3 bg-red-600 text-white px-8 py-2 rounded-full hover:bg-red-700 transition">
-                Search
-            </button>
+  <!-- 🔍 Search Bar -->
+  <form action="{% url 'home' %}" method="GET" class="mt-6">
+    <div class="relative">
+      <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Search restaurants or dishes..."
+             class="w-full px-6 py-4 pr-32 rounded-full border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FF0B55] text-sm sm:text-base">
+      <button type="submit"
+              class="absolute right-2 top-2.5 sm:right-3 sm:top-3 bg-[#FF0B55] text-white px-6 py-2 rounded-full hover:bg-pink-600 transition-all text-sm sm:text-base">
+        Search
+      </button>
+    </div>
+  </form>
+
+<!-- 🍽️ Explore Categories -->
+    <section class="my-10">
+        <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-6 text-center">Explore Categories</h2>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+            {% for category in categories %}
+            <a href="{% url 'category_items' category|slugify %}" class="text-center group">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto overflow-hidden rounded-full bg-gradient-to-tr from-pink-50 to-yellow-100 shadow-md group-hover:shadow-lg transition">
+                    <img src="/media/images/{{ category|slugify }}.jpg"
+                         alt="{{ category }}"
+                         class="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-300 ease-in-out">
+                </div>
+                <p class="mt-2 text-xs font-medium text-gray-700 truncate">{{ category|truncatechars:15 }}</p>
+            </a>
+            {% endfor %}
         </div>
-    </form>
+    </section>
 
-<!-- 🌟 Explore Categories Section -->
-<section class="my-10 px-4 sm:px-6">
-  <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 text-center">Explore Categories</h2>
-
-  <div class="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-3">
-    {% for category in categories %}
-    <a href="{% url 'category_items' category|slugify %}" class="flex-shrink-0 snap-start w-24 sm:w-28 text-center group">
-      <div class="w-24 h-24 sm:w-28 sm:h-28 mx-auto relative overflow-hidden rounded-full bg-gradient-to-tr from-pink-50 to-yellow-100 shadow-md group-hover:shadow-xl transition duration-300 ease-in-out">
-        <img src="/media/images/{{ category|slugify }}.jpg"
-             alt="{{ category }}"
-             class="w-full h-full object-cover rounded-full transform group-hover:scale-105 transition-transform duration-300 ease-in-out">
+  <!-- 🍽️ Restaurants Section -->
+  <section class="my-12">
+    <h2 class="text-2xl font-bold mb-6">Popular Restaurants</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for restaurant in approved_restaurants %}
+      <div class="restaurant-card bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden" data-name="{{ restaurant.name|lower }}">
+        <div class="relative h-48">
+          <img src="{{ restaurant.image.url }}" alt="{{ restaurant.name }}" class="w-full h-full object-cover">
+          <div class="absolute top-2 right-2 bg-black/60 text-white text-sm px-3 py-1 rounded-full">★ {{ restaurant.avg_rating|default:"4.5" }}</div>
+          <span class="absolute top-2 left-2 px-3 py-1 rounded-full text-sm font-medium
+                      {% if restaurant.is_available %} bg-green-100 text-green-800 {% else %} bg-red-100 text-red-800 {% endif %}">
+            {% if restaurant.is_available %} Open Now {% else %} Closed {% endif %}
+          </span>
+        </div>
+        <div class="p-4">
+          <h3 class="text-lg font-bold truncate">{{ restaurant.name }}</h3>
+          <p class="text-gray-700 text-sm my-2 line-clamp-2">{{ restaurant.description|truncatechars:100 }}</p>
+          <div class="flex justify-between items-center text-sm text-gray-600">
+            <span class="truncate">📍 {{ restaurant.address|truncatechars:25 }}</span>
+            <a href="{% url 'user_view_menu' restaurant.id %}"
+               class="ml-2 px-4 py-1.5 bg-[#FF0B55] text-white rounded-full text-xs hover:bg-pink-600 transition">View</a>
+          </div>
+        </div>
       </div>
-      <p class="mt-2 text-xs sm:text-sm font-medium text-gray-700 truncate">{{ category }}</p>
-    </a>
-    {% endfor %}
-  </div>
-</section>
+      {% endfor %}
+    </div>
+  </section>
 
+  <!-- 🍔 Featured Menu Items -->
+  <section class="my-12">
+    <h2 class="text-2xl font-bold mb-6">Featured Menu</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {% for item in items %}
+      <div class="menu-card bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden" data-name="{{ item.name|lower }}">
+        {% if item.image %}
+        <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-40 object-cover">
+        {% else %}
+        <div class="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">No Image</div>
+        {% endif %}
 
+        <div class="p-3">
+          <h3 class="text-sm font-semibold text-gray-800 truncate">{{ item.name }}</h3>
+          <p class="text-gray-600 text-xs mt-1 mb-2 line-clamp-2">{{ item.description|truncatechars:60 }}</p>
 
+          <div class="grid grid-cols-2 text-[11px] text-gray-500 gap-y-1 mb-3">
+            <div>₹<span class="text-green-500">{{ item.price }}</span></div>
+            <div>⏱️ <span class="text-green-500">{{ item.prep_time }} mins</span></div>
+            <div>🍴 <span class="text-green-500">{{ item.category }}</span></div>
+            <div>📏 <span class="text-green-500">{{ item.sizes_categories }}</span></div>
+          </div>
 
-
-    <!-- Restaurants Grid -->
-    <section class="my-12">
-        <h2 class="text-2xl font-bold mb-6">Popular Restaurants</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for restaurant in approved_restaurants %}
-            <div class="restaurant-card bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition" data-name="{{ restaurant.name|lower }}">
-                <div class="relative">
-                    <img src="{{ restaurant.image.url }}" alt="{{ restaurant.name }}" class="w-full h-48 object-cover">
-                    <div class="absolute top-2 right-2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">★ {{ restaurant.avg_rating|default:"4.5" }}</div>
-                    <span class="absolute top-2 left-2 px-3 py-1 rounded-full text-sm font-medium
-                        {% if restaurant.is_available %} bg-green-100 text-green-800 {% else %} bg-red-100 text-red-800 {% endif %}">
-                        {% if restaurant.is_available %} Open Now {% else %} Closed {% endif %}
-                    </span>
-                </div>
-                <div class="p-4">
-                    <h3 class="text-xl font-bold mb-2">{{ restaurant.name }}</h3>
-                    <p class="text-black mb-3">{{ restaurant.description|truncatechars:100 }}</p>
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-black">📍 {{ restaurant.address|truncatechars:20 }}</span>
-                        <a href="{% url 'user_view_menu' restaurant.id %}" class="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition">View Restaurant</a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
+          <div class="flex justify-between gap-2">
+            <a href="{% url 'add_to_cart' item.id %}" class="w-1/2 text-center bg-[#FF0B55] text-white text-xs py-1.5 rounded-full hover:bg-pink-600 transition">Add</a>
+            <a href="{% url 'order_now' item.id %}" class="w-1/2 text-center bg-[#FF0B55] text-white text-xs py-1.5 rounded-full hover:bg-pink-600 transition">Order</a>
+          </div>
         </div>
-
-
-    </section>
-
-    <!-- Menu Items Grid -->
-    <section class="my-12 px-0">
-        <h2 class="text-2xl font-bold mb-6">Featured Menu </h2>
-        <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {% for item in items %}
-            <div class="menu-card bg-white rounded-xl shadow-sm hover:shadow-md transition duration-300 overflow-hidden" data-name="{{ item.name|lower }}">
-                {% if item.image %}
-                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-42 object-cover" />
-                {% else %}
-                <div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">No Image</div>
-                {% endif %}
-
-                <div class="p-3">
-                    <h3 class="text-sm font-semibold text-gray-800 truncate">{{ item.name }}</h3>
-                    <p class="text-gray-600 text-xs mt-1 mb-2 line-clamp-2">{{ item.description|truncatechars:60 }}</p>
-
-                    <div class="grid grid-cols-2 text-[11px] text-gray-500 gap-y-1 mb-3">
-                        <div class="flex items-center gap-1">
-                            ₹<span class="text-green-500">{{ item.price }}</span>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            ⏱️ <span class="text-green-500">{{ item.prep_time }} mins</span>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            🍴 <span class="text-green-500">{{ item.category }}</span>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            📏 <span class="text-green-500">{{ item.sizes_categories }}</span>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between gap-2">
-                        <a href="{% url 'add_to_cart' item.id %}" class="w-1/2 text-center bg-[#FF0B55] text-white text-xs py-1.5 rounded-full hover:bg-pink-600 transition">Add to Cart</a>
-                        <a href="{% url 'order_now' item.id %}" class="w-1/2 text-center bg-[#FF0B55] text-white text-xs py-1.5 rounded-full hover:bg-pink-600 transition">Order Now</a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-
-
+      </div>
+      {% endfor %}
+    </div>
+  </section>
 
 </main>
 
-<!-- ✅ Live Search JS -->
+<!-- 🔍 Live Search -->
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const searchInput = document.querySelector('input[name="q"]');
@@ -124,14 +107,10 @@
 
     searchInput.addEventListener("input", function () {
       const query = this.value.toLowerCase().trim();
-
-      // Filter Restaurants
       restaurantCards.forEach(card => {
         const name = card.dataset.name;
         card.style.display = name.includes(query) ? "block" : "none";
       });
-
-      // Filter Menu Items
       menuCards.forEach(card => {
         const name = card.dataset.name;
         card.style.display = name.includes(query) ? "block" : "none";
@@ -139,17 +118,19 @@
     });
   });
 </script>
+
+<!-- 💬 Tawk Chat -->
 <script type="text/javascript">
   var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
   (function(){
-  var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-  s1.async=true;
-  s1.src='https://embed.tawk.to/6851b893e173a419176ecd20/1itvji0hj';
-  s1.charset='UTF-8';
-  s1.setAttribute('crossorigin','*');
-  s0.parentNode.insertBefore(s1,s0);
+    var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+    s1.async=true;
+    s1.src='https://embed.tawk.to/6851b893e173a419176ecd20/1itvji0hj';
+    s1.charset='UTF-8';
+    s1.setAttribute('crossorigin','*');
+    s0.parentNode.insertBefore(s1,s0);
   })();
-  </script>
+</script>
+
 </body>
 {% endblock %}
-

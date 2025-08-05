@@ -53,7 +53,20 @@ class RestaurantMenu(models.Model):
     available = models.BooleanField(default=True)
     prep_time = models.PositiveIntegerField()
     sizes_categories = models.ForeignKey(SizeCategory,on_delete=models.CASCADE, related_name='menu_items')  # 👈 new field
+    VEG_NONVEG_CHOICES = [
+        ('veg', 'Vegetarian'),
+        ('nonveg', 'Non-Vegetarian'),
+    ]
+    veg_or_nonveg = models.CharField(
+        max_length=10,
+        choices=VEG_NONVEG_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Veg / Non-Veg"
+    )
 
+    def __str__(self):
+        return self.name
     def __str__(self):
         return f"{self.name} - {self.restaurant.name}"
 

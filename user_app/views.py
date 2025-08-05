@@ -39,6 +39,9 @@ from django.http import JsonResponse
 from django.utils.text import slugify
 from .forms import OrderFeedbackForm
 from merchant_app.views import send_push_to_merchant
+from django.utils.safestring import mark_safe
+import json
+
 
 def home(request):
     categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
@@ -876,3 +879,52 @@ def user_support(request):
     return render(request, 'partials/user_support.html', context)
 
 
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .models import UserProfile
+from .forms import UserProfileForm
+
+@login_required
+def profile_view(request):
+    try:
+        profile = request.user.userprofile
+    except UserProfile.DoesNotExist:
+        profile = UserProfile.objects.create(user=request.user)
+    
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('profile')
+    else:
+        form = UserProfileForm(instance=profile)
+    
+    return render(request, 'profile_section.html', {'form': form})
+
+@login_required
+def update_avatar(request):
+    if request.method == 'POST' and request.FILES.get('avatar'):
+        try:
+            profile = request.user.userprofile
+            profile.avatar = request.FILES['avatar']
+            profile.save()
+            messages.success(request, 'Avatar updated successfully!')
+        except Exception as e:
+            messages.error(request, f'Error updating avatar: {str(e)}')
+    return redirect('profile')
+
+from django.contrib.auth.views import PasswordChangeView
+from django.urls import reverse_lazy
+from django.contrib import messages
+
+class CustomPasswordChangeView(PasswordChangeView):
+    template_name = 'change_password.html'
+    success_url = reverse_lazy('profile')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Your password was successfully updated!')
+        return super().form_valid(form)
+    
+    

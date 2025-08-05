@@ -1,7 +1,7 @@
 from django.urls import path
-from .views import home, about, contact, payment_success, privacy, careers, terms, ResponsibleDisclosure, addRestaurant, rideWithUs
+from .views import home, about, contact, payment_success, privacy, careers, profile_view, terms, ResponsibleDisclosure, addRestaurant, rideWithUs, update_avatar
 from .views import userLogin, user_view_menu, UserRegistration_view,user_logout
-from .views  import registration_success, user_profile,order_confirmation, order_detail, profile_section, dashboard_home,user_active_orders,order_user_history,support, view_cart, add_to_cart, remove_from_cart, change_quantity
+from .views  import registration_success, user_profile,order_confirmation, order_detail, profile_section, dashboard_home,user_active_orders,order_user_history,support, view_cart, add_to_cart, remove_from_cart, change_quantity,CustomPasswordChangeView
 from django.contrib.auth.views import LogoutView
 
 from user_app import views
@@ -44,5 +44,10 @@ urlpatterns = [
     path('payment/success/', payment_success, name='payment_success'),
 
     path('restaurant/<int:restaurant_id>/review/', views.submit_review, name='submit_review'),
+    path('profile/', views.profile_view, name='profile'),
+    path('profile/update/', profile_view, name='update_profile'),
+
+    path('profile/update-avatar/', update_avatar, name='update_avatar'),
+    path('change-password/', CustomPasswordChangeView.as_view(), name='change_password'),
 
 ]

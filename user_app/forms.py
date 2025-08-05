@@ -1,3 +1,4 @@
+import os
 from django import forms
 from .models import Order, CustomerFeedback, userRegistration
 import re
@@ -197,3 +198,42 @@ class UserTicketMessageForm(forms.ModelForm):
         labels = {
             'message': 'Message',
         }
+
+
+
+from django import forms
+from django.contrib.auth.models import User
+from .models import UserProfile
+
+class UserProfileForm(forms.ModelForm):
+    first_name = forms.CharField(max_length=30, required=False)
+    last_name = forms.CharField(max_length=30, required=False)
+    
+    class Meta:
+        model = UserProfile
+        fields = ['phone_number', 'address', 'avatar']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.user:
+            self.fields['first_name'].initial = self.instance.user.first_name
+            self.fields['last_name'].initial = self.instance.user.last_name
+    
+    def save(self, commit=True):
+        profile = super().save(commit=False)
+        if commit:
+            profile.save()
+            user = profile.user
+            user.first_name = self.cleaned_data['first_name']
+            user.last_name = self.cleaned_data['last_name']
+            user.save()
+        return profile
+    
+
+    from django.core.exceptions import ValidationError
+
+def validate_image(file):
+    valid_extensions = ['.jpg', '.jpeg', '.png', '.gif']
+    ext = os.path.splitext(file.name)[1]
+    if not ext.lower() in valid_extensions:
+        raise forms.ValidationError('Unsupported file extension.')
