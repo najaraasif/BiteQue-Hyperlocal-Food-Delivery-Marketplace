@@ -138,6 +138,12 @@ def category_items(request, category_slug):
                     continue
         item.average_rating = round(mean(ratings), 1) if ratings else None
 
+    veg_filter = request.GET.get('veg_filter')
+    if veg_filter == 'veg':
+        items = items.filter(veg_or_nonveg='veg')
+    elif veg_filter == 'nonveg':
+        items = items.filter(veg_or_nonveg='nonveg')
+
     context = {
         'category_name': category,
         'items': items,

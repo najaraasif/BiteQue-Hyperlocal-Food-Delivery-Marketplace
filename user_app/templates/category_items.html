@@ -6,29 +6,39 @@
     {{ category_name }} Dishes
   </h2>
 
-  <!-- Filters -->
-  <form method="get" class="mb-6 flex flex-wrap justify-end gap-4">
+<!-- Filters -->
+<form method="get" class="mb-6 flex flex-wrap justify-end gap-4">
+    <!-- Veg/Non-Veg Filter -->
+    <div>
+        <label for="veg_filter" class="mr-1 text-sm text-gray-700 font-medium">Food Type:</label>
+        <select name="veg_filter" id="veg_filter" onchange="this.form.submit()" class="border border-gray-300 text-sm rounded-md px-3 py-2 shadow-sm focus:ring-[#FF0B55] focus:border-[#FF0B55]">
+            <option value="">All</option>
+            <option value="veg" {% if request.GET.veg_filter == 'veg' %}selected{% endif %}>Vegetarian</option>
+            <option value="nonveg" {% if request.GET.veg_filter == 'nonveg' %}selected{% endif %}>Non-Vegetarian</option>
+        </select>
+    </div>
+
     <!-- Price Dropdown -->
     <div>
-      <label for="price" class="mr-1 text-sm text-gray-700 font-medium">Sort by Price:</label>
-      <select name="price" id="price" onchange="this.form.submit()" class="border border-gray-300 text-sm rounded-md px-3 py-2 shadow-sm focus:ring-[#FF0B55] focus:border-[#FF0B55]">
-        <option value="">Default</option>
-        <option value="asc" {% if request.GET.price == 'asc' %}selected{% endif %}>Low to High</option>
-        <option value="desc" {% if request.GET.price == 'desc' %}selected{% endif %}>High to Low</option>
-      </select>
+        <label for="price" class="mr-1 text-sm text-gray-700 font-medium">Sort by Price:</label>
+        <select name="price" id="price" onchange="this.form.submit()" class="border border-gray-300 text-sm rounded-md px-3 py-2 shadow-sm focus:ring-[#FF0B55] focus:border-[#FF0B55]">
+            <option value="">Default</option>
+            <option value="asc" {% if request.GET.price == 'asc' %}selected{% endif %}>Low to High</option>
+            <option value="desc" {% if request.GET.price == 'desc' %}selected{% endif %}>High to Low</option>
+        </select>
     </div>
 
     <!-- Rating Dropdown -->
     <div>
-      <label for="rating" class="mr-1 text-sm text-gray-700 font-medium">Min Rating:</label>
-      <select name="rating" id="rating" onchange="this.form.submit()" class="border border-gray-300 text-sm rounded-md px-3 py-2 shadow-sm focus:ring-[#FF0B55] focus:border-[#FF0B55]">
-        <option value="">Any</option>
-        {% for r in rating_options %}
-          <option value="{{ r }}" {% if request.GET.rating == r|stringformat:"s" %}selected{% endif %}>{{ r }}★ & up</option>
-        {% endfor %}
-      </select>
+        <label for="rating" class="mr-1 text-sm text-gray-700 font-medium">Min Rating:</label>
+        <select name="rating" id="rating" onchange="this.form.submit()" class="border border-gray-300 text-sm rounded-md px-3 py-2 shadow-sm focus:ring-[#FF0B55] focus:border-[#FF0B55]">
+            <option value="">Any</option>
+            {% for r in rating_options %}
+                <option value="{{ r }}" {% if request.GET.rating == r|stringformat:"s" %}selected{% endif %}>{{ r }}★ & up</option>
+            {% endfor %}
+        </select>
     </div>
-  </form>
+</form>
 
   <!-- Item Cards -->
   <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

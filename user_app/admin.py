@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Order, CustomerFeedback, userRegistration
+from .models import Order, CustomerFeedback, userRegistration, UserProfile
 from django.utils.safestring import mark_safe
 
 
@@ -89,7 +89,7 @@ class TicketMessageAdmin(admin.ModelAdmin):
     short_message.short_description = 'Message Preview'
 
 
-
+admin.site.register(UserProfile)
 admin.site.register(userRegistration, userRegistrationAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(CustomerFeedback, CustomerFeedbackAdmin)
