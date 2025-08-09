@@ -1116,3 +1116,29 @@ def test_notification(request):
 
 
 
+#contact us form
+
+
+from django.http import JsonResponse
+from django.core.mail import send_mail
+
+def contact_form(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        message = request.POST.get('message')
+
+        try:
+            send_mail(
+                f"ZemQue Contact Form - {name}",
+                f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}",
+                'najaraasif944@gmail.com',
+                ['najaraasif944@gmail.com'],
+                fail_silently=False,
+            )
+            return JsonResponse({"status": "success", "message": "Your message has been sent successfully!"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": f"Error: {str(e)}"})
+
+    return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
+

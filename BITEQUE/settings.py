@@ -206,4 +206,16 @@ RAZORPAY_KEY_SECRET = '***REMOVED***'
 
 FAST2SMS_API_KEY = '***REMOVED***'  
 FAST2SMS_URL = 'https://www.fast2sms.com/dev/bulkV2'
-WHATSAPP_SENDER_ID = 'FSTSMS'  # Or your approved sender ID
+WHATSAPP_SENDER_ID = 'FSTSMS'  
+
+
+
+
+#contact form backend
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'najaraasif944@gmail.com'  # Your email
+EMAIL_HOST_PASSWORD = '***REMOVED***'  
