@@ -31,7 +31,8 @@
       {% if user.is_authenticated %}
         <button 
           @click="sidebarOpen = !sidebarOpen" 
-          class="hidden md:inline-flex items-center px-3 py-2 text-[#FF0B55] hover:text-pink-700 focus:outline-none"
+          class="hidden md:inline-flex items-center px-3 py-2 text-[#FF0B55] hover:text-pink-600 bg-white/80 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 focus:outline-none"
+
         >
           <i class="fas fa-bars"></i>
         </button>
