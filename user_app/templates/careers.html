@@ -47,7 +47,7 @@ Whether you’re a <strong>Rider</strong> on the road or a <strong>Merchant</str
 <section class="py-16 bg-white">
   <div class="max-w-7xl mx-auto px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
     <div>
-      <img src="" alt="Join as Rider" class="rounded-2xl shadow-lg">
+      <img src="/media/images/rider.png" alt="Join as Rider" class="rounded-2xl shadow-lg">
     </div>
     <div>
       <h2 class="text-3xl font-bold text-gray-900 mb-4">Join as a Rider</h2>
@@ -60,7 +60,7 @@ Whether you’re a <strong>Rider</strong> on the road or a <strong>Merchant</str
         <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> Weekly payouts</li>
         <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> Rider support team</li>
       </ul>
-      <a href="" class="bg-[#FF0B55] text-white px-6 py-3 rounded-full shadow-md hover:scale-105 transition">
+      <a href="{% url 'rider:registration' %}" class="bg-[#FF0B55] text-white px-6 py-3 rounded-full shadow-md hover:scale-105 transition">
         Apply Now
       </a>
     </div>
@@ -80,12 +80,12 @@ Whether you’re a <strong>Rider</strong> on the road or a <strong>Merchant</str
         <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> Increase sales volume</li>
         <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> Marketing & promotions</li>
       </ul>
-      <a href="{% url 'add-restaurant' %}" class="bg-[#FF0B55] text-white px-6 py-3 rounded-full shadow-md hover:scale-105 transition">
+      <a href="{% url 'merchant_register' %}" class="bg-[#FF0B55] text-white px-6 py-3 rounded-full shadow-md hover:scale-105 transition">
         Get Started
       </a>
     </div>
     <div class="order-1 md:order-2">
-      <img src="" alt="Join as Merchant" class="rounded-2xl shadow-lg">
+      <img src="/media/images/merchant.png" alt="Join as Merchant" class="rounded-2xl shadow-lg">
     </div>
   </div>
 </section>
