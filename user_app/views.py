@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect
 from merchant_app.models import RestaurantMenu
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import Order, CustomerFeedback, MerchantNotification, userRegistration
+from .models import Order, CustomerFeedback, MerchantNotification
 from .forms import userRegistrationForm
 from rider_app.utils import calculate_osrm_distance, geocode_address
 from django.contrib.auth.models import User
@@ -41,6 +41,7 @@ from .forms import OrderFeedbackForm
 from merchant_app.views import send_push_to_merchant
 from django.utils.safestring import mark_safe
 import json
+from user_app.utils import send_sms, send_whatsapp
 
 
 def home(request):
@@ -65,28 +66,45 @@ def home(request):
     }
     return render(request, 'home.html', context)
 
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from .models import Order, CustomerFeedback, UserSupportTicket, UserProfile
+
 @login_required
 def dashboard_home(request):
-    categories = RestaurantMenu.objects.values_list('category', flat=True).distinct()
-    approved_restaurants = Restaurant.objects.filter(is_approved=True)
-    sizes = SizeCategory.objects.all()
-    items = RestaurantMenu.objects.filter(restaurant__in=approved_restaurants)
+    user = request.user
 
-    query = request.GET.get('q')  
-    if query:
-        items = items.filter(name__icontains=query)
+    # ✅ Get User Profile
+    user_profile = UserProfile.objects.filter(user=user).first()
 
-    for restaurant in approved_restaurants:
-        restaurant.avg_rating = restaurant.reviews.aggregate(avg=Avg('rating'))['avg'] or 0
-    
+    # ✅ Get All Orders for the User
+    orders = Order.objects.filter(user=user).order_by('-created_at')
+
+    # 📊 Stats Calculations
+    total_orders = orders.count()
+    ongoing_orders = orders.filter(status__in=["pending", "confirmed", "ready", "out_for_delivery"]).count()
+    delivered_orders = orders.filter(status="delivered").count()
+
+    # 🎫 Support Tickets
+    support_tickets = UserSupportTicket.objects.filter(user=user, status="open")
+
+    # 💬 Feedback
+    user_feedback = CustomerFeedback.objects.filter(customer=user)
+
+
+    # 📦 Prepare Context
     context = {
-        'categories': categories,
-        'approved_restaurants': approved_restaurants,
-        'items': items,  
-        'size': sizes,
-
+        'user_profile': user_profile,
+        'orders': orders,
+        'total_orders': total_orders or 0,
+        'ongoing_orders': ongoing_orders or 0,
+        'delivered_orders': delivered_orders or 0,
+        'support_tickets': support_tickets,
+        'user_feedback': user_feedback,
     }
+
     return render(request, 'dashboard_home.html', context)
+
 
 
 
@@ -166,6 +184,9 @@ from django.conf import settings
 import razorpay
 from .models import Order,OrderMenuItem  
 
+from user_app.utils import send_sms, send_whatsapp
+import threading
+
 def checkout(request):
     if not request.user.is_authenticated:
         return redirect(f"{reverse('user_login')}?next={request.path}")
@@ -177,7 +198,7 @@ def checkout(request):
     cart_items = []
     item_subtotal = Decimal('0.00')
     total_platform_gst = Decimal('0.00')
-    packaging_charges = Decimal('20.00')
+    packaging_charges = Decimal('10.00')
     delivery_fee = Decimal('0.00')
     distance_km = Decimal('0.00')
     restaurant = None
@@ -186,7 +207,7 @@ def checkout(request):
         menu_item = get_object_or_404(RestaurantMenu, id=item_id)
         quantity = item_data.get('quantity', 1)
         subtotal = menu_item.price * quantity
-        gst = (menu_item.price * Decimal('0.05')) * quantity
+        gst = (menu_item.price * Decimal('0.03')) * quantity
         item_subtotal += subtotal
         total_platform_gst += gst
 
@@ -239,7 +260,7 @@ def checkout(request):
                 is_paid=False
             )
 
-            # ✅ Add each item to the OrderMenuItem model with quantity and price
+            # ✅ Add items to OrderMenuItem
             for item_id, item_data in cart.items():
                 menu_item = RestaurantMenu.objects.get(id=item_id)
                 quantity = item_data.get('quantity', 1)
@@ -250,7 +271,7 @@ def checkout(request):
                     price=menu_item.price
                 )
 
-            # Razorpay order create
+            # ✅ Razorpay order creation
             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
             razorpay_order = client.order.create({
                 'amount': razorpay_amount,
@@ -265,6 +286,7 @@ def checkout(request):
             order.razorpay_order_id = razorpay_order['id']
             order.save(update_fields=['razorpay_order_id'])
 
+
             return JsonResponse({
                 'success': True,
                 'razorpay_key': settings.RAZORPAY_KEY_ID,
@@ -276,6 +298,7 @@ def checkout(request):
 
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
+
 
     # GET request view rendering
     context = {
@@ -364,36 +387,78 @@ def careers(request):
 def ResponsibleDisclosure(request):
     return render(request, 'ResponsibleDisclosure.html')
 
+
+
+from django.db import transaction, IntegrityError
+from django.contrib.auth import authenticate, login
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+from .models import UserProfile
+from .forms import userRegistrationForm
+
 def UserRegistration_view(request):
     if request.method == 'POST':
         form = userRegistrationForm(request.POST)
         if form.is_valid():
             try:
+                print("✅ Form is valid, starting registration process")  # Debug
+
+                username = form.cleaned_data['username']
+                email = form.cleaned_data['email']
+                name = form.cleaned_data['name']
                 password = form.cleaned_data['password']
-                retype_password = form.cleaned_data['retypePassword']
-                if password != retype_password:
-                    form.add_error('retypePassword', 'Passwords do not match.')
-                else:
-                    user = User.objects.create_user(
-                    username=form.cleaned_data['username'],
-                    email=form.cleaned_data['email'],
-                    password=form.cleaned_data['password']
-                    )
-                    userRegistration.objects.create(
-                        username=user,  # ✅ Assign the User object here
-                        name=form.cleaned_data['name'],
-                        email=form.cleaned_data['email'],
-                        password=form.cleaned_data['password']
+                phone_number = form.cleaned_data['number']
+                whatsapp_consent = form.cleaned_data.get('whatsapp_consent', False)
 
+                # Create the User
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    first_name=name.split()[0],
+                    last_name=' '.join(name.split()[1:]) if len(name.split()) > 1 else ''
                 )
+                print(f"👤 User created: {user}")  # Debug
 
-                    return redirect('user_registration_success')
-            except IntegrityError:
-                form.add_error('username', 'Username already exists. Please choose a different one.')
+                # Update the auto-created UserProfile
+                profile = user.userprofile
+                profile.phone_number = phone_number
+                profile.whatsapp_consent = whatsapp_consent
+                profile.address = ''  # optional
+                profile.save()
+                print(f"📱 Profile updated: {profile}")  # Debug
+
+                # Authenticate and login
+                authenticated_user = authenticate(username=username, password=password)
+                if authenticated_user is not None:
+                    login(request, authenticated_user)
+                    print("🔐 User authenticated and logged in")  # Debug
+                    return redirect('registration_success')
+
+            except IntegrityError as e:
+                print(f"⚠️ IntegrityError: {str(e)}")
+                if 'username' in str(e).lower():
+                    form.add_error('username', 'Username already exists')
+                elif 'email' in str(e).lower():
+                    form.add_error('email', 'Email already exists')
+                else:
+                    form.add_error(None, f'Registration error: {str(e)}')
+            except Exception as e:
+                print(f"❌ General Exception: {str(e)}")
+                form.add_error(None, f'An error occurred: {str(e)}')
+        else:
+            print(f"❌ Form errors: {form.errors}")
     else:
         form = userRegistrationForm()
 
     return render(request, 'userRegistration.html', {'form': form})
+
+
+
+
+
+
+
 
 def registration_success(request):
     return render(request, 'user_registration_success.html')
@@ -435,6 +500,24 @@ def create_order(request):
             order.delivery_latitude = lat
             order.delivery_longitude = lng
             order.save()
+
+
+        content_sid = 'HXb5b62575e6e4ff6129ad7c8efe1f983e'  # Your Twilio Content Template SID
+
+        # Replace keys "1", "2" with what your template expects (check Twilio dashboard)
+        content_variables = {
+            "1": f"{order.id}",  # Order ID
+            "2": f"₹{order.total}",  # Amount
+            "3": f"{restaurant.name}"  # Restaurant Name (optional if needed)
+        }
+
+        to_number = f"+91{order.customer_contact}"  # Ensure E.164 format
+        threading.Thread(
+            target=send_whatsapp_message,
+            args=(to_number, content_sid, content_variables)
+        ).start()
+
+
         if restaurant.player_id:
             send_push_to_merchant(restaurant.player_id, order.id)
 
@@ -488,9 +571,9 @@ def order_detail(request, order_id):
         })
         item_subtotal += subtotal
 
-    gst_tax = item_subtotal * Decimal('0.05')
+    gst_tax = item_subtotal * Decimal('0.03')
     delivery_fee = order.distance_earning + Decimal('0.60')
-    packaging_charges = Decimal('20.00')
+    packaging_charges = Decimal('10.00')
     order_total = item_subtotal + gst_tax + delivery_fee + packaging_charges
 
     # ✅ Check if feedback already exists
@@ -594,7 +677,22 @@ from django.shortcuts import redirect
 
 def add_to_cart(request, item_id):
     cart = request.session.get('cart', {})
+    item = get_object_or_404(RestaurantMenu, id=item_id)
+    item_restaurant_id = str(item.restaurant.id)
 
+    if cart:
+        # Get first item already in cart
+        first_item_id = next(iter(cart))
+        first_item = get_object_or_404(RestaurantMenu, id=first_item_id)
+        first_item_restaurant_id = str(first_item.restaurant.id)
+
+        if item_restaurant_id != first_item_restaurant_id:
+            request.session['show_single_restaurant_alert'] = True
+            return redirect('user_view_menu', restaurant_id=item.restaurant.id)
+
+    request.session.pop('show_single_restaurant_alert', None)
+
+    # Add or update item in cart
     if str(item_id) in cart:
         cart[str(item_id)]['quantity'] += 1
     else:
@@ -604,6 +702,21 @@ def add_to_cart(request, item_id):
     request.session.modified = True
 
     return redirect(request.META.get('HTTP_REFERER', '/'))
+
+
+def restaurant_menu_view(request, restaurant_id):
+    # Clear the alert if it exists
+    show_alert = request.session.pop('show_single_restaurant_alert', False)
+
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+    menu_items = RestaurantMenu.objects.filter(restaurant=restaurant)
+
+    return render(request, 'restaurant/menu.html', {
+        'restaurant': restaurant,
+        'menu_items': menu_items,
+        'show_single_restaurant_alert': show_alert,
+    })
+
 
 
 def view_cart(request):
@@ -891,23 +1004,39 @@ from django.contrib import messages
 from .models import UserProfile
 from .forms import UserProfileForm
 
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from .models import UserProfile
+from .forms import UserProfileForm
+
+
 @login_required
 def profile_view(request):
-    try:
-        profile = request.user.userprofile
-    except UserProfile.DoesNotExist:
-        profile = UserProfile.objects.create(user=request.user)
+    profile = request.user.userprofile
     
     if request.method == 'POST':
         form = UserProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
-            form.save()
+            profile = form.save()
+            
+            # Update user's name fields
+            user = request.user
+            user.first_name = form.cleaned_data.get('first_name', '')
+            user.last_name = form.cleaned_data.get('last_name', '')
+            user.save()
+            
             messages.success(request, 'Profile updated successfully!')
             return redirect('profile')
     else:
-        form = UserProfileForm(instance=profile)
-    
+        # Initialize form with current data
+        form = UserProfileForm(instance=profile, initial={
+            'first_name': request.user.first_name,
+            'last_name': request.user.last_name
+        })
+
     return render(request, 'profile_section.html', {'form': form})
+
 
 @login_required
 def update_avatar(request):
@@ -933,4 +1062,57 @@ class CustomPasswordChangeView(PasswordChangeView):
         messages.success(self.request, 'Your password was successfully updated!')
         return super().form_valid(form)
     
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+import requests
+import json
+
+@csrf_exempt
+def send_whatsapp_alert(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            payload = {
+                "secret": settings.SMSQUICKER_API_SECRET,
+                "account": settings.SMSQUICKER_ACCOUNT_ID,
+                "recipient": data.get('recipient'),
+                "type": "text",
+                "message": data.get('message')
+            }
+            
+            response = requests.post(settings.SMSQUICKER_API_URL, data=payload)
+            
+            return JsonResponse(response.json(), status=response.status_code)
+            
+        except Exception as e:
+            return JsonResponse(
+                {'error': str(e)},
+                status=500
+            )
     
+    return JsonResponse(
+        {'error': 'Method not allowed'},
+        status=405
+    )
+
+# views.py
+from django.http import JsonResponse
+from user_app.utils import send_sms, send_whatsapp
+
+@login_required
+def test_notification(request):
+    phone = "9876543210"  # Test number
+    message = "Test message from Django"
+    
+    whatsapp_sent = send_whatsapp(phone, message)
+    sms_sent = send_sms(phone, message)
+    
+    return JsonResponse({
+        'whatsapp_success': whatsapp_sent,
+        'sms_success': sms_sent
+    })
+
+
+

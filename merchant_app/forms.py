@@ -53,7 +53,7 @@ class MerchantRegistrationForm(forms.Form):
 
     def clean_number(self):
         number = self.cleaned_data.get("number")
-        if not re.match(r'^(\+?\d{10,15})$', number):
+        if not re.match(r'/^[6-9]\d{10}$', number):  
             raise forms.ValidationError("Enter a valid phone number.")
         # Optional: check for duplicates if number is stored in a related model
         # if MerchantModel.objects.filter(number=number).exists():
@@ -124,8 +124,8 @@ class RestaurantForm(forms.ModelForm):
 
     def clean_contact_number(self):
         number = self.cleaned_data['contact_number']
-        if not re.match(r'^\d{10}$', number):
-            raise forms.ValidationError("Enter a valid 10-digit mobile number.")
+        if not re.match(r'/^[6-9]\d{10}$', number):
+            raise forms.ValidationError("Enter a valid mobile number.")
         return number
 
     def clean_pan_number(self):

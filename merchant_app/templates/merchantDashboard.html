@@ -99,19 +99,22 @@
       <!-- Items Ordered -->
       <div>
         <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-1 mb-2">
-          🍽️ Items Ordered
-        </h4>
-        <ul class="space-y-1 ml-2">
-          {% for item in order.menu_items.all %}
-          <li class="flex items-start justify-between bg-gray-50 dark:bg-gray-800/50 p-2 rounded-md shadow-sm">
-            <div class="flex flex-col">
-              <span class="font-semibold text-gray-800 dark:text-white">{{ item.name }}</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400 italic">Size: {{ item.sizes_categories }}</span>
-            </div>
-            <span class="text-xs text-white bg-red-400 px-2 py-0.5 rounded-full font-medium self-center">Qty: 1</span>
-          </li>
-          {% endfor %}
-        </ul>
+  🍽️ Items Ordered
+</h4>
+<ul class="space-y-1 ml-2">
+  {% for item in order.order_items.all %}
+  <li class="flex items-start justify-between bg-gray-50 dark:bg-gray-800/50 p-2 rounded-md shadow-sm">
+    <div class="flex flex-col">
+      <span class="font-semibold text-gray-800 dark:text-white">{{ item.menu_item.name }}</span>
+      <span class="text-xs text-gray-500 dark:text-gray-400 italic">Size: {{ item.menu_item.sizes_categories }}</span>
+    </div>
+    <span class="text-xs text-white bg-red-400 px-2 py-0.5 rounded-full font-medium self-center">
+      Qty: {{ item.quantity }}
+    </span>
+  </li>
+  {% endfor %}
+</ul>
+
       </div>
 
       <!-- Total Price -->
@@ -186,19 +189,7 @@
         <p class="text-gray-500 text-center mt-6">No pending orders at the moment.</p>
         {% endif %}
         
-
-    {% else %}
-
-    <!-- Restaurant Closed Message -->
-    <div class="mt-20 text-center">
-        <img src="https://cdn-icons-png.flaticon.com/512/753/753345.png" alt="Closed" class="mx-auto w-28 mb-4" />
-        <p class="text-lg text-gray-600">Your restaurant is currently <strong class="text-red-500">Closed</strong>.</p>
-        <p class="text-gray-500">Toggle to "Open" above to start receiving orders and view analytics.</p>
-    </div>
-
-    {% endif %}
-
-   <div class="bg-white p-6 rounded shadow mt-6" style="height: 400px;">
+<div class="bg-white p-6 rounded shadow mt-6" style="height: 400px;">
     <h3 class="text-lg font-semibold mb-4">Top Selling Items</h3>
 
     {% if top_items %}
@@ -270,6 +261,18 @@
 <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    {% else %}
+
+    <!-- Restaurant Closed Message -->
+    <div class="mt-20 text-center">
+        <img src="https://cdn-icons-png.flaticon.com/512/753/753345.png" alt="Closed" class="mx-auto w-28 mb-4" />
+        <p class="text-lg text-gray-600">Your restaurant is currently <strong class="text-red-500">Closed</strong>.</p>
+        <p class="text-gray-500">Toggle to "Open" above to start receiving orders and view analytics.</p>
+    </div>
+
+    {% endif %}
+
+   
 <script>
   window.OneSignal = window.OneSignal || [];
   OneSignal.push(function () {

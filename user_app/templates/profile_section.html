@@ -7,6 +7,7 @@
 
     <!-- Profile Header Card -->
     <div class="bg-white/80 backdrop-blur-xl border border-gray-200 rounded-3xl shadow-lg p-8 flex flex-col md:flex-row items-center gap-6 transition duration-300">
+      
       <!-- Avatar Section -->
       <div class="relative group">
         <div class="w-36 h-36 rounded-full overflow-hidden border-4 border-[#FF0B55] shadow-lg relative">
@@ -34,53 +35,82 @@
         </div>
       </div>
 
-      <!-- User Info -->
-      <div class="text-center md:text-left">
-        <h1 class="text-3xl font-extrabold text-gray-800">{{ user.get_full_name|default:user.username }}</h1>
-        <p class="text-gray-600">{{ user.email }}</p>
+      <!-- User Info Section -->
+      <div class="text-center md:text-left space-y-2">
+        <!-- Name -->
+        <h1 class="text-3xl font-extrabold text-gray-800 flex items-center justify-center md:justify-start gap-2">
+          <i class="fas fa-user-circle text-[#FF0B55] text-2xl"></i>
+          {{ user.get_full_name|default:user.username }}
+        </h1>
+
+        <!-- Email -->
+        <p class="text-gray-600 flex items-center justify-center md:justify-start gap-2">
+          <i class="fas fa-envelope text-[#FF0B55]"></i>
+          {{ user.email }}
+        </p>
+
+        <!-- Phone -->
         {% if user.userprofile.phone_number %}
-          <p class="text-gray-600 mt-1"><i class="fas fa-phone-alt mr-2 text-[#FF0B55]"></i>{{ user.userprofile.phone_number }}</p>
+          <p class="text-gray-600 flex items-center justify-center md:justify-start gap-2">
+            <i class="fas fa-phone-alt text-[#FF0B55]"></i>
+            {{ user.userprofile.phone_number }}
+          </p>
+        {% endif %}
+
+        <!-- Address -->
+        {% if user.userprofile.address %}
+          <p class="text-gray-600 flex items-center justify-center md:justify-start gap-2">
+            <i class="fas fa-map-marker-alt text-[#FF0B55]"></i>
+            {{ user.userprofile.address }}
+          </p>
         {% endif %}
       </div>
     </div>
 
     <!-- Profile Info Form -->
-    <div class="bg-white/80 backdrop-blur-xl border border-gray-200 rounded-3xl shadow-lg p-8">
-      <h2 class="text-2xl font-bold text-gray-800 mb-6">Profile Information</h2>
-      <form method="post" action="{% url 'update_profile' %}" class="space-y-6">
-        {% csrf_token %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label for="id_first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-            <input type="text" id="id_first_name" name="first_name" value="{{ user.first_name }}"
-                   class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#FF0B55] focus:outline-none">
-          </div>
-          <div>
-            <label for="id_last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-            <input type="text" id="id_last_name" name="last_name" value="{{ user.last_name }}"
-                   class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#FF0B55] focus:outline-none">
-          </div>
-        </div>
-
-        <div>
-          <label for="id_phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-          <input type="tel" id="id_phone" name="phone_number" 
-                 value="{{ user.userprofile.phone_number|default:'' }}"
-                 class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#FF0B55] focus:outline-none">
-        </div>
-
-        <div>
-          <label for="id_address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-          <textarea id="id_address" name="address" rows="3"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#FF0B55] focus:outline-none">{{ user.userprofile.address|default:'' }}</textarea>
-        </div>
-
-        <button type="submit"
-                class="w-full bg-[#FF0B55] hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-          Update Profile
-        </button>
-      </form>
+<div class="bg-white/80 backdrop-blur-xl border border-gray-200 rounded-3xl shadow-lg p-8">
+  <h2 class="text-2xl font-bold text-gray-800 mb-6">Profile Information</h2>
+  <form method="post" action="{% url 'update_profile' %}" enctype="multipart/form-data" class="space-y-6">
+    {% csrf_token %}
+    
+    <!-- First and Last Name -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label for="id_first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+        <input type="text" id="id_first_name" name="first_name"
+               value="{{ form.first_name.value|default:user.first_name }}"
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#FF0B55] focus:outline-none">
+      </div>
+      <div>
+        <label for="id_last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+        <input type="text" id="id_last_name" name="last_name"
+               value="{{ form.last_name.value|default:user.last_name }}"
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#FF0B55] focus:outline-none">
+      </div>
     </div>
+
+    <!-- Phone Number -->
+    <div>
+      <label for="id_phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+      <input type="tel" id="id_phone" name="phone_number"
+             value="{{ form.phone_number.value|default:user.userprofile.phone_number }}"
+             class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#FF0B55] focus:outline-none">
+    </div>
+
+    <!-- Address -->
+    <div>
+      <label for="id_address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+      <textarea id="id_address" name="address" rows="3"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#FF0B55] focus:outline-none">{{ form.address.value|default:user.userprofile.address }}</textarea>
+    </div>
+
+    <button type="submit"
+            class="w-full bg-[#FF0B55] hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+      Update Profile
+    </button>
+  </form>
+</div>
+
 
     <!-- Account Settings -->
     <div class="bg-white/80 backdrop-blur-xl border border-gray-200 rounded-3xl shadow-lg p-8">

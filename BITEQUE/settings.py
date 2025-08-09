@@ -201,3 +201,9 @@ GOOGLE_MAPS_API_KEY = "***REMOVED***"
 
 RAZORPAY_KEY_ID = '***REMOVED***'
 RAZORPAY_KEY_SECRET = '***REMOVED***'
+
+#whatsapp oredr alerts
+
+FAST2SMS_API_KEY = '***REMOVED***'  
+FAST2SMS_URL = 'https://www.fast2sms.com/dev/bulkV2'
+WHATSAPP_SENDER_ID = 'FSTSMS'  # Or your approved sender ID

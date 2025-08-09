@@ -134,11 +134,11 @@
                     </div>
                     <div class="border-t border-gray-200 pt-4">
                         <div class="flex justify-between mb-2">
-                            <span>Packaging charges</span>
+                            <span>Packaging </span>
                             <span>₹{{ packaging_charges }}</span>
                         </div>
                         <div class="flex justify-between mb-2">
-                            <span>Platform GST</span>
+                            <span>Convenience </span>
                             <span>₹{{ platform_gst }}</span>
                         </div>
                         <div class="flex justify-between mb-2">
@@ -494,7 +494,16 @@ document.getElementById('rzp-button').onclick = function(e) {
         form.reportValidity();  // Triggers browser error messages
         return;
     }
+// ✅ MOBILE NUMBER VALIDATION
+    const mobileInput = document.getElementById('contact_number');
+    const mobileNumber = mobileInput.value.trim();
+    const mobileRegex = /^[6-9]\d{9}$/;
 
+    if (!mobileRegex.test(mobileNumber)) {
+        alert("Please enter a valid mobile number.");
+        mobileInput.focus();
+        return;
+    }
     const button = this;
     button.disabled = true;
 

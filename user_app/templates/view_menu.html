@@ -388,4 +388,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 </script>
 
+{% if request.session.show_single_restaurant_alert %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  Swal.fire({
+    icon: "error",
+    title: "Oops...",
+    text: "You can only add items from one restaurant at a time. Please clear your cart first.",
+    
+    confirmButtonText: "OK"
+  });
+</script>
+{% endif %}
+
 {% endblock %}

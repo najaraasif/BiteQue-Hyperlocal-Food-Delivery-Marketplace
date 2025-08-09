@@ -154,12 +154,13 @@ def merchant_dashboard(request):
     if request.method == 'POST' and 'toggle_availability' in request.POST:
         restaurant.is_available = not restaurant.is_available
         restaurant.save()
+        return redirect('merchant_dashboard')
 
     today = timezone.localdate()
     now = timezone.now()
 
     # Active orders
-    pending_orders = Order.objects.filter(restaurant=restaurant, status='pending').order_by('-created_at')
+    pending_orders = Order.objects.filter(restaurant=restaurant, status='pending').prefetch_related('order_items__menu_item').order_by('-created_at')
     confirmed_orders = Order.objects.filter(restaurant=restaurant, status='confirmed')
 
     # Completed orders today
@@ -187,6 +188,16 @@ def merchant_dashboard(request):
     # Safe calculation of performance rate
     performance_rate = ((net_revenue / net_week_revenue) * 100) if net_revenue > 0 else Decimal('0.00')
 
+    from collections import defaultdict
+
+    order_item_quantities = defaultdict(dict)
+
+    order_items_qs = OrderMenuItem.objects.filter(
+        order__in=pending_orders
+    ).select_related('order', 'menu_item')
+
+    for oi in order_items_qs:
+        order_item_quantities[oi.order_id][oi.menu_item_id] = oi.quantity
     # Top 5 items by quantity sold
     top_items = OrderMenuItem.objects.filter(
         order__restaurant=restaurant
@@ -211,6 +222,7 @@ def merchant_dashboard(request):
         'top_items_names': json.dumps(top_items_names),
         'top_items_quantities': json.dumps(top_items_quantities),
         'top_items': top_items,
+        'order_item_quantities': order_item_quantities,
     })
 
 from django.conf import settings
@@ -559,8 +571,8 @@ def merchant_revenue_report(request):
     total_revenue = orders.aggregate(total=Sum('total'))['total'] or 0 
     total_net_revenue = total_revenue * Decimal('0.84')  # Restaurant earns 84%
 
-    today_revenue = orders.filter(created_at__date=today.date()).aggregate(Sum('total'))['total__sum'] or Decimal('0.00')
-    total_today_revenue = total_revenue * Decimal('0.84')  # Restaurant earns 84%
+    today_revenue = orders.filter(status='delivered',created_at__date=today.date()).aggregate(Sum('total'))['total__sum'] or Decimal('0.00')
+    total_today_revenue = today_revenue * Decimal('0.84')  # Restaurant earns 84%
 
     week_revenue = orders.filter(created_at__gte=start_7_days).aggregate(Sum('total'))['total__sum'] or 0
     total_week_revenue = total_revenue * Decimal('0.84')  # Restaurant earns 84%

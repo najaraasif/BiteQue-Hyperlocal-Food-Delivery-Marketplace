@@ -18,14 +18,18 @@
       Thank you for registering. Your account has been created successfully.
     </p>
 
-    <a href="{% url 'user_login' %}" 
-       class="inline-block bg-[#FF0B55] hover:bg-pink-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300">
-      Proceed to Login
-    </a>
+    <p class="text-sm text-gray-400 mt-2">Redirecting to your dashboard...</p>
+
 
     <div class="mt-6 text-gray-500 text-xs">
       <p>If you have any issues, <a href="#" class="text-[#FF0B55] underline">contact support</a>.</p>
     </div>
   </div>
 </div>
+<script>
+  setTimeout(function() {
+    window.location.href = "{% url 'dashboard_home' %}";
+  }, 3000); // Redirect after 3 seconds
+</script>
+
 {% endblock %}

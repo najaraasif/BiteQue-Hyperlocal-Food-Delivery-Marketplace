@@ -90,10 +90,11 @@
         </div>
 
         <div class="form-input-group">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                {{ form.number }}
-            </div>
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+    {{ form.number }}
+    <span id="number-error" class="text-red-600 text-xs"></span>
+</div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 {{ form.email }}
@@ -117,4 +118,5 @@
         </button>
     </form>
 </div>
+
 {% endblock %}

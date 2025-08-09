@@ -20,13 +20,35 @@ import random
 
 
 
+
+# user_app/models.py
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+from decimal import Decimal
+import threading
+import secrets
+import string
+from user_app.utils import send_sms, send_whatsapp
+
+
+# models.py
+from decimal import Decimal
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+import secrets
+import string
+import threading
+
+
 class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     restaurant = models.ForeignKey('merchant_app.Restaurant', on_delete=models.CASCADE, related_name='orders')
     customer_name = models.CharField(max_length=100)
     customer_contact = models.CharField(max_length=15)
     landmark = models.TextField(max_length=100)
-    menu_items = models.ManyToManyField('merchant_app.RestaurantMenu',through='OrderMenuItem',related_name='orders')
+    menu_items = models.ManyToManyField('merchant_app.RestaurantMenu', through='OrderMenuItem', related_name='orders')
     total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     created_at = models.DateTimeField(auto_now_add=True)
     delivery_address = models.CharField(max_length=512)
@@ -46,6 +68,7 @@ class Order(models.Model):
     razorpay_signature = models.CharField(max_length=100, blank=True, null=True)
     is_paid = models.BooleanField(default=False)
     final_total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('confirmed', 'Confirmed'),
@@ -57,41 +80,85 @@ class Order(models.Model):
 
     def calculate_total(self):
         if hasattr(self, '_cart_quantities'):
-            return sum(item.price * self._cart_quantities.get(str(item.id), 1) 
-                   for item in self.menu_items.all())
-        # Fallback to simple sum
+            return sum(item.price * self._cart_quantities.get(str(item.id), 1) for item in self.menu_items.all())
         return sum(item.price for item in self.menu_items.all())
 
     @property
     def overall_sum(self):
         return (self.total + self.item_gst + self.packaging_charges + self.distance_earning).quantize(Decimal('0.00'))
 
+    def send_status_update(self):
+        """Send WhatsApp/SMS notification for order status changes."""
+        if not self.customer_contact:
+            return
+
+        # Normalize phone number to 10-digit +91 format
+        phone_number = ''.join(filter(str.isdigit, self.customer_contact))[-10:]
+        full_number = '91' + phone_number
+
+        status_messages = {
+            'confirmed': (
+                f"✅ Order Confirmed!\n"
+                f"Order #{self.id} from {self.restaurant.name} has been confirmed.\n"
+                f"Estimated delivery time: 30-45 minutes."
+            ),
+            'ready': (
+                f"🍔 Order Ready!\n"
+                f"Your order #{self.id} is ready for delivery.\n"
+                f"Rider will arrive shortly to pick it up."
+            ),
+            'out_for_delivery': (
+                f"🚚 Order On The Way!\n"
+                f"Your order #{self.id} is out for delivery.\n"
+                f"Rider: {self.assignment.rider.user.first_name if hasattr(self, 'assignment') else 'Unknown'}\n"
+                f"Contact: {self.assignment.rider.phone if hasattr(self, 'assignment') else 'N/A'}"
+            ),
+            'delivered': (
+                f"🎉 Order Delivered!\n"
+                f"Your order #{self.id} has been delivered.\n"
+                f"Enjoy your meal! Please share your feedback."
+            )
+        }
+
+        if self.status in status_messages:
+            message = status_messages[self.status]
+
+            def notify():
+                # Try WhatsApp first
+                if not send_whatsapp_message(full_number, message):
+                    # Fallback to SMS via Fast2SMS
+                    send_sms(phone_number, message)
+
+            threading.Thread(target=notify).start()
+
     def save(self, *args, **kwargs):
-    # Recalculate total using cart quantities if available (e.g., during checkout)
+        # Recalculate total
         if hasattr(self, '_cart_quantities') and self.menu_items.exists():
             self.total = self.calculate_total()
         elif self.pk and self.menu_items.exists():
             self.total = self.calculate_total()
 
-        # Calculate final total
+        # Update final total
         self.final_total = (
             self.total + self.item_gst + self.packaging_charges + self.distance_earning
         ).quantize(Decimal('0.00'))
 
-        # Check if status has changed
+        # Detect status change
         prev_status = None
         if self.pk:
             prev_status = Order.objects.filter(pk=self.pk).values_list('status', flat=True).first()
 
         super().save(*args, **kwargs)
 
-        # Auto-assign delivery task if status changed to 'ready'
+        # Trigger notification if status changed
+        if prev_status != self.status:
+            self.send_status_update()
+
+        # Assign delivery task if status moved to 'ready'
         if self.status == 'ready' and prev_status != 'ready':
             self.create_assignments()
 
-
     def create_assignments(self):
-        # Placeholder for assignment logic
         print(f"DEBUG: Assignment logic triggered for Order #{self.id}")
 
     @property
@@ -131,6 +198,8 @@ class Order(models.Model):
     def __str__(self):
         return f"Order #{self.id} - {self.customer_name}"
 
+
+
         
 class OrderMenuItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
@@ -142,17 +211,33 @@ class OrderMenuItem(models.Model):
         unique_together = ('order', 'menu_item')
    
 
-class userRegistration(models.Model):
-    username = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=30, default=1)
-    number = models.CharField(max_length=10, default=0)
-    email = models.EmailField(max_length=20)
-    address = models.TextField(max_length=50)
-    password = models.TextField(max_length=8)
-    retypePassword =models.TextField(max_length=8)
 
+from django.db import models
+from django.contrib.auth.models import User
+from django.core.validators import RegexValidator
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    
+    # From userRegistration
+    phone_number = models.CharField(
+        max_length=10,
+        validators=[
+            RegexValidator(r'^\d{10}$', message='Enter a valid 10-digit phone number')
+        ],
+        blank=True,
+        null=True
+    )
+    email = models.EmailField(max_length=255, blank=True, null=True)  # Optional if needed separately
+    address = models.TextField(max_length=50, blank=True, null=True)
+    
+    # Additional profile fields
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    whatsapp_consent = models.BooleanField(default=False)
+    
     def __str__(self):
-        return f"Registration successful by - {self.name}"
+        return f"{self.user.username}'s Profile"
+
 
 
 
@@ -285,12 +370,18 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.core.validators import RegexValidator
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    whatsapp_consent = models.BooleanField(
+        default=False,
+        help_text="I agree to receive order updates via WhatsApp"
+    )
     
     def __str__(self):
         return f"{self.user.username}'s Profile"
