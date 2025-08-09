@@ -10,7 +10,7 @@ from user_app.models import Order
 from django.conf import settings
 from mailersend import emails
 from geopy.geocoders import Nominatim
-from .mailersend_helper import send_mailersend_email
+
 
 # signals.py
 from django.dispatch import receiver

@@ -152,13 +152,15 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
 #LOGIN_REDIRECT_URL = '/rider/dashboard/'
 
 
-#email for verification Merchant
+#contact form backend
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'najaraasif944@gmail.com'  # Your email
+EMAIL_HOST_PASSWORD = '***REMOVED***'  
 
-MAILERSEND_DOMAIN = 'test-r6ke4n1100vgon12.mlsender.net' 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-MAILERSEND_API_KEY = '***REMOVED***' 
-DEFAULT_FROM_EMAIL = 'noreply@test-r6ke4n1100vgon12.mlsender.net'
 
 
 
@@ -209,11 +211,3 @@ WHATSAPP_SENDER_ID = 'FSTSMS'
 
 
 
-#contact form backend
-
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'najaraasif944@gmail.com'  # Your email
-EMAIL_HOST_PASSWORD = '***REMOVED***'  

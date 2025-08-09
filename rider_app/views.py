@@ -548,7 +548,7 @@ from mailersend import emails
 from django.conf import settings
 from django.template.loader import render_to_string
 
-# views.py
+
 from django.urls import reverse_lazy
 from django.template.loader import render_to_string
 from rider_app.brevo_helper import send_brevo_email
@@ -568,6 +568,7 @@ class RiderPasswordResetView(BasePasswordResetView):
         subject = render_to_string(subject_template_name, context)
         subject = ''.join(subject.splitlines())
         html_content = render_to_string(email_template_name, context)
+        
         
         user = context['user']
         send_brevo_email(
