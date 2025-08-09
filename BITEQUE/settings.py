@@ -118,7 +118,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'Asia/kolkata'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -162,8 +162,7 @@ DEFAULT_FROM_EMAIL = 'noreply@test-r6ke4n1100vgon12.mlsender.net'
 
 
 
-#email for verification RIDER
-# Brevo SMTP Configuration
+#Brevo email for verification RIDER
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp-relay.brevo.com'
 EMAIL_PORT = 587

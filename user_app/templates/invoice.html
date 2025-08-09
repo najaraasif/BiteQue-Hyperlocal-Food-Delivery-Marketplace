@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Invoice #{{ order.id }}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  
+  /* Reset & base */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    color: #333;
+    background-color: #f8f8f8;
+    line-height: 1.4;
+    padding: 20px 10px;
+    font-size: 14px;
+  }
+  
+  .invoice-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-radius: 6px;
+    overflow: hidden;
+    page-break-inside: avoid;
+  }
+  
+  .invoice-header {
+    padding: 20px 30px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .invoice-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 3px;
+  }
+  
+  .invoice-number {
+    font-size: 14px;
+    color: #666;
+    font-weight: 600;
+  }
+  
+  .invoice-body {
+    padding: 20px 30px;
+  }
+  
+  .billing-info {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 30px;
+  }
+  
+  .billing-block {
+    flex: 0 0 48%;
+    margin-bottom: 15px;
+  }
+  
+  .billing-label {
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  
+  .billing-details {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  
+  .billing-details p {
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+  
+  .invoice-date {
+    margin-bottom: 25px;
+    color: #666;
+    font-size: 13px;
+  }
+  
+  table.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 25px;
+    page-break-inside: auto;
+  }
+  
+  table.items-table thead tr {
+    background: #f5f5f5;
+  }
+  
+  table.items-table th,
+  table.items-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+    font-size: 13px;
+  }
+  
+  table.items-table th {
+    color: #555;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: left;
+  }
+  
+  table.items-table td.text-right {
+    text-align: right;
+  }
+  
+  table.items-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .summary-section {
+    margin-top: 20px;
+    border-top: 2px solid #eee;
+    padding-top: 15px;
+  }
+  
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  
+  .summary-label {
+    color: #666;
+  }
+  
+  .summary-value {
+    font-weight: 600;
+  }
+  
+  .total-row {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  
+  .footer {
+    padding: 15px 30px;
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+    font-size: 13px;
+  }
+  
+  .payment-info p {
+    margin-bottom: 3px;
+    color: #666;
+  }
+  
+  .thank-you {
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+    margin-top: 12px;
+    font-size: 14px;
+  }
+
+  @media print {
+    body {
+      background: none;
+      padding: 0;
+      font-size: 12px;
+    }
+    .invoice-wrapper {
+      box-shadow: none;
+      border-radius: 0;
+      margin: 0;
+      max-width: 100%;
+      page-break-inside: avoid;
+    }
+    .invoice-body, .invoice-header, .footer {
+      padding: 10px 15px;
+    }
+    .items-table th, .items-table td {
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="invoice-wrapper">
+    <div class="invoice-header">
+      <h1 class="invoice-title">INVOICE</h1>
+      <div class="invoice-number">NO: INV-{{ order.id }}</div>
+    </div>
+    
+    <div class="invoice-body">
+      <div class="billing-info">
+        <div class="billing-block">
+          <div class="billing-label">Bill To:</div>
+          <div class="billing-details">
+            <p>{{ order.customer_name }}</p>
+            <p>{{ order.customer_contact }}</p>
+            <p>{{ order.delivery_address }}</p>
+            
+          </div>
+        </div>
+        
+        <div class="billing-block">
+          <div class="billing-label">From:</div>
+          <div class="billing-details">
+            <p>ZemQue</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="invoice-date">Date: {{ order.created_at|date:"F j, Y" }}</div>
+      
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Qty</th>
+            <th class="text-right">Price</th>
+            <th class="text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order_items %}
+          <tr>
+            <td>{{ item.menu_item.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td class="text-right">₹{{ item.menu_item.price|floatformat:2 }}</td>
+            <td class="text-right">₹{{ order.total|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      
+      <div class="summary-section">
+        <div class="summary-row">
+          <span class="summary-label">Subtotal</span>
+          <span class="summary-value">₹{{ order.total|floatformat:2 }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Delivery Fee</span>
+          <span class="summary-value">₹{{ delivery_fee|floatformat:2 }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">GST (3%)</span>
+          <span class="summary-value">₹{{ gst|floatformat:2 }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Packaging</span>
+          <span class="summary-value">₹{{ packaging_charges|floatformat:2 }}</span>
+        </div>
+        <div class="summary-row total-row">
+          <span class="text-bold">Total Amount</span>
+          <span class="text-bold">₹{{ order_total|floatformat:2 }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <div class="payment-info">
+        <p><strong>Payment Information:</strong></p>
+        <p>Payment completed via Razorpay</p>
+        <p>Transaction ID: {{ order.razorpay_payment_id|default:"N/A" }}</p>
+      </div>
+      <div class="thank-you">Thank you for your order!</div>
+    </div>
+  </div>
+</body>
+</html>

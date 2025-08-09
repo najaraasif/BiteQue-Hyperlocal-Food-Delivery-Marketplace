@@ -1,5 +1,5 @@
 from datetime import timedelta
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal
 from pyexpat.errors import messages
 from statistics import mean
 from django.http import HttpResponse
@@ -1150,3 +1150,56 @@ def contact_form(request):
 
     return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
 
+
+#invoice
+
+from django.shortcuts import get_object_or_404
+from django.http import HttpResponse, HttpResponseForbidden
+from django.template.loader import render_to_string
+from django.utils import timezone
+from weasyprint import HTML
+from .models import Order
+
+def download_invoice(request, order_id):
+
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    
+    if order.status != 'delivered':
+        return HttpResponseForbidden("Invoice is available only for delivered orders.")
+
+    
+    order_items = order.order_items.all()
+
+   
+    delivery_fee = order.distance_earning 
+    delivery_fee_new = delivery_fee + Decimal('0.60')
+    exact_gst = order.total * Decimal('0.03')
+
+
+    
+
+    packaging_charges = Decimal('10.00')
+
+    order_total = (order.total + delivery_fee_new + exact_gst + packaging_charges).quantize(Decimal('0.00'))
+
+    
+    html_string = render_to_string('invoice.html', {
+    'order': order,
+    'order_items': order_items,
+    'delivery_fee': delivery_fee_new,
+    'gst': exact_gst,          
+    'packaging_charges': packaging_charges,
+    'order_total': order_total,
+    'now': timezone.now(),
+})
+
+
+   
+    html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
+    pdf_file = html.write_pdf()
+
+   
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename=invoice_order_{order.id}.pdf'
+    return response

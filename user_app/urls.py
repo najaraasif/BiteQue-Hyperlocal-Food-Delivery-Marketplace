@@ -53,6 +53,7 @@ urlpatterns = [
     path('test-notification/', test_notification, name='test_notification'),
     path('contact-form/', views.contact_form, name='contact-form'),
     path('clear-alert-flag/', clear_alert_flag, name='clear_alert_flag'),
+    path('orders/<int:order_id>/invoice/', views.download_invoice, name='download_invoice'),
 
 
 

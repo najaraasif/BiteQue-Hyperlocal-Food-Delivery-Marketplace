@@ -1,0 +1,9 @@
+Django>=5.2
+requests
+razorpay
+Pillow
+xhtml2pdf
+geopy
+mailersend
+sib-api-v3-sdk
+django-widget-tweaks
