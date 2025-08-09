@@ -48,8 +48,20 @@
       </a>
     </div>
 
-    <!-- Right: User Info -->
-    <div class="flex items-center gap-4">
+<!-- Right: Cart (Desktop only for all users) + User Info -->
+<div class="flex items-center gap-6">
+
+  <!-- 🛒 Cart Icon (Desktop only) -->
+  <a href="{% url 'view_cart' %}" 
+     class="hidden md:inline-flex relative items-center text-white hover:text-yellow-200 transition">
+      <i class="fas fa-shopping-cart text-2xl"></i>
+      {% if request.session.cart %}
+        <span class="absolute -top-2 -right-2 bg-yellow-300 text-[#FF0B55] text-xs font-bold px-1.5 py-0.5 rounded-full shadow">
+          {{ request.session.cart|length }}
+        </span>
+      {% endif %}
+  </a>
+
       {% if user.is_authenticated %}
         {% if user.userprofile.avatar %}
           <div class="w-11 h-11 rounded-full border-2 border-[#FF0B55] shadow-lg overflow-hidden hover:scale-110 hover:shadow-xl transition-all duration-300 ease-out bg-white">

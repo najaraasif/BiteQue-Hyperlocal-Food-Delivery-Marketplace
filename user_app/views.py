@@ -673,7 +673,6 @@ def feedback_thanks(request):
 
 
 
-from django.shortcuts import redirect
 
 def add_to_cart(request, item_id):
     cart = request.session.get('cart', {})
@@ -681,18 +680,15 @@ def add_to_cart(request, item_id):
     item_restaurant_id = str(item.restaurant.id)
 
     if cart:
-        # Get first item already in cart
         first_item_id = next(iter(cart))
         first_item = get_object_or_404(RestaurantMenu, id=first_item_id)
         first_item_restaurant_id = str(first_item.restaurant.id)
 
         if item_restaurant_id != first_item_restaurant_id:
             request.session['show_single_restaurant_alert'] = True
-            return redirect('user_view_menu', restaurant_id=item.restaurant.id)
+            # Redirect back to where user came from instead of a fixed URL
+            return redirect(request.META.get('HTTP_REFERER', '/'))
 
-    request.session.pop('show_single_restaurant_alert', None)
-
-    # Add or update item in cart
     if str(item_id) in cart:
         cart[str(item_id)]['quantity'] += 1
     else:
@@ -702,6 +698,8 @@ def add_to_cart(request, item_id):
     request.session.modified = True
 
     return redirect(request.META.get('HTTP_REFERER', '/'))
+
+
 
 
 def restaurant_menu_view(request, restaurant_id):
@@ -717,6 +715,16 @@ def restaurant_menu_view(request, restaurant_id):
         'show_single_restaurant_alert': show_alert,
     })
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.http import require_POST
+
+@require_POST
+def clear_alert_flag(request):
+    if 'show_single_restaurant_alert' in request.session:
+        del request.session['show_single_restaurant_alert']
+        request.session.modified = True
+    return JsonResponse({'status': 'ok'})
 
 
 def view_cart(request):

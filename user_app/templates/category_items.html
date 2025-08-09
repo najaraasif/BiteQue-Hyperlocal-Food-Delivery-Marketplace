@@ -90,5 +90,35 @@
     {% endfor %}
   </div>
 </main>
+{% load static %}
+{% if request.session.show_single_restaurant_alert %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    Swal.fire({
+      icon: "error",
+      title: "Oops...",
+      text: "You can only add items from one restaurant at a time. Please clear your cart first.",
+      confirmButtonText: "OK"
+    }).then(() => {
+      // After user clicks OK, send POST request to clear session key
+      fetch("{% url 'clear_alert_flag' %}", {
+        method: "POST",
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      }).then(response => {
+        if (!response.ok) {
+          console.error("Failed to clear alert flag");
+        }
+      }).catch(error => {
+        console.error("Error clearing alert flag:", error);
+      });
+    });
+  });
+</script>
+{% endif %}
 
 {% endblock %}

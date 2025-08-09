@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
+
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
   <!-- 🔍 Search Bar -->
   <form action="{% url 'home' %}" method="GET" class="mb-10" id="search">
@@ -115,4 +116,7 @@
     });
   });
 </script>
+
+
+
 {% endblock %}
