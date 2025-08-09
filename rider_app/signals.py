@@ -12,40 +12,28 @@ from mailersend import emails
 from geopy.geocoders import Nominatim
 from .mailersend_helper import send_mailersend_email
 
+# signals.py
+from django.dispatch import receiver
+from django.db.models.signals import post_save
+from django.template.loader import render_to_string
+from .brevo_helper import send_brevo_email
+from .models import Rider
+
 @receiver(post_save, sender=Rider)
 def send_approval_email(sender, instance, created, **kwargs):
     if instance.is_approved and not created:
-        mailer = emails.NewEmail(settings.MAILERSEND_API_KEY_R)
+        subject = f"Welcome to BiteQue, {instance.user.username}!"
+        html_content = render_to_string('rider_app/approval_email.html', {
+            'rider_username': instance.user.username,
+        })
+        
+        send_brevo_email(
+            subject=subject,
+            html_content=html_content,
+            recipient_email=instance.user.email,
+            recipient_name=instance.user.username
+        )
 
-        mail_body = {
-            "personalization": [  
-                {
-                    "email": instance.user.email,
-                    "data": {
-                        "rider_username": instance.user.username, 
-                    }
-                }
-            ]
-        }
-
-        mail_from = {
-            "email": settings.DEFAULT_FROM_EMAIL_R,
-            "name": "BiteQue Rider Support"
-        }
-
-        recipients = [
-            {
-                "email": instance.user.email,
-                "name": instance.user.username
-            }
-        ]
-
-        mailer.set_mail_from(mail_from, mail_body)
-        mailer.set_mail_to(recipients, mail_body)
-        mailer.set_subject("Welcome to BiteQue, {{ rider_username }}!", mail_body) # Use double curly brackets in subject too
-        mailer.set_template("jpzkmgq80m2g059v", mail_body)
-
-        mailer.send(mail_body)
 
 """@receiver(post_save, sender=OrderAssignment)
 def update_order_status_and_reject_others(sender, instance, created, **kwargs):

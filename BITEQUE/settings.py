@@ -163,19 +163,17 @@ DEFAULT_FROM_EMAIL = 'noreply@test-r6ke4n1100vgon12.mlsender.net'
 
 
 #email for verification RIDER
-
-EMAIL_BACKEND_R = 'rider_app.mailersend_backend.MailerSendBackend'
-MAILERSEND_API_KEY_R = '***REMOVED***'
-MAILERSEND_DOMAIN_R = 'test-r83ql3ppozxgzw1j.mlsender.net'
-DEFAULT_FROM_EMAIL_R = 'noreply@test-r83ql3ppozxgzw1j.mlsender.net'
-
-EMAIL_HOST = 'smtp.mailersend.net'
+# Brevo SMTP Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp-relay.brevo.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'MS_6pOOGd@test-r83ql3ppozxgzw1j.mlsender.net'
-EMAIL_HOST_PASSWORD = '***REMOVED***'
+EMAIL_HOST_USER = '***REMOVED***'  
+EMAIL_HOST_PASSWORD = '***REMOVED***'  
+DEFAULT_FROM_EMAIL = 'suhailjamal991@gmail.com'  
 
 
+BREVO_API_KEY = '***REMOVED***'
 
 
 LOGGING = {

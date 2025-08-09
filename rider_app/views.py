@@ -548,6 +548,11 @@ from mailersend import emails
 from django.conf import settings
 from django.template.loader import render_to_string
 
+# views.py
+from django.urls import reverse_lazy
+from django.template.loader import render_to_string
+from rider_app.brevo_helper import send_brevo_email
+
 class RiderPasswordResetView(BasePasswordResetView):
     template_name = 'rider_app/password_reset.html'
     email_template_name = 'rider_app/password_reset_email.html'
@@ -562,40 +567,16 @@ class RiderPasswordResetView(BasePasswordResetView):
                   context, from_email, to_email, html_email_template_name=None):
         subject = render_to_string(subject_template_name, context)
         subject = ''.join(subject.splitlines())
-        body = render_to_string(email_template_name, context)
-
-        mailer = emails.NewEmail(settings.MAILERSEND_API_KEY_R)
+        html_content = render_to_string(email_template_name, context)
         
-        mail_body = {
-            "personalization": [
-                {
-                    "email": to_email,
-                    "data": {
-                        "username": context['user'].username,
-                        "reset_link": f"{context['protocol']}://{context['domain']}{context['reset_url']}"
-                    }
-                }
-            ]
-        }
+        user = context['user']
+        send_brevo_email(
+            subject=subject,
+            html_content=html_content,
+            recipient_email=user.email,
+            recipient_name=user.username
+        )
 
-        mail_from = {
-            "email": settings.DEFAULT_FROM_EMAIL_R,
-            "name": "BiteQue Rider Support"
-        }
-
-        recipients = [
-            {
-                "email": to_email,
-                "name": context['user'].username
-            }
-        ]
-
-        mailer.set_mail_from(mail_from, mail_body)
-        mailer.set_mail_to(recipients, mail_body)
-        mailer.set_subject(subject, mail_body)
-        mailer.set_html_content(body, mail_body)
-
-        mailer.send(mail_body)
 
 class RiderPasswordResetDoneView(BasePasswordResetDoneView):
     template_name = 'rider_app/password_reset_done.html'
