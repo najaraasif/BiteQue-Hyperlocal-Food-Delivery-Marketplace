@@ -1,8 +1,110 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<!-- Hero Section -->
+<section class="relative bg-gradient-to-r from-[#FF0B55] via-[#ff2d6c] to-[#FF4E87] text-white py-20">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 text-center">
+    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4">About ZemQue</h1>
+    <p class="text-lg sm:text-xl max-w-3xl mx-auto">
+      Delivering happiness to your doorstep in Kupwara since 2025.  
+      We’re more than just a delivery service – we’re your local connection to fresh flavors.
+    </p>
+  </div>
+  <div class="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
+    <svg class="relative block w-full h-8 text-white" fill="currentColor" viewBox="0 0 1440 54">
+      <path d="M0,0 C480,54 960,0 1440,54 L1440,0 L0,0 Z"></path>
+    </svg>
+  </div>
+</section>
 
+<!-- Story Section -->
+<section class="py-16 bg-gray-50">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
+    <div>
+      <img src="#" alt="Our Story" class="rounded-2xl shadow-lg">
+    </div>
+    <div>
+      <h2 class="text-3xl font-bold text-gray-900 mb-4">Our Story</h2>
+      <p class="text-gray-600 mb-4">
+        ZemQue was born in the heart of Kupwara with a simple mission: to bring local restaurants and customers closer than ever.
+        We started in April 2025 with just a handful of riders and a dream to make food delivery faster, friendlier, and more community-driven.
+      </p>
+      <p class="text-gray-600">
+        Today, we’re proud to connect people with their favorite meals while supporting local businesses and riders.
+      </p>
+    </div>
+  </div>
+</section>
 
+<!-- Mission & Vision -->
+<section class="py-16 bg-white">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 grid md:grid-cols-2 gap-12">
+    <div class="bg-[#FF0B55] text-white p-8 rounded-2xl shadow-lg">
+      <h3 class="text-2xl font-bold mb-4">Our Mission</h3>
+      <p>
+        To deliver delicious meals quickly, reliably, and with a smile – empowering Kupwara’s local food scene.
+      </p>
+    </div>
+    <div class="bg-pink-100 text-[#FF0B55] p-8 rounded-2xl shadow-lg">
+      <h3 class="text-2xl font-bold mb-4">Our Vision</h3>
+      <p>
+        To become Kupwara’s most trusted delivery service, expanding to nearby towns while keeping our community-first approach.
+      </p>
+    </div>
+  </div>
+</section>
 
+<!-- Team Section -->
+<section class="py-16 bg-gray-50">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 text-center">
+    <h2 class="text-3xl font-bold text-gray-900 mb-10">Meet the Team</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+        <img src="#" alt="Team Member" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover">
+        <h4 class="text-xl font-bold text-gray-900">Aasif Jamal</h4>
+        <p class="text-gray-500">Founder & CEO</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+        <img src="#" alt="Team Member" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover">
+        <h4 class="text-xl font-bold text-gray-900">Shakir Meer</h4>
+        <p class="text-gray-500">Chief Operations Officer</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+        <img src="#" alt="Team Member" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover">
+        <h4 class="text-xl font-bold text-gray-900">Umer Ahad</h4>
+        <p class="text-gray-500">Lead Developer</p>
+      </div>
+    </div>
+  </div>
+</section>
 
+<!-- Testimonials -->
+<section class="py-16 bg-white">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 text-center">
+    <h2 class="text-3xl font-bold text-gray-900 mb-10">What Our Customers Say</h2>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+        <p class="text-gray-600 italic mb-4">"ZemQue delivers on time, every time. Absolutely love the service!"</p>
+        <h5 class="font-bold text-[#FF0B55]"> Sameer</h5>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+        <p class="text-gray-600 italic mb-4">"Great variety of restaurants and super friendly riders."</p>
+        <h5 class="font-bold text-[#FF0B55]"> Mehak</h5>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+        <p class="text-gray-600 italic mb-4">"I can order my favorite biryani in just a few clicks. Love it!"</p>
+        <h5 class="font-bold text-[#FF0B55]"> Adil</h5>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Call to Action -->
+<section class="py-16 bg-[#FF0B55] text-white text-center">
+  <h2 class="text-3xl font-bold mb-6">Join the ZemQue Family</h2>
+  <p class="mb-8">Whether you’re a customer, restaurant owner, or rider, we’d love to have you with us.</p>
+  <a href="{% url 'user_registration' %}" class="bg-white text-[#FF0B55] font-semibold px-8 py-3 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition">
+    Get Started
+  </a>
+</section>
 {% endblock %}

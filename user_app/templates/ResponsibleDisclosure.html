@@ -1,8 +1,80 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<!-- 🌟 Hero Section -->
+<section class="bg-gradient-to-r from-[#FF0B55] to-pink-600 text-white py-16 px-4 text-center">
+    <h1 class="text-4xl sm:text-5xl font-bold mb-4">Responsible Disclosure</h1>
+    <p class="max-w-2xl mx-auto text-lg">
+        Help us keep ZemQue safe and secure. If you find a vulnerability, we encourage you to report it responsibly.
+    </p>
+</section>
 
+<!-- 📜 Responsible Disclosure Policy -->
+<section class="py-16 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 text-gray-800">
 
+        <!-- Intro -->
+        <p>
+            Security is a top priority at ZemQue. We appreciate the work of security researchers and ethical hackers 
+            who help identify vulnerabilities before they can be exploited. This Responsible Disclosure Policy explains how to report issues securely.
+        </p>
 
+        <!-- 1. Reporting a Vulnerability -->
+        <div>
+            <h2 class="text-2xl font-bold text-[#FF0B55] mb-3">1. How to Report a Vulnerability</h2>
+            <p>
+                If you believe you have discovered a security vulnerability in any of our systems, please email us at:
+                <br>
+                📧 <strong>security@zemque.com</strong>
+                <br><br>
+                When reporting:
+            </p>
+            <ul class="list-disc pl-6 space-y-1">
+                <li>Provide detailed steps to reproduce the vulnerability.</li>
+                <li>Include any relevant screenshots, code, or logs.</li>
+                <li>Do not publicly disclose the vulnerability before we have resolved it.</li>
+            </ul>
+        </div>
 
+        <!-- 2. Guidelines for Responsible Disclosure -->
+        <div>
+            <h2 class="text-2xl font-bold text-[#FF0B55] mb-3">2. Guidelines for Responsible Disclosure</h2>
+            <ul class="list-disc pl-6 space-y-1">
+                <li>Do not exploit the vulnerability beyond what is necessary to prove its existence.</li>
+                <li>Do not attempt to access, modify, or delete any data that is not your own.</li>
+                <li>Respect user privacy and avoid any disruption to our services.</li>
+                <li>Follow all applicable laws during your testing.</li>
+            </ul>
+        </div>
+
+        <!-- 3. What You Can Expect -->
+        <div>
+            <h2 class="text-2xl font-bold text-[#FF0B55] mb-3">3. What You Can Expect</h2>
+            <p>When you report a valid vulnerability:</p>
+            <ul class="list-disc pl-6 space-y-1">
+                <li>We will acknowledge your report within 72 hours.</li>
+                <li>We will investigate and validate the issue.</li>
+                <li>We will provide updates on our progress to fix it.</li>
+                <li>We may publicly thank you for your contribution, if you wish.</li>
+            </ul>
+        </div>
+
+        <!-- 4. Scope -->
+        <div>
+            <h2 class="text-2xl font-bold text-[#FF0B55] mb-3">4. Scope</h2>
+            <p>
+                This policy applies to all ZemQue-owned domains, applications, and APIs. 
+                Vulnerabilities in third-party services integrated with ZemQue should be reported to the respective providers.
+            </p>
+        </div>
+
+        <!-- 5. No Legal Action -->
+        <div>
+            <h2 class="text-2xl font-bold text-[#FF0B55] mb-3">5. No Legal Action</h2>
+            <p>
+                If you follow this Responsible Disclosure Policy, we will not take legal action against you for your report.
+            </p>
+        </div>
+    </div>
+</section>
 {% endblock %}

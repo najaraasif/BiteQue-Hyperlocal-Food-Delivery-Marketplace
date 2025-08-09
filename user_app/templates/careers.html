@@ -1,8 +1,101 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<!-- Hero Section -->
+<section class="relative bg-gradient-to-r from-[#FF0B55] via-[#ff2d6c] to-[#FF4E87] text-white py-20">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 text-center">
+    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4">Careers at ZemQue</h1>
+    <p class="text-lg sm:text-xl max-w-3xl mx-auto">
+      Join the fastest-growing delivery network in Kupwara.  
+Whether you’re a <strong>Rider</strong> on the road or a <strong>Merchant</strong> in the kitchen — we want you on our team. 
+  </div>
+  <div class="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
+    <svg class="relative block w-full h-8 text-white" fill="currentColor" viewBox="0 0 1440 54">
+      <path d="M0,0 C480,54 960,0 1440,54 L1440,0 L0,0 Z"></path>
+    </svg>
+  </div>
+</section>
 
+<!-- Why Join Section -->
+<section class="py-16 bg-gray-50">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 text-center">
+    <h2 class="text-3xl font-bold text-gray-900 mb-4">Why Join ZemQue?</h2>
+    <p class="text-gray-600 max-w-2xl mx-auto mb-12">
+      Be a part of a community-first delivery service that values speed, reliability, and your growth.
+    </p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+        <i class="fas fa-motorcycle text-[#FF0B55] text-4xl mb-4"></i>
+        <h4 class="text-xl font-bold mb-2">For Riders</h4>
+        <p class="text-gray-600">Enjoy flexible working hours, competitive pay, and rider perks.</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+        <i class="fas fa-store text-[#FF0B55] text-4xl mb-4"></i>
+        <h4 class="text-xl font-bold mb-2">For Merchants</h4>
+        <p class="text-gray-600">Increase sales, reach new customers, and grow your brand with ZemQue.</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+        <i class="fas fa-heart text-[#FF0B55] text-4xl mb-4"></i>
+        <h4 class="text-xl font-bold mb-2">Community Impact</h4>
+        <p class="text-gray-600">Support local businesses and make food accessible to everyone.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
+<!-- Rider Recruitment -->
+<section class="py-16 bg-white">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
+    <div>
+      <img src="" alt="Join as Rider" class="rounded-2xl shadow-lg">
+    </div>
+    <div>
+      <h2 class="text-3xl font-bold text-gray-900 mb-4">Join as a Rider</h2>
+      <p class="text-gray-600 mb-6">
+        Become the heartbeat of ZemQue. Deliver orders across Kupwara with speed and a smile.
+        Enjoy the freedom of choosing your schedule while earning great pay.
+      </p>
+      <ul class="space-y-3 mb-6">
+        <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> Flexible work hours</li>
+        <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> Weekly payouts</li>
+        <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> Rider support team</li>
+      </ul>
+      <a href="" class="bg-[#FF0B55] text-white px-6 py-3 rounded-full shadow-md hover:scale-105 transition">
+        Apply Now
+      </a>
+    </div>
+  </div>
+</section>
 
+<!-- Merchant Recruitment -->
+<section class="py-16 bg-gray-50">
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
+    <div class="order-2 md:order-1">
+      <h2 class="text-3xl font-bold text-gray-900 mb-4">Partner as a Merchant</h2>
+      <p class="text-gray-600 mb-6">
+        Expand your reach by partnering with ZemQue. We’ll help you connect with hungry customers and grow your revenue.
+      </p>
+      <ul class="space-y-3 mb-6">
+        <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> No setup cost</li>
+        <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> Increase sales volume</li>
+        <li class="flex items-center"><i class="fas fa-check text-[#FF0B55] mr-2"></i> Marketing & promotions</li>
+      </ul>
+      <a href="{% url 'add-restaurant' %}" class="bg-[#FF0B55] text-white px-6 py-3 rounded-full shadow-md hover:scale-105 transition">
+        Get Started
+      </a>
+    </div>
+    <div class="order-1 md:order-2">
+      <img src="" alt="Join as Merchant" class="rounded-2xl shadow-lg">
+    </div>
+  </div>
+</section>
 
+<!-- CTA -->
+<section class="py-16 bg-[#FF0B55] text-white text-center">
+  <h2 class="text-3xl font-bold mb-6">Be a Part of Kupwara’s Food Revolution</h2>
+  <p class="mb-8">Fill out our quick application form and let’s start working together.</p>
+  <a href="{% url 'contact' %}" class="bg-white text-[#FF0B55] font-semibold px-8 py-3 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition">
+    Contact Us
+  </a>
+</section>
 {% endblock %}

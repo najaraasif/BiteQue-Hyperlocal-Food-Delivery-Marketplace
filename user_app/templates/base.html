@@ -217,12 +217,101 @@
   </div>
 </div>
 
+
 <!-- 🌟 Footer -->
 <footer class="bg-gray-900 text-gray-300 mt-16">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    {{ block.super }}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+      
+      <!-- Company Info -->
+      <div class="space-y-4">
+        <div class="flex items-center space-x-2">
+           <a href="{% url 'home' %}" class="flex items-center">
+        <img
+          src="/media/images/zemlogo.png"
+          class="h-12 w-auto object-contain transform scale-[1.9]"
+          style="transform-origin: left center;"
+          alt="ZemQue Logo"
+        >
+      </a>
+        </div>
+        <p class="text-sm leading-relaxed">Delivering happiness to your doorstep in Kupwara since 2025.</p>
+        <div class="flex space-x-4 pt-2">
+          <a href="#" class="text-gray-400 hover:text-[#FF0B55] transition-colors">
+            <i class="fab fa-facebook-f"></i>
+          </a>
+          <a href="#" class="text-gray-400 hover:text-[#FF0B55] transition-colors">
+            <i class="fab fa-instagram"></i>
+          </a>
+          <a href="#" class="text-gray-400 hover:text-[#FF0B55] transition-colors">
+            <i class="fab fa-twitter"></i>
+          </a>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div>
+        <h3 class="text-white font-bold text-lg mb-4">Quick Links</h3>
+        <ul class="space-y-3">
+          <li><a href="{% url 'about' %}" class="flex items-center space-x-2 hover:text-[#FF0B55] transition">
+            <i class="fas fa-chevron-right text-xs text-[#FF0B55]"></i>
+            <span>About Us</span>
+          </a></li>
+          <li><a href="{% url 'careers' %}" class="flex items-center space-x-2 hover:text-[#FF0B55] transition">
+            <i class="fas fa-chevron-right text-xs text-[#FF0B55]"></i>
+            <span>Careers</span>
+          </a></li>
+          <li><a href="{% url 'contact' %}" class="flex items-center space-x-2 hover:text-[#FF0B55] transition">
+            <i class="fas fa-chevron-right text-xs text-[#FF0B55]"></i>
+            <span>Contact Us</span>
+          </a></li>
+        </ul>
+      </div>
+
+      <!-- Legal -->
+      <div>
+        <h3 class="text-white font-bold text-lg mb-4">Legal</h3>
+        <ul class="space-y-3">
+          <li><a href="{% url 'privacy' %}" class="flex items-center space-x-2 hover:text-[#FF0B55] transition">
+            <i class="fas fa-chevron-right text-xs text-[#FF0B55]"></i>
+            <span>Privacy Policy</span>
+          </a></li>
+          <li><a href="{% url 'terms-and-conditions' %}" class="flex items-center space-x-2 hover:text-[#FF0B55] transition">
+            <i class="fas fa-chevron-right text-xs text-[#FF0B55]"></i>
+            <span>Terms & Conditions</span>
+          </a></li>
+          <li><a href="{% url 'responsible-disclosure' %}" class="flex items-center space-x-2 hover:text-[#FF0B55] transition">
+            <i class="fas fa-chevron-right text-xs text-[#FF0B55]"></i>
+            <span>Responsible Disclosure</span>
+          </a></li>
+        </ul>
+      </div>
+
+      <!-- Partners -->
+      <div>
+        <h3 class="text-white font-bold text-lg mb-4">Partners</h3>
+        <ul class="space-y-3">
+          <li><a href="{% url 'merchant_register' %}" class="flex items-center space-x-2 hover:text-[#FF0B55] transition">
+            <i class="fas fa-chevron-right text-xs text-[#FF0B55]"></i>
+            <span>Add Restaurant</span>
+          </a></li>
+          
+          <li><a href="{% url 'rider:registration' %}" class="flex items-center space-x-2 hover:text-[#FF0B55] transition">
+            <i class="fas fa-chevron-right text-xs text-[#FF0B55]"></i>
+            <span>Become a Delivery Partner</span>
+          </a></li>
+        </ul>
+      </div>
+      
+    </div>
+
+    <!-- Divider -->
+    <div class="border-t border-gray-800 mt-12 pt-8 text-center text-xs text-gray-500">
+      <p>© 2025 ZemQue. All rights reserved.</p>
+    </div>
   </div>
 </footer>
+
 
 </body>
 </html>
