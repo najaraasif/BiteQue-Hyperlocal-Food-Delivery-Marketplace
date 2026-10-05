@@ -21,6 +21,7 @@ from rider_app import urls
 from merchant_app import urls
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve as serve_media
 
 
 
@@ -30,6 +31,7 @@ urlpatterns = [
     path('', include('user_app.urls')),
     path('', include('rider_app.urls')),
     path('', include('merchant_app.urls')),
+    path('media/<path:path>', serve_media, {'document_root': settings.MEDIA_ROOT}),
     
 
 ] 
