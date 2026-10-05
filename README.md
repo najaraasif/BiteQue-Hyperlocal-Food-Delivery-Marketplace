@@ -1,18 +1,22 @@
 # 🍔 BiteQue
 
-[![Python](https://img.shields.io/badge/Python-3.12%20%7C%203.13-blue.svg)](https://www.python.org/)
-[![Django](https://img.shields.io/badge/Django-5.2-092E20.svg)](https://www.djangoproject.com/)
+[![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/Django-6.1-092E20.svg)](https://www.djangoproject.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC.svg)](https://tailwindcss.com/)
 [![HTMX](https://img.shields.io/badge/HTMX-3366CC.svg)](https://htmx.org/)
+[![Live](https://img.shields.io/badge/Live-biteque.onrender.com-7D4698.svg)](https://biteque.onrender.com)
 [![Market](https://img.shields.io/badge/Market-Kupwara%2C%20J%26K-orange.svg)]()
-[![Status](https://img.shields.io/badge/Status-Active%20Development-success.svg)]()
+[![Status](https://img.shields.io/badge/Status-Deployed-success.svg)](https://biteque.onrender.com)
 
 > **BiteQue** is a hyperlocal, three-sided food delivery marketplace connecting **Customers**, **Restaurants (Merchants)**, and **Independent Delivery Riders**, designed specifically for underserved regional markets, starting with Kupwara, Jammu & Kashmir, India.
+>
+> **🌐 Live instance: [https://biteque.onrender.com](https://biteque.onrender.com)**
 
 ---
 
 ## 📌 Table of Contents
 
+- [Live Deployment](#-live-deployment)
 - [Problem & Opportunity](#-problem--opportunity)
 - [System Architecture](#-system-architecture)
 - [Core User Roles](#-core-user-roles)
@@ -29,6 +33,22 @@
 - [Environment Configuration](#-environment-configuration)
 - [Product Roadmap & Known Gaps](#-product-roadmap--known-gaps)
 - [Authors & Team](#-authors--team)
+
+---
+
+## 🌐 Live Deployment
+
+The production instance runs at **[https://biteque.onrender.com](https://biteque.onrender.com)**:
+
+| Component | Details |
+| :--- | :--- |
+| **Hosting** | [Render](https://render.com) — Oregon region, Docker runtime built from the repo's `Dockerfile` |
+| **Database** | Managed Render PostgreSQL 18, wired in via the `DATABASE_URL` environment variable |
+| **Server** | Gunicorn behind Render's HTTPS proxy; WhiteNoise serves hashed static assets, Django serves media |
+| **Deploys** | Every push to `main` triggers an automatic build; migrations run at container boot (`migrate && gunicorn`), then Render health-checks `/` |
+| **Seed data** | The catalogue ships pre-populated with demo restaurants, menu items, reviews, orders, and earnings so the site is never empty |
+
+Secrets and configuration (API keys, `DATABASE_URL`, `DEBUG`, hosts) live exclusively in the Render dashboard under **Environment** — never in the repository.
 
 ---
 
@@ -62,8 +82,8 @@ graph TD
     end
 
     subgraph External["External Integrations"]
-        GEO[OpenStreetMap / Nominatim<br/>Geocoding & Haversine Distance]
-        MS[MailerSend API & SMTP<br/>Transactional Alerts & Auth]
+        GEO[Google Maps Geocoding<br/>Geocoding & Haversine Distance]
+        MS[Brevo SMTP & MailerSend API<br/>Transactional Alerts & Auth]
     end
 
     subgraph Storage["Data Tier"]
@@ -150,7 +170,7 @@ Rider compensation per delivered order is computed dynamically upon delivery:
 $$\text{Total Earning} = \text{Distance Earning} + \text{Tiered Commission Earning}$$
 
 #### A. Straight-Line Distance Earning
-Coordinates for both the restaurant and the customer delivery destination are automatically geocoded using the **OpenStreetMap Nominatim API** (`geopy`) on save. The straight-line distance is computed via the **Haversine formula**:
+Coordinates for both the restaurant and the customer delivery destination are automatically geocoded using the **Google Maps Geocoding API** on save. The straight-line distance is computed via the **Haversine formula**:
 
 $$\text{Distance Earning} = \text{Distance (km)} \times ₹10/\text{km}$$
 
@@ -198,12 +218,15 @@ Integrated with **MailerSend** via direct REST endpoints and custom SMTP backend
 
 ## 💻 Technology Stack
 
-- **Backend Framework**: [Django 5.2](https://docs.djangoproject.com/) (Python 3.12 / 3.13)
-- **Database**: SQLite (default local development) / PostgreSQL ready
+- **Backend Framework**: [Django 6.1](https://docs.djangoproject.com/) on Python 3.13
+- **Database**: SQLite (local development) / PostgreSQL 18 (production on Render)
 - **Frontend & UI**: HTML5 templates, [Tailwind CSS](https://tailwindcss.com/), [HTMX](https://htmx.org/) (for reactive updates without full page reloads), [Feather Icons](https://feathericons.com/), [Heroicons](https://heroicons.com/)
-- **Geolocation & Mapping**: OpenStreetMap Nominatim Geocoding, `geopy`, Haversine Distance computation
-- **Email Service Provider**: [MailerSend](https://www.mailersend.com/) (API + Custom Django Email Backend)
-- **Image & File Processing**: [Pillow](https://python-pillow.org/)
+- **Geolocation & Mapping**: Google Maps Geocoding API, `geopy`, Haversine distance computation
+- **Email**: Brevo SMTP (transactional) + [MailerSend](https://www.mailersend.com/) API
+- **Payments**: Razorpay (test mode)
+- **Messaging**: Fast2SMS, WhatsApp Cloud API
+- **Deployment**: Docker, Gunicorn, WhiteNoise, [Render](https://render.com) (auto-deploy on push)
+- **Image & File Processing**: [Pillow](https://python-pillow.org/), WeasyPrint (PDF invoices)
 
 ---
 
@@ -246,6 +269,8 @@ BITEQUE/
 ├── media/                       # Uploaded files (menu items, KYC scans, payment receipts)
 ├── static/                      # Static assets (CSS, JS, logos)
 ├── logs/                        # Application logs (earnings_reset.log)
+├── Dockerfile                   # Production container image (builds & runs on Render)
+├── .dockerignore                # Keeps secrets & local artifacts out of the image
 ├── manage.py                    # Django management script
 ├── requirements.txt             # Project Python dependencies
 ├── BiteQue_PRD.docx             # Product Requirements Document
@@ -300,34 +325,45 @@ python manage.py runserver
 ```
 Visit `http://127.0.0.1:8000/` in your browser.
 
+### 8. Run with Docker (mirrors production)
+```bash
+docker build -t biteque .
+docker run --rm -p 8000:8000 -e SECRET_KEY=change-me -e DEBUG=True biteque
+```
+The container applies pending migrations on start (`migrate && gunicorn`), exactly like production. Set `DATABASE_URL` to point it at PostgreSQL instead of SQLite.
+
 ---
 
 ## 🔐 Environment Configuration
 
-For security best practices, sensitive keys should be stored in environment variables (or a `.env` file). The following parameters are used across `BITEQUE/settings.py`:
+All secrets are read from environment variables in `BITEQUE/settings.py` — the repository only contains placeholders. In production these are set in the Render dashboard (*Environment* tab); for local development export them or use your shell profile.
 
 ```env
 # Django Core
 SECRET_KEY=your-secure-secret-key
-DEBUG=True
-ALLOWED_HOSTS=127.0.0.1,localhost
+DEBUG=False
+ALLOWED_HOSTS=your-domain.onrender.com
+CSRF_TRUSTED_ORIGINS=https://your-domain.onrender.com
 
-# MailerSend (Merchant & Core)
-MAILERSEND_API_KEY=mlsn.your_merchant_api_key
-MAILERSEND_DOMAIN=your-merchant-domain.mlsender.net
-DEFAULT_FROM_EMAIL=noreply@your-domain.com
+# Database (production only — omit to fall back to local SQLite)
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
 
-# MailerSend (Rider Support & Auth)
-MAILERSEND_API_KEY_R=mlsn.your_rider_api_key
-MAILERSEND_DOMAIN_R=your-rider-domain.mlsender.net
-DEFAULT_FROM_EMAIL_R=noreply@your-domain.com
-
-# SMTP Host Configuration
-EMAIL_HOST=smtp.mailersend.net
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
+# SMTP / Transactional Email (Brevo)
+EMAIL_HOST=smtp-relay.brevo.com
 EMAIL_HOST_USER=your-smtp-user
 EMAIL_HOST_PASSWORD=your-smtp-password
+DEFAULT_FROM_EMAIL=noreply@your-domain.com
+BREVO_API_KEY=your-brevo-api-key
+
+# MailerSend
+MAILERSEND_API_KEY=mlsn.your_api_key
+MAILERSEND_DOMAIN=your-domain.mlsender.net
+
+# Maps, Payments & SMS
+GOOGLE_MAPS_API_KEY=your-google-maps-key
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxx
+RAZORPAY_KEY_SECRET=your-razorpay-secret
+FAST2SMS_API_KEY=your-fast2sms-key
 ```
 
 ---
@@ -337,7 +373,7 @@ EMAIL_HOST_PASSWORD=your-smtp-password
 - [ ] **In-App Cart & Checkout**: Implementation of dynamic session-based or database-backed cart with online payment gateway integration (UPI / Razorpay / Cashfree).
 - [ ] **Acceptance-Rate Performance Bonus**: Payout logic rewarding riders maintaining a high assignment acceptance rate ($> 85\%$) with weekly bonus top-ups.
 - [ ] **Live Rider GPS Tracking**: Real-time Leaflet / Mapbox live location tracking for customers and merchants during `out_for_delivery`.
-- [ ] **Settings Hardening**: Full migration of API tokens and credentials to `django-environ` / `.env`.
+- [x] **Settings Hardening**: All API tokens and credentials now read from environment variables via `os.environ` in `settings.py`; the repository contains placeholders only.
 - [ ] **Automated Password Hashing Migration**: Refactor legacy `userRegistration` fields to rely strictly on Django's cryptographic authentication framework.
 
 ---
