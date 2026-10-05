@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+
+# Local database & secrets — never commit
+db.sqlite3
+.env
+
+# Runtime logs
+logs/*.log
+
+# User-generated uploads (KYC documents, payment proofs, avatars — PII, never commit)
+media/riders/
+media/payment_screenshots/
+media/avatars/
+media/support_images/
+media/user_support_images/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
