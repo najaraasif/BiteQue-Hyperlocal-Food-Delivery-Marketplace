@@ -49,7 +49,18 @@ SECRET_KEY = os.environ.get('SECRET_KEY', _DEV_FALLBACK_KEY)
 # (local .env sets DEBUG=True; Render sets DEBUG=False).
 DEBUG = os.environ.get('DEBUG', 'False').lower() in ('1', 'true', 'yes')
 
-if not DEBUG and (not SECRET_KEY or SECRET_KEY == _DEV_FALLBACK_KEY):
+# `collectstatic` runs during the Docker image build (no env vars, no
+# .env) and `migrate` runs in the container entrypoint before gunicorn.
+# Those preparation steps are allowed to boot without a key; anything
+# that actually serves requests (gunicorn, runserver) still refuses to
+# start without a real SECRET_KEY.
+_NON_SERVING_COMMANDS = ('collectstatic', 'migrate')
+
+if (
+    not DEBUG
+    and (not SECRET_KEY or SECRET_KEY == _DEV_FALLBACK_KEY)
+    and not any(cmd in sys.argv for cmd in _NON_SERVING_COMMANDS)
+):
     raise ImproperlyConfigured(
         "SECRET_KEY environment variable must be set to a real secret when DEBUG is disabled."
     )
