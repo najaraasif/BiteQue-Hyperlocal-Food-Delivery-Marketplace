@@ -117,9 +117,9 @@
       <div class="flex items-center space-x-6">
         <!-- Notification Icon -->
         <div class="relative">
-          <button  class="relative text-gray-500 hover:text-[#FF0B55] focus:outline-none transition">
-            <i data-feather="bell" class="w-6 h-6"></i>
-            <span 
+          <button id="notification-btn" class="relative text-gray-500 hover:text-[#FF0B55] focus:outline-none transition">
+            <i id="notification-icon" data-feather="bell" class="w-6 h-6"></i>
+            <span id="notification-badge"
                   class="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full"
                   style="display: none;">
               1
@@ -148,6 +148,46 @@
   </div>
 </div>
 
+<!-- JavaScript Section -->
+<script>
+  feather.replace();
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if ('Notification' in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  });
+
+  function checkNotifications() {
+    fetch("{% url 'check_notifications' %}")
+      .then(response => response.json())
+      .then(data => {
+        const badge = document.getElementById('notification-badge');
+        const icon = document.getElementById('notification-icon');
+
+        if (data.notify) {
+          badge.style.display = 'inline-flex';
+          badge.textContent = data.count || 1;
+          icon.classList.add('text-red-600', 'animate-pulse');
+
+          if ('Notification' in window && Notification.permission === "granted") {
+            new Notification("🔔 New Notification", {
+              body: data.message,
+              icon: ""
+            });
+          }
+        } else {
+          badge.style.display = 'none';
+          icon.classList.remove('text-red-600', 'animate-pulse');
+        }
+      })
+      .catch(error => {
+        console.error("Notification fetch error:", error);
+      });
+  }
+
+  setInterval(checkNotifications, 15000); // Poll every 15 seconds
+</script>
 
 </body>
 </html>

@@ -52,6 +52,15 @@ def save_player_id(request):
             return JsonResponse({'status': 'error', 'message': 'Restaurant not found'}, status=404)
     return JsonResponse({'status': 'unauthorized'}, status=401)
 
+@login_required
+def check_notifications(request):
+    notif = MerchantNotification.objects.filter(merchant=request.user, is_read=False).first()
+    if notif:
+        notif.is_read = True
+        notif.save()
+        return JsonResponse({"notify": True, "message": notif.message})
+    return JsonResponse({"notify": False})
+
 def merchant_register_view(request):
     if request.method == 'POST':
         form = MerchantRegistrationForm(request.POST)

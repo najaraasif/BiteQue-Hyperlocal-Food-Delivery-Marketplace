@@ -46,6 +46,7 @@ urlpatterns = [
     path('merchant/order-report/', views.order_reports, name='order_report'),
     path('merchant/feedbacks/', views.customer_feedback, name='customer_feedback'),
     path('merchant/support/', views.merchant_support, name='support_portal'),
+    path('merchant/check_notifications/', views.check_notifications, name='check_notifications'),
 
     path('merchant/reset-password/', views.merchant_password_reset_request, name='merchant-password-reset'),
     path('merchant/reset-sent/', views.password_reset_sent_view, name='password_reset_sent'),
