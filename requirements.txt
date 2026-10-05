@@ -4,6 +4,8 @@ razorpay
 Pillow
 xhtml2pdf
 geopy
-mailersend
+mailersend==0.6.0
 sib-api-v3-sdk
 django-widget-tweaks
+python-crontab==3.4.0
+weasyprint==70.0
