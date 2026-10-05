@@ -194,6 +194,9 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'your-from-email@examp
 
 BREVO_API_KEY = os.environ.get('BREVO_API_KEY', 'your-brevo-api-key')
 
+MAILERSEND_API_KEY = os.environ.get('MAILERSEND_API_KEY', 'your-mailersend-api-key')
+MAILERSEND_DOMAIN = os.environ.get('MAILERSEND_DOMAIN', 'your-mailersend-domain')
+
 
 LOGGING = {
     'version': 1,
