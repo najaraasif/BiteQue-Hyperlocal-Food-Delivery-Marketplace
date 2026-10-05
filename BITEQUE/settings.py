@@ -12,28 +12,64 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 import dj_database_url
-import crontab
-from django.urls import reverse_lazy
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def _load_dotenv(path):
+    """Minimal .env loader so local development keeps working without
+    exporting variables manually. Real environment variables always win."""
+    try:
+        with open(path) as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, _, value = line.partition('=')
+                os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    except OSError:
+        pass
+
+
+_load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-only-key-change-me')
+_DEV_FALLBACK_KEY = 'django-insecure-dev-only-key-change-me'
+SECRET_KEY = os.environ.get('SECRET_KEY', _DEV_FALLBACK_KEY)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True').lower() in ('1', 'true', 'yes')
+# Secure-by-default: DEBUG is only enabled when explicitly requested
+# (local .env sets DEBUG=True; Render sets DEBUG=False).
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('1', 'true', 'yes')
+
+if not DEBUG and (not SECRET_KEY or SECRET_KEY == _DEV_FALLBACK_KEY):
+    raise ImproperlyConfigured(
+        "SECRET_KEY environment variable must be set to a real secret when DEBUG is disabled."
+    )
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 
+# HTTPS / browser hardening (skipped in local dev and during `manage.py test`,
+# where the test client issues plain HTTP requests).
+_TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = (not DEBUG) and not _TESTING
+SECURE_HSTS_SECONDS = 31536000 if (not DEBUG and not _TESTING) else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+X_FRAME_OPTIONS = 'DENY'
 
 
 # Application definition
@@ -170,26 +206,15 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
 #LOGIN_REDIRECT_URL = '/rider/dashboard/'
 
 
-#contact form backend
+#contact form backend / Brevo SMTP for verification emails
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp-relay.brevo.com')
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'your-smtp-user')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'your-smtp-password')  
-
-
-
-
-#Brevo email for verification RIDER
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp-relay.brevo.com')
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'your-smtp-user')  
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'your-smtp-password')  
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'your-from-email@example.com')  
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'your-smtp-password')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'your-from-email@example.com')
 
 
 BREVO_API_KEY = os.environ.get('BREVO_API_KEY', 'your-brevo-api-key')
@@ -198,13 +223,17 @@ MAILERSEND_API_KEY = os.environ.get('MAILERSEND_API_KEY', 'your-mailersend-api-k
 MAILERSEND_DOMAIN = os.environ.get('MAILERSEND_DOMAIN', 'your-mailersend-domain')
 
 
+_LOG_DIR = BASE_DIR / 'logs'
+_LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 LOGGING = {
     'version': 1,
+    'disable_existing_loggers': False,
     'handlers': {
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': 'logs/earnings_reset.log',
+            'filename': str(_LOG_DIR / 'earnings_reset.log'),
         },
     },
     'loggers': {

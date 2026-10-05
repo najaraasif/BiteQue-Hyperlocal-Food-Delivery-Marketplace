@@ -1,7 +1,7 @@
 from django.urls import path
-from .views import clear_alert_flag, home, about, contact, payment_success, privacy, careers, profile_view, send_whatsapp_alert, terms, ResponsibleDisclosure, addRestaurant, rideWithUs, test_notification, update_avatar
+from .views import clear_alert_flag, home, about, contact, payment_success, privacy, careers, profile_view, terms, ResponsibleDisclosure, addRestaurant, rideWithUs, update_avatar
 from .views import userLogin, user_view_menu, UserRegistration_view,user_logout
-from .views  import registration_success, user_profile,order_confirmation, order_detail, profile_section, dashboard_home,user_active_orders,order_user_history,support, view_cart, add_to_cart, remove_from_cart, change_quantity,CustomPasswordChangeView,contact_form
+from .views  import registration_success, order_confirmation, order_detail, profile_section, dashboard_home,user_active_orders,order_user_history, view_cart, add_to_cart, remove_from_cart, change_quantity,CustomPasswordChangeView,contact_form
 from django.contrib.auth.views import LogoutView
 
 from user_app import views
@@ -49,8 +49,6 @@ urlpatterns = [
 
     path('profile/update-avatar/', update_avatar, name='update_avatar'),
     path('change-password/', CustomPasswordChangeView.as_view(), name='change_password'),
-    path('api/send-whatsapp/', send_whatsapp_alert, name='send_whatsapp'),
-    path('test-notification/', test_notification, name='test_notification'),
     path('contact-form/', views.contact_form, name='contact-form'),
     path('clear-alert-flag/', clear_alert_flag, name='clear_alert_flag'),
     path('orders/<int:order_id>/invoice/', views.download_invoice, name='download_invoice'),

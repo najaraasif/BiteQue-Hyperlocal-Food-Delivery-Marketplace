@@ -53,33 +53,6 @@ class RiderRegistrationForm(UserCreationForm):
             raise forms.ValidationError("Pincode must be exactly 6 digits.")
         return pincode
 
-def save(self, commit=True):
-    with transaction.atomic():
-        user = super().save(commit=False)
-        # Name handling
-        full_name = self.cleaned_data['full_name'].split()
-        user.first_name = full_name[0] if full_name else ''
-        user.last_name = ' '.join(full_name[1:]) if len(full_name) > 1 else ''
-        
-        if commit:
-            user.save()
-            Rider.objects.create(
-                user=user,
-                phone=self.cleaned_data['phone'],
-                gender=self.cleaned_data['gender'],
-                aadhar_number=self.cleaned_data['aadhar_number'],
-                driving_license=self.cleaned_data['driving_license'],
-                address=self.cleaned_data['address'],
-                area=self.cleaned_data['area'],
-                pincode=self.cleaned_data['pincode'],
-                profile_photo=self.cleaned_data['profile_photo'],
-                aadhar_front=self.cleaned_data['aadhar_front'],
-                aadhar_back=self.cleaned_data.get('aadhar_back'),  
-                license_copy=self.cleaned_data['license_copy'],
-                is_approved=False  
-            )
-        return user
-
 
 class RiderAdminForm(forms.ModelForm):
     class Meta:
@@ -98,42 +71,6 @@ class RiderAdminForm(forms.ModelForm):
             self.fields['email'].widget.attrs.update({
                 'placeholder': 'you@example.com'
             })
-    
-def save(self, commit=True):
-    with transaction.atomic():
-        user = super().save(commit=False)
-        full_name = self.cleaned_data['full_name'].split()
-        user.first_name = full_name[0] if full_name else ''
-        user.last_name = ' '.join(full_name[1:]) if len(full_name) > 1 else ''
-        
-        if commit:
-            user.save()
-            rider = Rider.objects.create(
-                user=user,
-                phone=self.cleaned_data['phone'],
-                gender=self.cleaned_data['gender'],
-                aadhar_number=self.cleaned_data['aadhar_number'],
-                driving_license=self.cleaned_data['driving_license'],
-                address=self.cleaned_data['address'],
-                area=self.cleaned_data['area'],
-                pincode=self.cleaned_data['pincode'],
-                profile_photo=self.cleaned_data['profile_photo'],
-                aadhar_front=self.cleaned_data['aadhar_front'],
-                license_copy=self.cleaned_data['license_copy']
-            )
-        return user    
-        
-    def clean_aadhar_number(self):
-        aadhar = self.cleaned_data['aadhar_number']
-        if not aadhar.isdigit() or len(aadhar) != 12:
-            raise forms.ValidationError("Aadhar number must be 12 digits")
-        return aadhar
-        
-    def clean_driving_license(self):
-        license = self.cleaned_data['driving_license']
-        if len(license) < 10:
-            raise forms.ValidationError("Invalid driving license number")
-        return license
 
 class RiderLoginForm(AuthenticationForm):
     username = forms.CharField(widget=forms.TextInput(attrs={
@@ -217,22 +154,22 @@ class BankDetailsForm(forms.ModelForm):
 
 class DeliveryOTPForm(forms.Form):
     otp = forms.CharField(
-    label='Delivery PIN',
-    max_length=6,
-    min_length=4,
-    widget=forms.TextInput(attrs={
-        'class': 'w-full px-4 py-2 border rounded-lg text-center',
-        'placeholder': 'Enter 4 digit PIN',
-        'type': 'number', 
-        'pattern': '\\d*',
-        'inputmode': 'numeric'
-    })
-)
+        label='Delivery PIN',
+        max_length=6,
+        min_length=4,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2 border rounded-lg text-center',
+            'placeholder': 'Enter 4 digit PIN',
+            'type': 'number',
+            'pattern': '\\d*',
+            'inputmode': 'numeric'
+        })
+    )
 
-def clean_otp(self):
-    otp = self.cleaned_data.get('otp')
-    if not otp.isdigit():
-        raise forms.ValidationError("PIN must only contain digits.")
-    if not (len(otp) == 4 or len(otp) == 6): 
-        raise forms.ValidationError("PIN must be 4 digits long.")
-    return otp
+    def clean_otp(self):
+        otp = self.cleaned_data.get('otp')
+        if not otp.isdigit():
+            raise forms.ValidationError("PIN must only contain digits.")
+        if not (len(otp) == 4 or len(otp) == 6):
+            raise forms.ValidationError("PIN must be 4 or 6 digits long.")
+        return otp

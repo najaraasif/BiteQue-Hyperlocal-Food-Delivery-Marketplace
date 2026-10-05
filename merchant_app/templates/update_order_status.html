@@ -1,9 +1,0 @@
-<h2>Update Order Status: Order #{{ order.id }}</h2>
-
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Update Status</button>
-</form>
-
-<a href="{% url 'confirmed_orders' %}">Back to Confirmed Orders</a>

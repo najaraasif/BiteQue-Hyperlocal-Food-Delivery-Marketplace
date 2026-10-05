@@ -1,6 +1,5 @@
 from decimal import Decimal
 from django.contrib import messages
-from venv import logger
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.db import IntegrityError
@@ -42,10 +41,7 @@ def rider_dashboard(request):
             rider.accepted_assignments = 0
             
         acceptance_rate = rider.get_acceptance_rate()
-
-        print(f"Debug: Found rider - Rider ID: {rider.id}, Available: {rider.is_available}, Approved: {rider.is_approved}")
     except Rider.DoesNotExist:
-        print("Debug: No rider profile found for the logged-in user.")
         messages.error(request, "Rider profile not found. Please register or contact support.")
         return redirect('rider:registration') 
 
@@ -54,9 +50,6 @@ def rider_dashboard(request):
         status__in=['pending', 'accepted'],  
         order__status__in=['ready', 'out_for_delivery']
     ).select_related('order', 'order__restaurant') 
-
-    print(f"Debug: Found {active_orders.count()} active orders for rider {rider.id} with status in ['pending', 'accepted'] and order status in ['ready', 'out_for_delivery'].")
-    
 
     completed_orders = OrderAssignment.objects.filter(
         rider=rider,
@@ -125,12 +118,8 @@ def update_availability(request):
     except Rider.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Rider profile not found'}, status=404)
     except Exception as e:
-        return JsonResponse({
-        'status': 'success',
-        'is_available': rider.is_available,
-        'button_text': 'Available' if rider.is_available else 'Not Available',
-        'button_class': 'bg-green-500' if rider.is_available else 'bg-red-500'
-    })
+        logger.error(f"Error updating availability: {e}", exc_info=True)
+        return JsonResponse({'status': 'error', 'message': 'Unable to update availability'}, status=500)
 
 
 @require_POST
@@ -138,27 +127,38 @@ def update_availability(request):
 def accept_order(request, order_id):
     try:
         rider = request.user.rider
-        assignment = OrderAssignment.objects.get(
-            order_id=order_id,
-            rider=rider,
-            status='pending'
-        )
-        assignment.status = 'accepted'
-        assignment.accepted_at = timezone.now()
-        assignment.save()
+    except Rider.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Rider profile not found'}, status=404)
 
-        OrderAssignment.objects.filter(
-            order_id=order_id
-        ).exclude(rider=rider).update(status='rejected')  # <-- Key change
-
-        order = assignment.order
-        order.status = 'out_for_delivery'
-        order.save()
+    try:
+        with transaction.atomic():
+            assignment = OrderAssignment.objects.select_for_update().get(
+                order_id=order_id,
+                rider=rider,
+                status='pending'
+            )
+            assignment.status = 'accepted'
+            assignment.accepted_at = timezone.now()
+            assignment.save()
+            # Side effects (order -> out_for_delivery, PIN generation,
+            # rejecting the other riders) are handled by the
+            # handle_order_assignment_changes signal inside this transaction.
 
         return JsonResponse({'status': 'success'})
+    except OrderAssignment.DoesNotExist:
+        return JsonResponse(
+            {'status': 'error', 'message': 'Order is no longer available for acceptance.'},
+            status=409
+        )
+    except IntegrityError:
+        # Partial unique constraint: only one accepted assignment per order.
+        return JsonResponse(
+            {'status': 'error', 'message': 'Order was just accepted by another rider.'},
+            status=409
+        )
     except Exception as e:
-        logger.error(f"Error accepting order: {str(e)}")
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        logger.error(f"Error accepting order: {e}", exc_info=True)
+        return JsonResponse({'status': 'error', 'message': 'Unable to accept order.'}, status=500)
 
 def rider_registration(request):
     if request.method == 'POST':
@@ -167,8 +167,11 @@ def rider_registration(request):
             try:
                 with transaction.atomic():
                     user = form.save(commit=False)
+                    full_name_parts = form.cleaned_data['full_name'].split()
+                    user.first_name = full_name_parts[0] if full_name_parts else ''
+                    user.last_name = ' '.join(full_name_parts[1:]) if len(full_name_parts) > 1 else ''
                     user.save()
-                    
+
                     Rider.objects.create(
                         user=user,
                         phone=form.cleaned_data['phone'],
@@ -180,6 +183,7 @@ def rider_registration(request):
                         pincode=form.cleaned_data['pincode'],
                         profile_photo=form.cleaned_data['profile_photo'],
                         aadhar_front=form.cleaned_data['aadhar_front'],
+                        aadhar_back=form.cleaned_data['aadhar_back'],
                         license_copy=form.cleaned_data['license_copy'],
                         is_approved=False
                     )
@@ -248,7 +252,6 @@ def rider_earnings(request):
             status='delivered',
             updated_at__gte=timezone.now() - timedelta(days=7)
         ).select_related('order').order_by('-updated_at')
-        print(f"DEBUG: Weekly orders count: {weekly_orders.count()}")
         earnings = RiderEarning.objects.filter(rider=rider).order_by('-date')
         transactions = rider.transaction_set.all().order_by('-transaction_date')[:20]
         paginator = Paginator(transactions, 10)  
@@ -281,17 +284,15 @@ def rider_earnings(request):
         messages.error(request, "Error loading earnings page")
         return redirect('rider:dashboard')
       
+    
 
 
-
-logger = logging.getLogger(__name__)
 
 @login_required
 @require_http_methods(["GET", "POST"])
 def mark_delivered(request, order_id):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    print(f"DEBUG MarkDelivered: AJAX: {is_ajax}, Method: {request.method}, Order ID: {order_id}")
-    
+
     try:
         rider = request.user.rider
         assignment = get_object_or_404(
@@ -301,11 +302,9 @@ def mark_delivered(request, order_id):
             status='accepted'
         )
         order = assignment.order
-        print(f"DEBUG MarkDelivered: Assignment: {assignment.id}, Order: {order.id}, PIN: {order.delivery_pin}") 
 
         if not (order.status == 'out_for_delivery' and order.delivery_pin):
             message = "Order not ready for PIN or PIN not set."
-            print(f"DEBUG MarkDelivered: Pre-condition failed. Status: {order.status}, PIN: {order.delivery_pin}") 
             if is_ajax:
                 return JsonResponse({'status': 'error', 'message': message}, status=400)
             messages.error(request, message)
@@ -315,61 +314,82 @@ def mark_delivered(request, order_id):
             form = DeliveryOTPForm(request.POST)
             if form.is_valid():
                 entered_otp = form.cleaned_data['otp']
-                print(f"DEBUG MarkDelivered: POST valid. OTP: {entered_otp}")
-                
+
                 if order.is_delivery_pin_valid(entered_otp):
-                    assignment.status = 'delivered'
-                    assignment.save()
+                    try:
+                        with transaction.atomic():
+                            # Lock the assignment so a double-submitted request
+                            # cannot earn twice for the same delivery.
+                            locked = OrderAssignment.objects.select_for_update().get(
+                                pk=assignment.pk, status='accepted'
+                            )
+                            order.refresh_from_db(fields=['status'])
+                            if order.status != 'out_for_delivery':
+                                raise ValueError("order_not_out_for_delivery")
 
-                    restaurant = order.restaurant
-                    distance_km = order.distance_km  # Use the already stored distance
-                    distance_earning = order.distance_earning  # Use the already stored earning
+                            locked.status = 'delivered'
+                            locked.save()
 
-                    order_total = order.total
-                    if order_total <= 200:
-                        commission_rate = Decimal('0.10')
-                    elif order_total <= 400:
-                        commission_rate = Decimal('0.06')
-                    elif order_total <= 1000:
-                        commission_rate = Decimal('0.04')
-                    elif order_total <= 2000:
-                        commission_rate = Decimal('0.02')
-                    elif order_total <= 4000:
-                        commission_rate = Decimal('0.01')
-                    else:
-                        commission_rate = Decimal('0.00')
+                            restaurant = order.restaurant
+                            distance_km = order.distance_km  # Use the already stored distance
+                            distance_earning = order.distance_earning  # Use the already stored earning
 
-                    commission_earning = order_total * commission_rate
-                    total_earning = distance_earning + commission_earning
+                            order_total = order.total
+                            if order_total <= 200:
+                                commission_rate = Decimal('0.10')
+                            elif order_total <= 400:
+                                commission_rate = Decimal('0.06')
+                            elif order_total <= 1000:
+                                commission_rate = Decimal('0.04')
+                            elif order_total <= 2000:
+                                commission_rate = Decimal('0.02')
+                            elif order_total <= 4000:
+                                commission_rate = Decimal('0.01')
+                            else:
+                                commission_rate = Decimal('0.00')
 
-                    order.commission = commission_earning
-                    order.total_earning = total_earning
-                    order.save(update_fields=['commission', 'total_earning'])
+                            commission_earning = order_total * commission_rate
+                            total_earning = distance_earning + commission_earning
 
-                    rider.today_earnings += total_earning
-                    rider.save(update_fields=['today_earnings'])
+                            order.commission = commission_earning
+                            order.total_earning = total_earning
+                            order.save(update_fields=['commission', 'total_earning'])
 
-                    today = timezone.now().date()
-                    rider_earning, created = RiderEarning.objects.get_or_create(
-                        rider=rider,
-                        date=today,
-                        defaults={
-                            'total_earnings': total_earning,
-                            'orders_completed': 1,
-                            'distance_km': distance_km,
-                            'distance_earning': distance_earning,
-                            'commission_earning': commission_earning
-                        }
-                    )
-                    if not created:
-                        rider_earning.total_earnings += total_earning
-                        rider_earning.orders_completed += 1
-                        rider_earning.distance_km += distance_km
-                        rider_earning.distance_earning += distance_earning
-                        rider_earning.commission_earning += commission_earning
-                        rider_earning.save()
+                            rider.today_earnings += total_earning
+                            rider.save(update_fields=['today_earnings'])
 
-                    print("DEBUG MarkDelivered: OTP Correct. Order delivered.")
+                            today = timezone.now().date()
+                            rider_earning, created = RiderEarning.objects.get_or_create(
+                                rider=rider,
+                                date=today,
+                                defaults={
+                                    'total_earnings': total_earning,
+                                    'orders_completed': 1,
+                                    'distance_km': distance_km,
+                                    'distance_earning': distance_earning,
+                                    'commission_earning': commission_earning
+                                }
+                            )
+                            if not created:
+                                rider_earning.total_earnings += total_earning
+                                rider_earning.orders_completed += 1
+                                rider_earning.distance_km += distance_km
+                                rider_earning.distance_earning += distance_earning
+                                rider_earning.commission_earning += commission_earning
+                                rider_earning.save()
+                    except OrderAssignment.DoesNotExist:
+                        message = "This order has already been marked as delivered."
+                        if is_ajax:
+                            return JsonResponse({'status': 'error', 'message': message}, status=409)
+                        messages.error(request, message)
+                        return redirect('rider:dashboard')
+                    except ValueError:
+                        message = "Order is not in a deliverable state."
+                        if is_ajax:
+                            return JsonResponse({'status': 'error', 'message': message}, status=400)
+                        messages.error(request, message)
+                        return redirect('rider:dashboard')
+
                     if is_ajax:
                         return JsonResponse({
                             'status': 'success',
@@ -379,14 +399,12 @@ def mark_delivered(request, order_id):
                     messages.success(request, f"Order #{order.id} marked as delivered successfully!")
                     return redirect('rider:dashboard')
                 else:
-                    print("DEBUG MarkDelivered: Incorrect OTP.")
                     message = "Incorrect PIN. Please confirm with the customer and try again."
-                    logger.warning(f"Failed OTP attempt for order {order.id} by rider {rider.id}. Entered OTP: {entered_otp}")
+                    logger.warning(f"Failed PIN attempt for order {order.id} by rider {rider.id}.")
                     if is_ajax:
                         return JsonResponse({'status': 'error', 'message': message, 'field_errors': {'otp': [message]}}, status=400)
                     messages.error(request, message)
             else:
-                print(f"DEBUG MarkDelivered: Form invalid. Errors: {form.errors.as_json()}")
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'message': 'Invalid input.', 'field_errors': form.errors.get_json_data()}, status=400)
                 messages.error(request, "Invalid input. Please check the PIN format.")
@@ -400,7 +418,13 @@ def mark_delivered(request, order_id):
 
     except OrderAssignment.DoesNotExist:
         message = "Order assignment not found or not in 'accepted' state."
-        print("DEBUG MarkDelivered: OrderAssignment.DoesNotExist or status mismatch.")
+        if is_ajax:
+            return JsonResponse({'status': 'error', 'message': message}, status=404)
+        messages.error(request, message)
+        return redirect('rider:dashboard')
+
+    except Http404:
+        message = "Order assignment not found or not in 'accepted' state."
         if is_ajax:
             return JsonResponse({'status': 'error', 'message': message}, status=404)
         messages.error(request, message)
@@ -409,7 +433,6 @@ def mark_delivered(request, order_id):
     except Exception as e:
         logger.error(f"Error in mark_delivered view for order {order_id}: {str(e)}", exc_info=True)
         message = "An unexpected error occurred."
-        print(f"DEBUG MarkDelivered: Exception: {str(e)}")
         if is_ajax:
             return JsonResponse({'status': 'error', 'message': message}, status=500)
         messages.error(request, message)
@@ -523,17 +546,35 @@ def rider_order_detail(request, order_id):
 @require_POST
 @login_required
 def accept_order_assignment(request, order_id):
-    assignment = get_object_or_404(OrderAssignment, order_id=order_id, rider=request.user.rider)
+    try:
+        rider = request.user.rider
+    except Rider.DoesNotExist:
+        messages.error(request, "Rider profile not found")
+        return redirect('rider:dashboard')
 
-    if assignment.status == "pending": 
-        assignment.status = "accepted" 
-        assignment.accepted_at = timezone.now() 
-        assignment.save() 
-        messages.success(request, "Order accepted successfully!")
-    elif assignment.status == "accepted":
-        messages.info(request, "Order was already accepted.")
-    else:
-        messages.error(request, f"Order cannot be accepted. Current status: {assignment.status}")
+    try:
+        with transaction.atomic():
+            assignment = OrderAssignment.objects.select_for_update().get(
+                order_id=order_id,
+                rider=rider
+            )
+
+            if assignment.status == "pending":
+                assignment.status = "accepted"
+                assignment.accepted_at = timezone.now()
+                assignment.save()
+                messages.success(request, "Order accepted successfully!")
+            elif assignment.status == "accepted":
+                messages.info(request, "Order was already accepted.")
+            else:
+                messages.error(request, f"Order cannot be accepted. Current status: {assignment.status}")
+    except OrderAssignment.DoesNotExist:
+        messages.error(request, "Order assignment not found.")
+    except IntegrityError:
+        messages.error(request, "Order was just accepted by another rider.")
+    except Exception as e:
+        logger.error(f"Error accepting assignment for order {order_id}: {e}", exc_info=True)
+        messages.error(request, "Unable to accept order.")
 
     return redirect('rider:rider_order_detail', order_id=order_id)
 
@@ -622,8 +663,6 @@ def earning_details(request, earning_id):
 @login_required
 def order_earning_details(request, order_id):
     try:
-        print(f"Fetching details for order {order_id}")
-        
         order = Order.objects.get(
             id=order_id,
             assignments__rider=request.user.rider,

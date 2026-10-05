@@ -1,6 +1,10 @@
+import logging
+
 from mailersend import emails
 from django.conf import settings
 import requests
+
+logger = logging.getLogger(__name__)
 
 def send_merchant_verification_email(merchant):
     mailer = emails.NewEmail(settings.MAILERSEND_API_KEY)
@@ -55,8 +59,11 @@ def send_merchant_verification_email(merchant):
         'html': html_content
     }
 
-    response = mailer.send(email_data)
-    print(response)
+    try:
+        response = mailer.send(email_data)
+        logger.info("Merchant verification e-mail sent: %s", response)
+    except Exception as exc:
+        logger.warning("Merchant verification e-mail to %s failed: %s", merchant.username.email, exc)
 
 
 def send_merchant_restaurant_email(restaurant):
@@ -156,8 +163,11 @@ def send_merchant_restaurant_email(restaurant):
         'html': html_content
     }
 
-    response = mailer.send(email_data)
-    print(response)
+    try:
+        response = mailer.send(email_data)
+        logger.info("Restaurant approval e-mail sent: %s", response)
+    except Exception as exc:
+        logger.warning("Restaurant approval e-mail to %s failed: %s", restaurant.email, exc)
 
 def send_mailersend_reset_email(to_email, reset_link):
     url = "https://api.mailersend.com/v1/email"
@@ -181,5 +191,10 @@ def send_mailersend_reset_email(to_email, reset_link):
         """
     }
 
-    response = requests.post(url, headers=headers, json=data)
-    response.raise_for_status()
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=15)
+        response.raise_for_status()
+        return True
+    except requests.RequestException as exc:
+        logger.warning("MailerSend password-reset e-mail to %s failed: %s", to_email, exc)
+        return False

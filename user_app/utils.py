@@ -6,6 +6,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+REQUEST_TIMEOUT_SECONDS = 15
+
 def send_sms(phone, message):
     """
     Send SMS using Fast2SMS
@@ -29,7 +31,8 @@ def send_sms(phone, message):
         response = requests.post(
             settings.FAST2SMS_URL,
             data=payload,
-            headers=headers
+            headers=headers,
+            timeout=REQUEST_TIMEOUT_SECONDS
         )
         
         if response.status_code == 200:
@@ -65,7 +68,8 @@ def send_whatsapp(phone, message):
         response = requests.post(
             "https://www.fast2sms.com/dev/whatsapp",
             json=payload,
-            headers=headers
+            headers=headers,
+            timeout=REQUEST_TIMEOUT_SECONDS
         )
         
         if response.status_code == 200:

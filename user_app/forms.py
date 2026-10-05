@@ -118,43 +118,6 @@ class userRegistrationForm(forms.Form):  # Changed from ModelForm to Form
 
 
 
-class OrderForm(forms.ModelForm):
-    class Meta:
-        model = Order
-        fields = ['restaurant', 'customer_name', 'customer_contact', 'landmark','special_instructions', 'status','delivery_address', 'dest_lat','dest_lon']
-        widgets = {
-            'menu_items': forms.CheckboxSelectMultiple(),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Optional: Limit menu items to available=True and filter by restaurant if needed
-
-
-class CustomerFeedbackForm(forms.Form):
-    class Meta:
-        model = CustomerFeedback
-        fields = ['customer', 'rating', 'feedback_text', 'comments']
-        widgets = {
-            'feedback_text': forms.Textarea(attrs={'placeholder': 'Write your feedback here...'}),
-            'rating': forms.NumberInput(attrs={'min': 1, 'max': 5}),
-        }
-from django import forms
-from .models import CustomerFeedback
-
-class OrderFeedbackForm(forms.ModelForm):
-    class Meta:
-        model = CustomerFeedback
-        fields = ['rating', 'comments']
-        widgets = {
-            'rating': forms.Select(attrs={'class': 'form-select'}),
-            'comments': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 4, 'placeholder': 'Write your feedback...'}),
-        }
-
-
-from django import forms
-from .models import CustomerFeedback
-
 class ComprehensiveFeedbackForm(forms.ModelForm):
     class Meta:
         model = CustomerFeedback
@@ -262,12 +225,3 @@ class UserProfileForm(forms.ModelForm):
             user.last_name = self.cleaned_data['last_name']
             user.save()
         return profile
-    
-
-    from django.core.exceptions import ValidationError
-
-def validate_image(file):
-    valid_extensions = ['.jpg', '.jpeg', '.png', '.gif']
-    ext = os.path.splitext(file.name)[1]
-    if not ext.lower() in valid_extensions:
-        raise forms.ValidationError('Unsupported file extension.')

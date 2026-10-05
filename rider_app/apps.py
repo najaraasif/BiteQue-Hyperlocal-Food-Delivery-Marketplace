@@ -9,7 +9,10 @@ class RiderAppConfig(AppConfig):
     def ready(self):
         import rider_app.signals
         
-        if 'test' in sys.argv or 'migrate' in sys.argv or 'makemigrations' in sys.argv:
+        # Never spawn the earnings-reset thread for management commands
+        # (tests, migrations, checks, collectstatic); gunicorn/runserver
+        # workers do start it.
+        if any(cmd in sys.argv for cmd in ('test', 'migrate', 'makemigrations', 'check', 'collectstatic', 'shell')):
             return
         
         import threading

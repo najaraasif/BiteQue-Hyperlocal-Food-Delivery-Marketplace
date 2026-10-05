@@ -53,12 +53,14 @@ class MerchantRegistrationForm(forms.Form):
 
     def clean_number(self):
         number = self.cleaned_data.get("number")
-        if not re.match(r'/^[6-9]\d{10}$', number):  
-            raise forms.ValidationError("Enter a valid phone number.")
-        # Optional: check for duplicates if number is stored in a related model
-        # if MerchantModel.objects.filter(number=number).exists():
-        #     raise forms.ValidationError("Phone number already registered.")
-        return number
+        digits = re.sub(r'[^\d]', '', number)
+        if len(digits) == 12 and digits.startswith('91'):
+            digits = digits[2:]
+        if not re.match(r'^[6-9]\d{9}$', digits):
+            raise forms.ValidationError(
+                "Enter a valid phone number. Format: +91XXXXXXXXXX or 10-digit local."
+            )
+        return digits
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
@@ -124,25 +126,26 @@ class RestaurantForm(forms.ModelForm):
 
     def clean_contact_number(self):
         number = self.cleaned_data['contact_number']
-        if not re.match(r'/^[6-9]\d{10}$', number):
-            raise forms.ValidationError("Enter a valid mobile number.")
+        digits = re.sub(r'[^\d]', '', number)
+        if not re.match(r'^(?:91)?[6-9]\d{9}$', digits):
+            raise forms.ValidationError("Enter a valid mobile number (10 digits, starting 6-9).")
         return number
 
     def clean_pan_number(self):
-        pan = self.cleaned_data['pan_number']
-        if not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', pan):
+        pan = (self.cleaned_data.get('pan_number') or '').strip()
+        if pan and not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', pan):
             raise forms.ValidationError("Invalid PAN format. Example: ABCDE1234F")
         return pan
 
     def clean_gstin_number(self):
-        gstin = self.cleaned_data['gstin_number']
-        if not re.match(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$', gstin):
+        gstin = (self.cleaned_data.get('gstin_number') or '').strip()
+        if gstin and not re.match(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$', gstin):
             raise forms.ValidationError("Invalid GSTIN format.")
         return gstin
 
     def clean_fssai_number(self):
-        fssai = self.cleaned_data['fssai_number']
-        if not re.match(r'^\d{14}$', fssai):
+        fssai = (self.cleaned_data.get('fssai_number') or '').strip()
+        if fssai and not re.match(r'^\d{14}$', fssai):
             raise forms.ValidationError("FSSAI must be a 14-digit number.")
         return fssai
 
@@ -204,14 +207,6 @@ class BankAccountForm(forms.ModelForm):
 
         }
 
-
-class UpdateOrderStatusForm(forms.ModelForm):
-    class Meta:
-        model = Order
-        fields = ['status']
-        widgets = {
-            'status': forms.Select(choices=Order.STATUS_CHOICES),
-        }
 
 from .models import Review
 

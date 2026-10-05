@@ -52,7 +52,7 @@ class Command(BaseCommand):
                 for rider in Rider.objects.all():
                     try:
                         if rider.today_earnings > 0:
-                            print(f"Processing rider {rider.id}: Today's earnings = ₹{rider.today_earnings}")  # Debug
+                            logger.info("Processing rider %s: today's earnings = %s", rider.id, rider.today_earnings)
 
                             RiderEarning.objects.create(
                                 rider=rider,
@@ -72,7 +72,10 @@ class Command(BaseCommand):
 
                             rider.save(update_fields=['current_balance', 'today_earnings'])
 
-                            print(f"Updated rider {rider.id}: Current balance = ₹{rider.current_balance}, Today's earnings reset to 0")  # Debug
+                            logger.info(
+                                "Updated rider %s: current balance = %s, today's earnings reset to 0",
+                                rider.id, rider.current_balance
+                            )
 
                             riders_processed += 1
                         else:
@@ -81,13 +84,13 @@ class Command(BaseCommand):
                         logger.error(f"Error processing rider {rider.id}: {str(rider_exc)}")
                         continue  # Continue with next rider
 
-                logger.info(f"Reset complete. Processed {riders_processed} riders.")
-                print(f"🎉 Successfully reset {riders_processed} riders. "
-                      f"Transferred ₹{total_transferred:.2f} to balances.")
+                logger.info(
+                    "Reset complete. Processed %s riders (transferred %s to balances).",
+                    riders_processed, total_transferred
+                )
 
             except Exception as e:
                 logger.error(f"Error during reset: {str(e)}")
-                print(f"Error during reset: {str(e)}")
 
         # Start background thread
         thread = Thread(target=reset_daily_earnings, daemon=True)

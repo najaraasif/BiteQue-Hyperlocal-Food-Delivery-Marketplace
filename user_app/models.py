@@ -1,45 +1,19 @@
-from datetime import timezone
-import secrets
-import string
-from django.db import models
-from django.contrib.auth.models import User
-from django.db import models
-from django.utils import timezone
-from django.apps import apps
-from django.db.models.signals import m2m_changed
-from django.dispatch import receiver
-from decimal import Decimal
-from venv import logger
-from rider_app.utils import geocode_address
-
-from django.db import models
-from django.contrib.auth.models import User
-import uuid
-import string
+import logging
 import random
-
-
-
-
-# user_app/models.py
-from django.db import models
-from django.contrib.auth.models import User
-from django.utils import timezone
-from decimal import Decimal
-import threading
 import secrets
 import string
+import threading
+from decimal import Decimal
+
+from django.contrib.auth.models import User
+from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone
+
 from user_app.utils import send_sms, send_whatsapp
 
-
-# models.py
-from decimal import Decimal
-from django.db import models
-from django.contrib.auth.models import User
-from django.utils import timezone
-import secrets
-import string
-import threading
+logger = logging.getLogger(__name__)
 
 
 class Order(models.Model):
@@ -79,9 +53,12 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
     def calculate_total(self):
+        items = list(self.order_items.all())
+        if items:
+            return sum(item.price * item.quantity for item in items)
         if hasattr(self, '_cart_quantities'):
             return sum(item.price * self._cart_quantities.get(str(item.id), 1) for item in self.menu_items.all())
-        return sum(item.price for item in self.menu_items.all())
+        return Decimal('0.00')
 
     @property
     def overall_sum(self):
@@ -124,12 +101,15 @@ class Order(models.Model):
             message = status_messages[self.status]
 
             def notify():
-                # Try WhatsApp first
-                if not send_whatsapp_message(full_number, message):
-                    # Fallback to SMS via Fast2SMS
-                    send_sms(phone_number, message)
+                try:
+                    # Try WhatsApp first
+                    if not send_whatsapp(full_number, message):
+                        # Fallback to SMS via Fast2SMS
+                        send_sms(phone_number, message)
+                except Exception:
+                    logger.exception("Failed to send status update for order %s", self.pk)
 
-            threading.Thread(target=notify).start()
+            threading.Thread(target=notify, daemon=True).start()
 
     def save(self, *args, **kwargs):
         # Recalculate total
@@ -154,13 +134,6 @@ class Order(models.Model):
         if prev_status != self.status:
             self.send_status_update()
 
-        # Assign delivery task if status moved to 'ready'
-        if self.status == 'ready' and prev_status != 'ready':
-            self.create_assignments()
-
-    def create_assignments(self):
-        print(f"DEBUG: Assignment logic triggered for Order #{self.id}")
-
     @property
     def status_index(self):
         status_order = ['pending', 'confirmed', 'ready', 'out_for_delivery', 'delivered']
@@ -182,13 +155,11 @@ class Order(models.Model):
     def generate_delivery_pin(self, length=4):
         self.delivery_pin = ''.join(secrets.choice(string.digits) for _ in range(length))
         self.delivery_pin_generated_at = timezone.now()
-        print(f"DEBUG: Generated PIN {self.delivery_pin} for order {self.id}")
         return self.delivery_pin
 
     def clear_delivery_pin(self):
         self.delivery_pin = None
         self.delivery_pin_generated_at = None
-        print(f"DEBUG: Cleared PIN for order {self.id}")
 
     def is_delivery_pin_valid(self, entered_pin):
         if not self.delivery_pin or not self.delivery_pin_generated_at:
@@ -212,31 +183,7 @@ class OrderMenuItem(models.Model):
    
 
 
-from django.db import models
-from django.contrib.auth.models import User
-from django.core.validators import RegexValidator
 
-class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    
-    # From userRegistration
-    phone_number = models.CharField(
-        max_length=10,
-        validators=[
-            RegexValidator(r'^\d{10}$', message='Enter a valid 10-digit phone number')
-        ],
-        blank=True,
-        null=True
-    )
-    email = models.EmailField(max_length=255, blank=True, null=True)  # Optional if needed separately
-    address = models.TextField(max_length=50, blank=True, null=True)
-    
-    # Additional profile fields
-    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
-    whatsapp_consent = models.BooleanField(default=False)
-    
-    def __str__(self):
-        return f"{self.user.username}'s Profile"
 
 
 
@@ -366,11 +313,8 @@ class UserSupportMessage(models.Model):
     def __str__(self):
         return f"Message by {self.sender} on {self.created_at.strftime('%Y-%m-%d %H:%M')}"
 #PROFILE MODEL
-from django.db import models
-from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.core.validators import RegexValidator
 
 
 class UserProfile(models.Model):
@@ -390,8 +334,14 @@ class UserProfile(models.Model):
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance)
+        UserProfile.objects.get_or_create(user=instance)
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
-    instance.userprofile.save()
+    update_fields = kwargs.get('update_fields')
+    if update_fields is not None and 'userprofile' not in update_fields:
+        # Field-limited saves (e.g. last_login updates) must not
+        # touch the profile row.
+        return
+    profile, _ = UserProfile.objects.get_or_create(user=instance)
+    profile.save()

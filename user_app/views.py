@@ -1,7 +1,7 @@
 from datetime import timedelta
 from decimal import ROUND_UP, Decimal
-from pyexpat.errors import messages
 from statistics import mean
+import logging
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from merchant_app.models import RestaurantMenu
@@ -9,13 +9,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import Order, CustomerFeedback, MerchantNotification
 from .forms import userRegistrationForm
-from rider_app.utils import calculate_osrm_distance, geocode_address
+from rider_app.utils import calculate_osrm_distance
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate, login
 from merchant_app.models import Restaurant, RestaurantMenu, SizeCategory
-from rider_app.utils import geocode_address
 from django.contrib.auth import logout
 from django.shortcuts import render
 from django.urls import reverse
@@ -37,11 +36,11 @@ from django.db.models import Avg
 from django.template.loader import render_to_string
 from django.http import JsonResponse
 from django.utils.text import slugify
-from .forms import OrderFeedbackForm
-from merchant_app.views import send_push_to_merchant
 from django.utils.safestring import mark_safe
 import json
 from user_app.utils import send_sms, send_whatsapp
+
+logger = logging.getLogger(__name__)
 
 
 def home(request):
@@ -94,7 +93,7 @@ def dashboard_home(request):
 
     # 📦 Prepare Context
     context = {
-        'user_profile': user_profile,
+        'user_profile': UserProfile.objects.filter(user=user).first(),
         'orders': orders,
         'total_orders': total_orders or 0,
         'ongoing_orders': ongoing_orders or 0,
@@ -182,10 +181,8 @@ from django.urls import reverse
 from django.http import JsonResponse
 from django.conf import settings
 import razorpay
-from .models import Order,OrderMenuItem  
+from .models import Order,OrderMenuItem
 
-from user_app.utils import send_sms, send_whatsapp
-import threading
 
 def checkout(request):
     if not request.user.is_authenticated:
@@ -226,15 +223,40 @@ def checkout(request):
         try:
             dest_lat = request.POST.get('dest_lat')
             dest_lon = request.POST.get('dest_lon')
-            delivery_fee_str = request.POST.get('calculated_delivery_fee', '0')
             distance_km_str = request.POST.get('calculated_distance_km', '0')
 
             try:
-                delivery_fee = Decimal(delivery_fee_str).quantize(Decimal('0.00'))
-                distance_km = Decimal(distance_km_str).quantize(Decimal('0.00'))
+                posted_distance = Decimal(distance_km_str).quantize(Decimal('0.00'))
             except InvalidOperation:
-                delivery_fee = Decimal('0.00')
+                posted_distance = Decimal('0.00')
+
+            # Server-side delivery fee. The fee is always derived from the
+            # distance using the same formula as the client (distance * 10),
+            # so the posted "calculated_delivery_fee" is never trusted.
+            # When the restaurant's coordinates are known the distance is
+            # recomputed server-side via OSRM and the posted distance is
+            # ignored entirely.
+            distance_km = posted_distance
+            if restaurant.lat is not None and restaurant.lon is not None and dest_lat and dest_lon:
+                try:
+                    server_distance = calculate_osrm_distance(
+                        float(restaurant.lat), float(restaurant.lon),
+                        float(dest_lat), float(dest_lon)
+                    )
+                    if server_distance is not None:
+                        distance_km = Decimal(str(server_distance)).quantize(Decimal('0.00'))
+                except Exception:
+                    logger.warning(
+                        "Server-side distance calculation failed for restaurant %s; using posted distance.",
+                        restaurant.id, exc_info=True
+                    )
+
+            # Sanity bounds for the client-provided fallback.
+            if distance_km < 0:
                 distance_km = Decimal('0.00')
+            if distance_km > 50:
+                distance_km = Decimal('50.00')
+            delivery_fee = (distance_km * Decimal('10')).quantize(Decimal('0.00'))
 
             combined_total = item_subtotal + total_platform_gst + packaging_charges
             final_total = (combined_total + delivery_fee).quantize(Decimal('0.00'))
@@ -286,6 +308,12 @@ def checkout(request):
             order.razorpay_order_id = razorpay_order['id']
             order.save(update_fields=['razorpay_order_id'])
 
+            # Let the merchant dashboard know a new order arrived
+            # (picked up by the polling check_notifications endpoint).
+            MerchantNotification.objects.create(
+                merchant=restaurant.owner,
+                message=f'New order #{order.id} received',
+            )
 
             return JsonResponse({
                 'success': True,
@@ -297,7 +325,8 @@ def checkout(request):
             })
 
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            logger.error("Order creation failed: %s", e, exc_info=True)
+            return JsonResponse({'success': False, 'error': 'Unable to create order. Please try again.'})
 
 
     # GET request view rendering
@@ -323,8 +352,6 @@ def checkout(request):
 @csrf_exempt
 def payment_success(request):
     if request.method == 'POST':
-        print("✅ POST Received:", request.POST.dict())  # Debug
-
         params_dict = {
             'razorpay_order_id': request.POST.get('razorpay_order_id'),
             'razorpay_payment_id': request.POST.get('razorpay_payment_id'),
@@ -355,7 +382,8 @@ def payment_success(request):
         except Order.DoesNotExist:
             messages.error(request, "Order not found.")
         except Exception as e:
-            messages.error(request, f"Payment failed: {str(e)}")
+            logger.error("Payment verification failed: %s", e, exc_info=True)
+            messages.error(request, "Payment verification failed. Please contact support.")
 
     return redirect('checkout')
 
@@ -401,8 +429,6 @@ def UserRegistration_view(request):
         form = userRegistrationForm(request.POST)
         if form.is_valid():
             try:
-                print("✅ Form is valid, starting registration process")  # Debug
-
                 username = form.cleaned_data['username']
                 email = form.cleaned_data['email']
                 name = form.cleaned_data['name']
@@ -418,7 +444,6 @@ def UserRegistration_view(request):
                     first_name=name.split()[0],
                     last_name=' '.join(name.split()[1:]) if len(name.split()) > 1 else ''
                 )
-                print(f"👤 User created: {user}")  # Debug
 
                 # Update the auto-created UserProfile
                 profile = user.userprofile
@@ -426,28 +451,24 @@ def UserRegistration_view(request):
                 profile.whatsapp_consent = whatsapp_consent
                 profile.address = ''  # optional
                 profile.save()
-                print(f"📱 Profile updated: {profile}")  # Debug
 
                 # Authenticate and login
                 authenticated_user = authenticate(username=username, password=password)
                 if authenticated_user is not None:
                     login(request, authenticated_user)
-                    print("🔐 User authenticated and logged in")  # Debug
                     return redirect('registration_success')
 
             except IntegrityError as e:
-                print(f"⚠️ IntegrityError: {str(e)}")
+                logger.error("Registration integrity error: %s", e)
                 if 'username' in str(e).lower():
                     form.add_error('username', 'Username already exists')
                 elif 'email' in str(e).lower():
                     form.add_error('email', 'Email already exists')
                 else:
-                    form.add_error(None, f'Registration error: {str(e)}')
+                    form.add_error(None, 'Registration error. Please try again.')
             except Exception as e:
-                print(f"❌ General Exception: {str(e)}")
-                form.add_error(None, f'An error occurred: {str(e)}')
-        else:
-            print(f"❌ Form errors: {form.errors}")
+                logger.error("Registration failed: %s", e, exc_info=True)
+                form.add_error(None, 'An error occurred during registration. Please try again.')
     else:
         form = userRegistrationForm()
 
@@ -463,67 +484,6 @@ def UserRegistration_view(request):
 def registration_success(request):
     return render(request, 'user_registration_success.html')
 
-def user_view_menu(request, restaurant_id):
-    menus = RestaurantMenu.objects.filter(restaurant_id=restaurant_id, available=True)
-    return render(request, 'view_menu.html', {'menus': menus})
-
-
-@login_required
-def create_order(request):
-    if request.method == 'POST':
-        if not request.user.is_authenticated:
-            return redirect('user_login')
-        restaurant_id = Restaurant.POST.get(restaurant_id)
-        restaurant=Restaurant.objects.get(id=restaurant_id)
-
-        order_data = {
-            'delivery_address': request.POST.get('delivery_address'),
-        }
-        
-        order = Order.objects.create(
-            user=request.user,
-            restaurant=restaurant,
-            customer_name=request.POST.get('customer_name'),
-            landmark=request.POST.get('landmark'),
-            delivery_address=request.POST.get('delivery_address'),
-            customer_contact = request.POST.get('customer_contact'),
-            items =  request.POST.get('menu_items'),
-            total =  request.POST.get('total'),
-
-        )
-
-        menu_items = request.POST.getlist('menu_items')
-        order.menu_items.set(menu_items)
-        
-        lat, lng = geocode_address(order_data['delivery_address'])
-        if lat and lng:
-            order.delivery_latitude = lat
-            order.delivery_longitude = lng
-            order.save()
-
-
-        content_sid = 'HXb5b62575e6e4ff6129ad7c8efe1f983e'  # Your Twilio Content Template SID
-
-        # Replace keys "1", "2" with what your template expects (check Twilio dashboard)
-        content_variables = {
-            "1": f"{order.id}",  # Order ID
-            "2": f"₹{order.total}",  # Amount
-            "3": f"{restaurant.name}"  # Restaurant Name (optional if needed)
-        }
-
-        to_number = f"+91{order.customer_contact}"  # Ensure E.164 format
-        threading.Thread(
-            target=send_whatsapp_message,
-            args=(to_number, content_sid, content_variables)
-        ).start()
-
-
-        if restaurant.player_id:
-            send_push_to_merchant(restaurant.player_id, order.id)
-
-        return redirect('')
-
-
 def userLogin(request):
     form = AuthenticationForm(request, data=request.POST or None)
     next_url = request.GET.get('next') or request.POST.get('next') or reverse('dashboard_home')
@@ -534,11 +494,6 @@ def userLogin(request):
         return redirect(next_url)  # Redirect to original page (e.g., /checkout)
 
     return render(request, 'login.html', {'form': form, 'next': next_url})
-
-
-@login_required
-def user_profile(request):
-    return render(request, 'dashboard_home.html')
 
 
 from collections import defaultdict
@@ -591,7 +546,8 @@ def order_detail(request, order_id):
         'pakaging_charges': packaging_charges,
         'order_total': round(order_total, 2),
         'eta': order.created_at + timedelta(minutes=45),
-        'rider': order.assignment.rider if hasattr(order, 'assignment') else None,
+        'rider': order.assignments.filter(status='accepted').select_related('rider__user').first().rider
+                 if order.assignments.filter(status='accepted').exists() else None,
         'feedback': feedback  # ✅ pass to template
     }
 
@@ -600,10 +556,12 @@ def order_detail(request, order_id):
 
 
 
+@login_required
 def profile_section(request):
     return render(request, 'profile_section.html')
 
 
+@login_required
 def user_active_orders(request):
     orders = Order.objects.filter(user=request.user).select_related('restaurant').prefetch_related('menu_items')
     active_statuses = ['pending', 'confirmed', 'ready', 'out_for_delivery']
@@ -615,6 +573,7 @@ def user_active_orders(request):
     }
     return render(request, 'partials/active_orders.html', context)
 
+@login_required
 def order_user_history(request):
     orders = Order.objects.filter(user=request.user).select_related('restaurant').prefetch_related('menu_items')
     context = {
@@ -623,55 +582,6 @@ def order_user_history(request):
         'past_orders': orders.filter(status='delivered'),
     }
     return render(request, 'partials/order_history.html', context)
-
-def support(request):
-    return render(request, 'partials/support.html')
-
-
-def submit_feedback(request, order_id=None, restaurant_id=None):
-    # Defer the import to avoid circular import
-    from merchant_app.models import Restaurant
-    from .models import Order  # Assuming you have an Order model
-
-    # Handle the case where order_id or restaurant_id is provided
-    if order_id:
-        order = get_object_or_404(Order, id=order_id)
-        restaurant = order.restaurant  # Assuming Order has a relationship with Restaurant
-    elif restaurant_id:
-        restaurant = get_object_or_404(Restaurant, id=restaurant_id)
-        order = None
-    else:
-        return HttpResponse("Invalid Feedback Request", status=400)
-
-    # Handle feedback submission
-    if request.method == 'POST':
-        from .forms import CustomerFeedbackForm  # Import form here as well
-        form = CustomerFeedbackForm(request.POST)
-        if form.is_valid():
-            feedback = form.save(commit=False)
-            feedback.customer = request.user
-            feedback.restaurant = restaurant
-            feedback.order = order
-            feedback.save()
-
-            MerchantNotification.objects.create(
-                merchant=restaurant.owner,  
-                message=f'New feedback from {request.user} for {restaurant.name}'
-            )
-
-            return redirect('feedback_thanks')  
-    else:
-        from .forms import CustomerFeedbackForm
-        form = CustomerFeedbackForm(initial={'restaurant': restaurant, 'order': order})
-
-    return render(request, 'submit.feedback.html', {'form': form, 'restaurant': restaurant, 'order': order})
-
-
-
-def feedback_thanks(request):
-    return render(request, 'feedback_thanks.html')
-
-
 
 
 def add_to_cart(request, item_id):
@@ -699,21 +609,6 @@ def add_to_cart(request, item_id):
 
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
-
-
-
-def restaurant_menu_view(request, restaurant_id):
-    # Clear the alert if it exists
-    show_alert = request.session.pop('show_single_restaurant_alert', False)
-
-    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
-    menu_items = RestaurantMenu.objects.filter(restaurant=restaurant)
-
-    return render(request, 'restaurant/menu.html', {
-        'restaurant': restaurant,
-        'menu_items': menu_items,
-        'show_single_restaurant_alert': show_alert,
-    })
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
@@ -786,6 +681,7 @@ def user_logout(request):
     logout(request)
     return redirect('user_login')
 
+@login_required
 def order_confirmation(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
     
@@ -899,30 +795,6 @@ def write_order_feedback(request, order_id):
     }
     return render(request, 'write_feedback.html', context)
 
-
-
-def calculate_item_ratings():
-    """Calculate average ratings for all menu items"""
-    from .models import CustomerFeedback
-    from merchant_app.models import RestaurantMenu
-    
-    feedbacks = CustomerFeedback.objects.exclude(item_ratings={})
-    
-    item_ratings = defaultdict(list)
-    
-    for feedback in feedbacks:
-        for item_id, rating in feedback.item_ratings.items():
-            item_ratings[item_id].append(rating)
-    
-    item_averages = {}
-    for item_id, ratings in item_ratings.items():
-        item_averages[item_id] = sum(ratings) / len(ratings)
-    
-    for menu_item in RestaurantMenu.objects.all():
-        avg = item_averages.get(str(menu_item.id))
-        if avg:
-            menu_item.average_rating = avg
-            menu_item.save()
 
     
 from django.shortcuts import render, redirect, get_object_or_404
@@ -1071,63 +943,8 @@ class CustomPasswordChangeView(PasswordChangeView):
         return super().form_valid(form)
     
 
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-import requests
-import json
-
-@csrf_exempt
-def send_whatsapp_alert(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            payload = {
-                "secret": settings.SMSQUICKER_API_SECRET,
-                "account": settings.SMSQUICKER_ACCOUNT_ID,
-                "recipient": data.get('recipient'),
-                "type": "text",
-                "message": data.get('message')
-            }
-            
-            response = requests.post(settings.SMSQUICKER_API_URL, data=payload)
-            
-            return JsonResponse(response.json(), status=response.status_code)
-            
-        except Exception as e:
-            return JsonResponse(
-                {'error': str(e)},
-                status=500
-            )
-    
-    return JsonResponse(
-        {'error': 'Method not allowed'},
-        status=405
-    )
-
-# views.py
-from django.http import JsonResponse
-from user_app.utils import send_sms, send_whatsapp
-
-@login_required
-def test_notification(request):
-    phone = "9876543210"  # Test number
-    message = "Test message from Django"
-    
-    whatsapp_sent = send_whatsapp(phone, message)
-    sms_sent = send_sms(phone, message)
-    
-    return JsonResponse({
-        'whatsapp_success': whatsapp_sent,
-        'sms_success': sms_sent
-    })
-
-
-
 #contact us form
 
-
-from django.http import JsonResponse
 from django.core.mail import send_mail
 
 def contact_form(request):
@@ -1146,7 +963,8 @@ def contact_form(request):
             )
             return JsonResponse({"status": "success", "message": "Your message has been sent successfully!"})
         except Exception as e:
-            return JsonResponse({"status": "error", "message": f"Error: {str(e)}"})
+            logger.error("Contact form e-mail failed: %s", e, exc_info=True)
+            return JsonResponse({"status": "error", "message": "Unable to send your message right now. Please try again later."})
 
     return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
 
@@ -1160,6 +978,7 @@ from django.utils import timezone
 from weasyprint import HTML
 from .models import Order
 
+@login_required
 def download_invoice(request, order_id):
 
     order = get_object_or_404(Order, id=order_id, user=request.user)

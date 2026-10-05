@@ -1,6 +1,10 @@
+import logging
+
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 def send_brevo_email(subject, html_content, recipient_email, recipient_name):
     # Configure API key authorization
@@ -29,7 +33,5 @@ def send_brevo_email(subject, html_content, recipient_email, recipient_name):
         return api_response
         
     except ApiException as e:
-        print(f"Exception when sending email: {e}\n")
-        print(f"Response headers: {e.headers}\n")
-        print(f"Response body: {e.body}\n")
+        logger.warning("Brevo e-mail to %s failed: %s", recipient_email, e)
         return None

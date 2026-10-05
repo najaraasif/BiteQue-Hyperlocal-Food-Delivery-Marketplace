@@ -14,6 +14,7 @@ from decimal import Decimal
 from django.utils.timezone import now, timedelta
 from datetime import datetime, timedelta
 import json
+import os
 from django.http import JsonResponse
 from .signals import send_mailersend_reset_email
 from rider_app.models import OrderAssignment, Rider
@@ -29,19 +30,19 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils import http
 from django.utils.encoding import force_bytes
 
-from django.contrib.auth.models import User
 from django.urls import reverse
 from django.conf import settings
 import requests
 from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json
 
 @csrf_exempt
 def save_player_id(request):
     if request.method == 'POST' and request.user.is_authenticated:
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body)
+        except (ValueError, TypeError):
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON body'}, status=400)
         player_id = data.get('player_id')
         try:
             restaurant = Restaurant.objects.get(owner=request.user)
@@ -123,6 +124,7 @@ def post_login_redirect(request):
         return redirect('add_restaurant')
 
 
+@login_required
 def add_restaurant_view(request):
     merchant = get_object_or_404(merchantRegistration, username=request.user)
 
@@ -149,6 +151,7 @@ def add_restaurant_view(request):
 def restaurant_success(request):
     return render(request, 'restaurant_success.html')
 
+@login_required
 def awaiting_approval_view(request):
     return render(request, 'awaitingApproval.html')
 
@@ -234,23 +237,32 @@ def merchant_dashboard(request):
         'order_item_quantities': order_item_quantities,
     })
 
-from django.conf import settings
-import requests, json
-
 def send_push_to_merchant(player_id, order_id):
+    rest_api_key = os.environ.get('ONESIGNAL_REST_API_KEY', '')
+    if not player_id or not rest_api_key:
+        return False
     headers = {
         "Content-Type": "application/json; charset=utf-8",
-        "Authorization": "os_v2_app_oolw2ftisza53jxejhqnqdw4zqo2mzisydbu4v4eu7z2zqqlxs3uvv2zyfzjpsfmmo5bqgzbeok5nu6muytmwluult7uou3cpm5sc5y",
+        "Authorization": rest_api_key,
     }
     payload = {
-        "app_id": "73976d16-6896-41dd-a6e4-49e0d80edccc",
+        "app_id": os.environ.get('ONESIGNAL_APP_ID', '73976d16-6896-41dd-a6e4-49e0d80edccc'),
         "include_player_ids": [player_id],
         "headings": {"en": "New Order Received"},
         "contents": {"en": f"You have a new order #{order_id}"},
         "url": f"https://yourdomain.com/merchant/orders/{order_id}/"
     }
-    response = requests.post("https://onesignal.com/api/v1/notifications", headers=headers, data=json.dumps(payload))
-    return response.ok
+    try:
+        response = requests.post(
+            "https://onesignal.com/api/v1/notifications",
+            headers=headers,
+            data=json.dumps(payload),
+            timeout=10,
+        )
+        return response.ok
+    except requests.RequestException as exc:
+        logger.warning("OneSignal push failed for order %s: %s", order_id, exc)
+        return False
 
 
 @login_required
@@ -276,7 +288,7 @@ def merchant_order_view(request):
 
     if order_date:
         try:
-            date_obj = datetime.datetime.strptime(order_date, '%Y-%m-%d').date()
+            date_obj = datetime.strptime(order_date, '%Y-%m-%d').date()
             order_history = order_history.filter(created_at__date=date_obj)
         except ValueError:
             pass  # Invalid date format
@@ -309,7 +321,7 @@ def download_filtered_orders(request):
         return HttpResponse("Date parameter is missing.", status=400)
 
     try:
-        date_obj = datetime.datetime.strptime(order_date, '%Y-%m-%d').date()
+        date_obj = datetime.strptime(order_date, '%Y-%m-%d').date()
     except ValueError:
         return HttpResponse("Invalid date format.", status=400)
 
@@ -332,65 +344,61 @@ def download_filtered_orders(request):
             order.customer_contact,
             item_names,
             order.total,
-            order.order_address,
+            order.delivery_address,
             order.get_status_display(),
             order.created_at.strftime("%d %b, %Y %H:%M")
         ])
 
     return response
+logger = logging.getLogger(__name__)
+
 @login_required
 def confirm_order(request, order_id):
-    order = get_object_or_404(Order, id=order_id)
+    order = get_object_or_404(Order, id=order_id, restaurant__owner=request.user)
     if order.status == 'pending':
         order.status = 'confirmed'
         order.save()
+    else:
+        messages.error(request, f"Order #{order.id} cannot be confirmed (current status: {order.status}).")
     return redirect('merchant_orders')
 
-logger = logging.getLogger(__name__)
 @login_required
 def mark_order_ready(request, order_id):
-    order = get_object_or_404(Order, id=order_id)
+    order = get_object_or_404(Order, id=order_id, restaurant__owner=request.user)
+
     if order.status == 'confirmed':
         order.status = 'ready'
         order.save()
+
     if order.status == 'ready':
-        OrderAssignment.objects.filter(order=order).delete()
-        
-        riders = Rider.objects.filter(is_available=True, is_approved=True)
-        logger.info(f"Found {riders.count()} riders for order {order.id}")  
-        
+        # Refresh the pending assignment list without touching a rider
+        # who has already accepted this order.
+        OrderAssignment.objects.filter(order=order).exclude(status='accepted').delete()
+
+        riders = Rider.objects.filter(
+            is_available=True, is_approved=True
+        ).exclude(orderassignment__order=order)
+        logger.info(f"Found {riders.count()} riders for order {order.id}")
+
         for rider in riders:
             OrderAssignment.objects.create(
                 rider=rider,
                 order=order,
                 status='pending'
             )
-            logger.info(f"Created assignment for rider {rider.id}")  
-        
-           
+            logger.info(f"Created assignment for rider {rider.id}")
+    else:
+        messages.error(request, f"Order #{order.id} cannot be marked ready (current status: {order.status}).")
+
     return redirect('merchant_orders')
 
-
-
 @login_required
-def update_order_status(request, order_id, new_status):
-    order = get_object_or_404(Order, id=order_id)
-
-    if order.restaurant.owner != request.user:
-        return redirect('unauthorized')
-
-    order.status = new_status
-    order.save()
-    return redirect('update_order_status')
-
-@login_required
-
 def add_item(request):
     if request.method == 'POST':
         form = RestaurantMenuForm(request.POST, request.FILES)
         if form.is_valid():
             item = form.save(commit=False)
-            item.restaurant = Restaurant.objects.get(owner=request.user)
+            item.restaurant = get_object_or_404(Restaurant, owner=request.user)
             item.save()
             return redirect('menu_dashboard')  
     else:
@@ -406,7 +414,6 @@ def edit_item(request, item_id):
     if request.method == 'POST':
         form = RestaurantMenuForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
-            item.is_available = 'is_available' in request.POST
             form.save()
             return redirect('menu_dashboard')  # Redirect to the menu display page
     else:
@@ -441,7 +448,6 @@ def menu_dashboard_view(request):
         if form.is_valid():
             new_item = form.save(commit=False)
             new_item.restaurant = restaurant
-            new_item.owner = request.user
             new_item.save()
             return redirect('menu_dashboard')  
 
@@ -499,6 +505,7 @@ def edit_bank_account(request, account_id):
         form = BankAccountForm(instance=account)
     return render(request, 'edit_bank_account.html', {'form': form, 'account': account})
 
+@login_required
 def delete_bank_account(request, account_id):
     account = get_object_or_404(BankAccount, id=account_id, merchant=request.user)
 
@@ -512,7 +519,7 @@ def delete_bank_account(request, account_id):
 @login_required
 def merchant_payment_section_view(request):
     merchant = request.user
-    restaurant = Restaurant.objects.get(owner=merchant)
+    restaurant = get_object_or_404(Restaurant, owner=merchant)
 
     # Get all completed orders for this merchant's restaurant
     orders = Order.objects.filter(restaurant=restaurant, status='delivered')
@@ -568,9 +575,10 @@ def merchant_payment_section_view(request):
     # Reports section...
 
 
+@login_required
 def merchant_revenue_report(request):
     merchant = request.user
-    restaurant = Restaurant.objects.get(owner=merchant)
+    restaurant = get_object_or_404(Restaurant, owner=merchant)
     today = datetime.today()
     start_30_days = today - timedelta(days=30)
     start_7_days = today - timedelta(days=7)
@@ -674,9 +682,6 @@ def order_reports(request):
 
 
 @login_required
-
-
-@login_required
 def customer_feedback(request):
     restaurant = get_object_or_404(Restaurant, owner=request.user)
 
@@ -711,11 +716,12 @@ def merchant_password_reset_request(request):
             )
 
             send_mailersend_reset_email(user.email, reset_link)
-            messages.success(request, "Reset link sent to your email.")
-            return redirect('password_reset_sent')
-
         except User.DoesNotExist:
-            messages.error(request, "User with this email does not exist.")
+            pass
+        # Same response whether or not the e-mail exists, to avoid
+        # revealing which addresses are registered.
+        messages.success(request, "If an account exists for this email, a reset link has been sent.")
+        return redirect('password_reset_sent')
 
     return render(request, 'password_reset_form.html')
 
@@ -742,11 +748,8 @@ def merchant_password_reset_confirm(request, uidb64, token):
     else:
         return render(request, 'password_reset_confirm.html', {'validlink': False})
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 from .models import Ticket, TicketMessage
 from .forms import TicketCreateForm, TicketMessageForm
-from django.contrib import messages
 
 @login_required
 def merchant_support(request):
@@ -816,9 +819,10 @@ from django.http import HttpResponse
 from xhtml2pdf import pisa
 import io
 
+@login_required
 def export_payments_pdf(request):
     merchant = request.user
-    restaurant = Restaurant.objects.get(owner=merchant)
+    restaurant = get_object_or_404(Restaurant, owner=merchant)
 
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
@@ -846,23 +850,21 @@ def export_payments_pdf(request):
     return response
 
 
-from django.http import HttpResponse
 from django.template.loader import render_to_string
-from xhtml2pdf import pisa  # Or you can use reportlab if preferred
-from .models import Order
-from datetime import datetime
 
+@login_required
 def export_orders_pdf(request):
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
-    orders = Order.objects.all()
+    restaurant_ids = Restaurant.objects.filter(owner=request.user).values_list('id', flat=True)
+    orders = Order.objects.filter(restaurant_id__in=restaurant_ids)
 
     if start_date and end_date:
         try:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
-            orders = orders.filter(order_date__range=[start_date, end_date])
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            orders = orders.filter(created_at__date__range=[start_date, end_date])
         except ValueError:
             pass  # fallback to all orders if date parsing fails
 

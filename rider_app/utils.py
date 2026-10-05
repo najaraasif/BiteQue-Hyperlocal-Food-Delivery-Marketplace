@@ -16,7 +16,8 @@ def geocode_address(address):
                 'format': 'json',
                 'limit': 1
             },
-            headers=headers
+            headers=headers,
+            timeout=10
         )
         if response.status_code == 200:
             data = response.json()
@@ -51,7 +52,7 @@ def calculate_osrm_distance(lat1, lon1, lat2, lon2):
     endpoint = f"{settings.OSRM_SERVER_URL}/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
     
     try:
-        response = requests.get(endpoint)
+        response = requests.get(endpoint, timeout=10)
         data = response.json()
         
         if data.get('code') == 'Ok' and data['routes']:
