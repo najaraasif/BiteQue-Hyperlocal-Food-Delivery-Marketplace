@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '***REMOVED***'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-only-key-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -72,6 +72,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'BITEQUE.context_processors.external_api_keys',
             ],
         },
     },
@@ -155,26 +156,26 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
 #contact form backend
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp-relay.brevo.com')
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'najaraasif944@gmail.com'  # Your email
-EMAIL_HOST_PASSWORD = '***REMOVED***'  
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'your-smtp-user')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'your-smtp-password')  
 
 
 
 
 #Brevo email for verification RIDER
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp-relay.brevo.com'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp-relay.brevo.com')
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = '***REMOVED***'  
-EMAIL_HOST_PASSWORD = '***REMOVED***'  
-DEFAULT_FROM_EMAIL = 'suhailjamal991@gmail.com'  
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'your-smtp-user')  
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'your-smtp-password')  
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'your-from-email@example.com')  
 
 
-BREVO_API_KEY = '***REMOVED***'
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', 'your-brevo-api-key')
 
 
 LOGGING = {
@@ -196,15 +197,15 @@ LOGGING = {
 
 OSRM_SERVER_URL = "http://router.project-osrm.org"
 
-GOOGLE_MAPS_API_KEY = "***REMOVED***"
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', 'your-google-maps-api-key')
 
 
-RAZORPAY_KEY_ID = '***REMOVED***'
-RAZORPAY_KEY_SECRET = '***REMOVED***'
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_your_key_id')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', 'your-razorpay-key-secret')
 
 #whatsapp oredr alerts
 
-FAST2SMS_API_KEY = '***REMOVED***'  
+FAST2SMS_API_KEY = os.environ.get('FAST2SMS_API_KEY', 'your-fast2sms-api-key')  
 FAST2SMS_URL = 'https://www.fast2sms.com/dev/bulkV2'
 WHATSAPP_SENDER_ID = 'FSTSMS'  
 

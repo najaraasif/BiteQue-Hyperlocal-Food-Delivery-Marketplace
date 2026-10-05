@@ -1140,8 +1140,8 @@ def contact_form(request):
             send_mail(
                 f"ZemQue Contact Form - {name}",
                 f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}",
-                'najaraasif944@gmail.com',
-                ['najaraasif944@gmail.com'],
+                None,
+                [settings.DEFAULT_FROM_EMAIL],
                 fail_silently=False,
             )
             return JsonResponse({"status": "success", "message": "Your message has been sent successfully!"})

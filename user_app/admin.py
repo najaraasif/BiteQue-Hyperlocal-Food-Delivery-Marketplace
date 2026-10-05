@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import Order, CustomerFeedback, UserProfile
 from django.utils.safestring import mark_safe
+from django.conf import settings
 
 
 
@@ -30,6 +31,7 @@ class OrderAdmin(admin.ModelAdmin):
 
     def render_change_form(self, request, context, *args, **kwargs):
         context['adminform'].form.fields['delivery_address'].help_text = mark_safe(
+            f'<script>window.GOOGLE_MAPS_API_KEY = "{settings.GOOGLE_MAPS_API_KEY}";</script>'
             '<button type="button" onclick="getCurrentLocation()">Use My Current Location</button>'
         )
         return super().render_change_form(request, context, *args, **kwargs)

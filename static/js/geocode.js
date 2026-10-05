@@ -15,7 +15,7 @@ window.getCurrentLocation = function () {
             if (lonField) lonField.value = lon;
 
             try {
-                const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=***REMOVED***`);
+                const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${window.GOOGLE_MAPS_API_KEY || ''}`);
                 const data = await response.json();
 
                 if (data.status === 'OK' && data.results.length > 0) {

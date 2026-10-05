@@ -73,7 +73,7 @@ def update_acceptance_stats(sender, instance, **kwargs):
         rider
 
 
-GOOGLE_API_KEY = '***REMOVED***'
+GOOGLE_API_KEY = settings.GOOGLE_MAPS_API_KEY
 
 
 def geocode_address_google(address):
