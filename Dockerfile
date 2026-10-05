@@ -23,4 +23,4 @@ RUN mkdir -p logs && python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "gunicorn BITEQUE.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn BITEQUE.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-1} --timeout 120"]
