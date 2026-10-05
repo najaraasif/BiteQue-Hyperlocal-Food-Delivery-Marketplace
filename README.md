@@ -27,6 +27,8 @@
   - [3. Multi-Tier Manual Approval & KYC Verification](#3-multi-tier-manual-approval--kyc-verification)
   - [4. Automated Daily Earnings Reset Daemon](#4-automated-daily-earnings-reset-daemon)
   - [5. Transactional Communications Engine](#5-transactional-communications-engine)
+- [Security & Production Hardening](#-security--production-hardening)
+- [Testing](#-testing)
 - [Technology Stack](#-technology-stack)
 - [Project Directory Structure](#-project-directory-structure)
 - [Installation & Local Setup](#-installation--local-setup)
@@ -216,6 +218,30 @@ Integrated with **MailerSend** via direct REST endpoints and custom SMTP backend
 
 ---
 
+## 🔒 Security & Production Hardening
+
+- **Secure-by-default settings**: `DEBUG` is off unless explicitly requested, a missing/dev `SECRET_KEY` makes the server refuse to boot, and production responses carry HSTS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and a same-origin referrer policy behind Render's HTTPS proxy.
+- **KYC & financial media are private**: catalogue images (`restaurantImages/`, `menu_images/`, `images/`) are public, profile photos require a signed-in user, and Aadhaar/driving-licence scans, payment screenshots, support attachments, and avatars are only served to their owner (or staff). Path traversal under `/media/` is rejected.
+- **Ownership & authorization**: merchant order actions, reports, and PDF exports are scoped to the logged-in owner's restaurant; rider PIN delivery requires the accepted assignment; anonymous requests are redirected to login.
+- **Concurrency safety**: order acceptance and delivery run inside `transaction.atomic()` with `select_for_update()` row locks, backed by a partial unique constraint (`one accepted assignment per order`), so a double-submit can never credit earnings twice.
+- **Server-authoritative checkout**: the delivery fee is always recomputed server-side from distance (`× ₹10/km`, clamped to 0–50 km, OSRM when coordinates are known) — tampered client values are ignored. Razorpay signature verification gates payment confirmation.
+- **No secret sprawl**: all API keys (Razorpay, Brevo, MailerSend, Fast2SMS, OneSignal, Google Maps) are read from environment variables; the repository and git history contain placeholders only. Outbound HTTP calls all use explicit timeouts and fail soft.
+
+---
+
+## 🧪 Testing
+
+The suite covers checkout fee integrity, accept/deliver concurrency, merchant authorization, KYC media access control, and form validation — 46 tests, hermetic (no network, no wall-clock dependence):
+
+```bash
+python manage.py test
+python manage.py check          # system checks
+python manage.py check --deploy # deployment checklist (run with production env vars)
+python manage.py makemigrations --check --dry-run  # schema drift guard
+```
+
+---
+
 ## 💻 Technology Stack
 
 - **Backend Framework**: [Django 6.1](https://docs.djangoproject.com/) on Python 3.13
@@ -325,7 +351,14 @@ python manage.py runserver
 ```
 Visit `http://127.0.0.1:8000/` in your browser.
 
-### 8. Run with Docker (mirrors production)
+> Local development can keep its settings in an untracked `.env` file at the repo root — `settings.py` loads it automatically, and real environment variables always take precedence.
+
+### 8. Run the Test Suite
+```bash
+python manage.py test
+```
+
+### 9. Run with Docker (mirrors production)
 ```bash
 docker build -t biteque .
 docker run --rm -p 8000:8000 -e SECRET_KEY=change-me -e DEBUG=True biteque
@@ -364,6 +397,10 @@ GOOGLE_MAPS_API_KEY=your-google-maps-key
 RAZORPAY_KEY_ID=rzp_test_xxxxxxxx
 RAZORPAY_KEY_SECRET=your-razorpay-secret
 FAST2SMS_API_KEY=your-fast2sms-key
+
+# Push notifications (OneSignal)
+ONESIGNAL_REST_API_KEY=your-onesignal-rest-api-key
+ONESIGNAL_APP_ID=your-onesignal-app-id
 ```
 
 ---
