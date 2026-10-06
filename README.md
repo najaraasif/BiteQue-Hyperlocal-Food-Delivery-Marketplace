@@ -1,387 +1,517 @@
 # 🍔 BiteQue
 
+BiteQue is a hyperlocal food delivery platform I built for local restaurants, customers, and independent delivery riders.
+
+The idea is simple: bring the basic experience people expect from a food delivery app to smaller towns where the big platforms are not always available.
+
+The project started in **Kupwara, Jammu & Kashmir, India**, with a focus on keeping the system practical for local restaurants and delivery partners.
+
+**Live:** https://biteque.onrender.com
+
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/Django-6.1-092E20.svg)](https://www.djangoproject.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC.svg)](https://tailwindcss.com/)
 [![HTMX](https://img.shields.io/badge/HTMX-3366CC.svg)](https://htmx.org/)
-[![Live](https://img.shields.io/badge/Live-biteque.onrender.com-7D4698.svg)](https://biteque.onrender.com)
-[![Market](https://img.shields.io/badge/Market-Kupwara%2C%20J%26K-orange.svg)]()
 [![Status](https://img.shields.io/badge/Status-Deployed-success.svg)](https://biteque.onrender.com)
-
-> **BiteQue** is a hyperlocal, three-sided food delivery marketplace connecting **Customers**, **Restaurants (Merchants)**, and **Independent Delivery Riders**, designed specifically for underserved regional markets, starting with Kupwara, Jammu & Kashmir, India.
->
-> **🌐 Live instance: [https://biteque.onrender.com](https://biteque.onrender.com)**
 
 ---
 
-## 📌 Table of Contents
+## What BiteQue Does
 
-- [Live Deployment](#-live-deployment)
-- [Problem & Opportunity](#-problem--opportunity)
-- [System Architecture](#-system-architecture)
-- [Core User Roles](#-core-user-roles)
-- [Order Lifecycle & State Machine](#-order-lifecycle--state-machine)
-- [Key Engineering & Design Decisions](#-key-engineering--design-decisions)
-  - [1. Preventing Double-Acceptance (Concurrency & Race Conditions)](#1-preventing-double-acceptance-concurrency--race-conditions)
-  - [2. Dynamic Rider Pay & Distance Engine](#2-dynamic-rider-pay--distance-engine)
-  - [3. Multi-Tier Manual Approval & KYC Verification](#3-multi-tier-manual-approval--kyc-verification)
-  - [4. Automated Daily Earnings Reset Daemon](#4-automated-daily-earnings-reset-daemon)
-  - [5. Transactional Communications Engine](#5-transactional-communications-engine)
-- [Security & Production Hardening](#-security--production-hardening)
-- [Testing](#-testing)
-- [Technology Stack](#-technology-stack)
-- [Project Directory Structure](#-project-directory-structure)
-- [Installation & Local Setup](#-installation--local-setup)
-- [Environment Configuration](#-environment-configuration)
-- [Product Roadmap & Known Gaps](#-product-roadmap--known-gaps)
-- [Authors & Team](#-authors--team)
+BiteQue connects three main users:
+
+- **Customers** can discover restaurants, browse menus, place orders, make online payments, and track their orders.
+- **Restaurants** can manage menus, receive orders, update preparation status, and view sales information.
+- **Delivery riders** can register, complete KYC, receive delivery assignments, accept orders, verify deliveries with a PIN, and track earnings.
+- **Admins** manage approvals, KYC verification, restaurants, riders, bank accounts, and platform operations.
+
+The platform is designed around a local marketplace model rather than trying to copy every feature of a large food delivery company.
 
 ---
 
 ## 🌐 Live Deployment
 
-The production instance runs at **[https://biteque.onrender.com](https://biteque.onrender.com)**:
+The current production deployment runs on Render:
 
 | Component | Details |
-| :--- | :--- |
-| **Hosting** | [Render](https://render.com) — Oregon region, Docker runtime built from the repo's `Dockerfile` |
-| **Database** | Managed Render PostgreSQL 18, wired in via the `DATABASE_URL` environment variable |
-| **Server** | Gunicorn behind Render's HTTPS proxy; WhiteNoise serves hashed static assets, Django serves media |
-| **Deploys** | Every push to `main` triggers an automatic build; migrations run at container boot (`migrate && gunicorn`), then Render health-checks `/` |
-| **Seed data** | The catalogue ships pre-populated with demo restaurants, menu items, reviews, orders, and earnings so the site is never empty |
+|---|---|
+| Hosting | Render, Docker deployment |
+| Database | PostgreSQL in production |
+| Application server | Gunicorn |
+| Static files | WhiteNoise |
+| Backend | Django 6.1 on Python 3.13 |
+| Payments | Razorpay |
+| Maps | Google Maps Geocoding API |
+| Email | Brevo and MailerSend |
+| Local timezone | Asia/Kolkata |
 
-Secrets and configuration (API keys, `DATABASE_URL`, `DEBUG`, hosts) live exclusively in the Render dashboard under **Environment** — never in the repository.
-
----
-
-## 💡 Problem & Opportunity
-
-In tier-3 and regional towns like **Kupwara**, national aggregators (Zomato, Swiggy, Blinkit) are not operational. Local restaurants wanting to offer delivery had to either maintain their own dedicated delivery personnel or forgo delivery entirely. Customers were forced to place ad-hoc telephone orders without visibility into menus, delivery timelines, or order tracking.
-
-**BiteQue** bridges this gap:
-1. **Customers**: Discover local restaurants, view categorized digital menus, place orders, and track deliveries.
-2. **Merchants**: Digitize menus, receive incoming orders, monitor kitchen prep states, and view revenue analytics without needing in-house logistics.
-3. **Riders**: Access flexible gig work with transparent distance-based earnings, tiered commissions, and automated daily payouts.
-4. **Platform Admins**: Tightly govern the rollout through manual approval gates, verifying KYC credentials, tax details, and payout bank accounts to preserve trust and prevent fraud.
+Production secrets and configuration are stored as environment variables. No real API keys or production credentials are committed to the repository.
 
 ---
 
-## 🏗 System Architecture
+## 🏗️ Architecture
 
-```mermaid
-graph TD
-    subgraph Clients["Frontend Layer"]
-        C[Customer Web UI<br/>Tailwind CSS + HTMX]
-        M[Merchant Dashboard<br/>Feather Icons + Tailwind]
-        R[Rider Mobile/Web Portal<br/>Heroicons + HTMX]
-    end
+BiteQue is a Django application split into three main application areas:
 
-    subgraph DjangoApp["BiteQue Django Backend"]
-        UA[user_app<br/>Orders, Menus, Feedback]
-        MA[merchant_app<br/>Restaurants, Catalogs, Reports, Payouts]
-        RA[rider_app<br/>KYC, Dispatch, Earnings, Scheduler]
-        SIG[Django Signals Hub<br/>Status Sync & Notifications]
-    end
+- `user_app` handles customers, menus, carts, orders, checkout, payments, reviews, and order tracking.
+- `merchant_app` handles restaurant onboarding, menus, order management, reports, bank accounts, and merchant support.
+- `rider_app` handles rider onboarding, KYC, order assignments, delivery confirmation, and earnings.
 
-    subgraph External["External Integrations"]
-        GEO[Google Maps Geocoding<br/>Geocoding & Haversine Distance]
-        MS[Brevo SMTP & MailerSend API<br/>Transactional Alerts & Auth]
-    end
+At the infrastructure level, the application uses PostgreSQL in production, Docker for deployment, and external services for payments, maps, email, and notifications.
 
-    subgraph Storage["Data Tier"]
-        DB[(SQLite / PostgreSQL Database)]
-        MEDIA[Media Storage<br/>KYC Docs, Food Images, Payout Proofs]
-    end
+### High-level flow
 
-    C --> UA
-    M --> MA
-    R --> RA
-
-    UA --> DB
-    MA --> DB
-    RA --> DB
-
-    UA -.-> SIG
-    MA -.-> SIG
-    RA -.-> SIG
-
-    SIG --> GEO
-    SIG --> MS
+```text
+Customer
+   |
+   v
+Django / user_app
+   |
+   +----> PostgreSQL
+   |
+   +----> Razorpay
+   |
+   +----> Google Maps
+   |
+   v
+Merchant ----> Order preparation ----> Ready
+                                      |
+                                      v
+                                   Riders
+                                      |
+                                      v
+                              Delivery + PIN
+                                      |
+                                      v
+                                  Delivered
+                                      |
+                                      v
+                                  Earnings
 ```
 
 ---
 
-## 👥 Core User Roles
+## 👥 User Roles
 
-| Role | Scope & Permissions | Key Capabilities |
-| :--- | :--- | :--- |
-| **Customer** (`user_app`) | Consumer ordering food | Browse restaurants, explore categorized menus with sizes/pricing, place orders, live-track order progress, submit ratings and reviews. |
-| **Merchant** (`merchant_app`) | Restaurant Owner / Manager | Register restaurant with business KYC (PAN, GSTIN, FSSAI), manage menu items, toggle item availability, confirm incoming orders, mark orders ready for pickup, monitor revenue and order history, register bank accounts. |
-| **Rider** (`rider_app`) | Delivery gig partner | Register with KYC (Aadhaar front/back, driving license, photo), toggle online availability, review incoming order alerts, accept order assignments, complete deliveries, track daily earnings and request payouts. |
-| **Platform Admin** | Superuser & Operations staff | Review and verify merchant profiles, inspect restaurant compliance documents, audit rider KYC proofs, approve payout bank accounts, process payouts. |
+### Customer
+
+- Browse restaurants
+- Browse menus and categories
+- Add items to cart
+- Place orders
+- Pay through Razorpay
+- Track order status
+- View delivery information
+- Rate and review restaurants
+
+### Merchant
+
+- Register a restaurant
+- Submit business information
+- Manage restaurant profile
+- Add and update menu items
+- Control item availability
+- Accept and prepare orders
+- Mark orders ready for pickup
+- View order history and sales
+- Manage payout information
+
+### Rider
+
+- Register as a delivery partner
+- Submit KYC information
+- Wait for admin approval
+- Toggle availability
+- Receive order assignments
+- Accept delivery jobs
+- Complete deliveries using a customer PIN
+- View daily and historical earnings
+- Manage payout information
+
+### Admin
+
+- Approve merchants and riders
+- Review KYC information
+- Manage restaurants
+- Review orders and assignments
+- Manage payout accounts
+- Monitor platform activity
 
 ---
 
-## 🔄 Order Lifecycle & State Machine
+## 🔄 Order Lifecycle
 
-Every order moves through a strict, five-state progression. The transition from `ready` to `out_for_delivery` triggers automatic dispatch across available riders.
+An order follows this general flow:
 
-```mermaid
-stateDiagram-v2
-    [*] --> Pending: Customer places order
-    Pending --> Confirmed: Merchant accepts order
-    Confirmed --> Ready: Kitchen finishes preparation
-    
-    state Ready {
-        [*] --> Dispatching: Broadcast to available & approved riders
-        Dispatching --> OrderAssignmentPending: Created in Rider Pools
-    }
-
-    Ready --> OutForDelivery: First rider accepts assignment<br/>(Other assignments rejected)
-    OutForDelivery --> Delivered: Rider marks delivered at destination
-    Delivered --> [*]: Order fulfilled & rider earnings credited
+```text
+Pending
+   ↓
+Confirmed
+   ↓
+Ready
+   ↓
+Out for Delivery
+   ↓
+Delivered
 ```
 
----
+When an order becomes ready, available and approved riders can receive an assignment.
 
-## ⚙️ Key Engineering & Design Decisions
+Once a rider accepts the order:
 
-### 1. Preventing Double-Acceptance (Concurrency & Race Conditions)
-When an order reaches `ready`, it is broadcast to all active, approved riders in the area. To ensure two riders cannot accept the same order simultaneously, BiteQue implements a **three-tier defensive strategy**:
-
-1. **Database Constraint (The Final Source of Truth)**:
-   ```python
-   # rider_app/models.py
-   models.UniqueConstraint(
-       fields=['order'],
-       condition=models.Q(status='accepted'),
-       name='unique_accepted_assignment_for_order'
-   )
-   ```
-2. **Atomic Application Rejection in View**:
-   When a rider accepts an assignment in `accept_order_assignment`, the view updates that assignment and queries for all competing `pending` assignments for that order, marking them as `rejected`.
-3. **Signal Safety Net (`post_save`)**:
-   A `post_save` signal on `OrderAssignment` validates state changes. Whenever an assignment switches to `accepted`, the signal independently confirms that other pending assignments are rejected and updates the root `Order.status` to `out_for_delivery`.
+1. The assignment becomes accepted.
+2. Other pending assignments are rejected.
+3. The order moves to `out_for_delivery`.
+4. A delivery PIN is generated.
+5. The rider must provide the correct PIN to complete the delivery.
+6. The order becomes delivered.
+7. Rider earnings are calculated and recorded.
 
 ---
 
-### 2. Dynamic Rider Pay & Distance Engine
+## ⚙️ Some Engineering Decisions
 
-Rider compensation per delivered order is computed dynamically upon delivery:
+### 1. Preventing two riders from accepting the same order
 
-$$\text{Total Earning} = \text{Distance Earning} + \text{Tiered Commission Earning}$$
+This was one of the areas I paid particular attention to because it is easy to get wrong in a delivery system.
 
-#### A. Straight-Line Distance Earning
-Coordinates for both the restaurant and the customer delivery destination are automatically geocoded using the **Google Maps Geocoding API** on save. The straight-line distance is computed via the **Haversine formula**:
+BiteQue uses a database constraint that allows only one accepted assignment for an order:
 
-$$\text{Distance Earning} = \text{Distance (km)} \times ₹10/\text{km}$$
+```python
+models.UniqueConstraint(
+    fields=["order"],
+    condition=models.Q(status="accepted"),
+    name="unique_accepted_assignment_for_order",
+)
+```
 
-#### B. Front-Loaded Tiered Commission
-Unlike a flat commission model which under-compensates riders on small orders (making short-distance, low-ticket orders unattractive), BiteQue uses an inverted tiered schedule:
+The application also uses transactions and row locking around important delivery operations.
 
-| Order Total (₹) | Commission Rate (%) | Rationale |
-| :--- | :--- | :--- |
-| $\le ₹200$ | **10%** | Guarantees fair compensation on small tickets |
-| $₹201 - ₹400$ | **6%** | Balances rider pay and merchant margins |
-| $₹401 - ₹1000$ | **4%** | Standard mid-ticket range |
-| $₹1001 - ₹2000$ | **2%** | High-ticket orders already yield healthy distance pay |
-| $₹2001 - ₹4000$ | **1%** | Tapered rate |
-| $> ₹4000$ | **0%** | Capped commission; distance pay covers fulfillment |
+The goal is simple: two riders should never be able to successfully accept and complete the same delivery.
+
+### 2. Delivery PIN
+
+The delivery PIN is generated using Python's `secrets` module.
+
+The current flow includes:
+
+- PIN expiry
+- Maximum incorrect attempts
+- PIN invalidation after too many failed attempts
+- Constant-time PIN comparison
+- PIN clearing after delivery
+- PIN reissue when required
+- Rider authorization through the accepted assignment
+
+This gives the customer a simple way to confirm that the order reached the right person without relying only on a button press.
+
+### 3. Razorpay payment verification
+
+The browser is not treated as the source of truth for payment success.
+
+The server verifies:
+
+- Razorpay signature
+- Razorpay order ID
+- Payment ID
+- Payment amount
+- Currency
+- Payment-to-order relationship
+
+Payment confirmation is also handled idempotently so a repeated callback does not create another successful payment record.
+
+### 4. Rider earnings
+
+Rider earnings are based on distance and order value.
+
+The current model uses:
+
+```text
+Total Earnings
+= Distance Earnings
++ Commission Earnings
+```
+
+Distance earnings are calculated using the stored delivery distance, while commission uses a tiered rate based on the order value.
+
+| Order Total | Commission |
+|---|---:|
+| ₹0 - ₹200 | 10% |
+| ₹201 - ₹400 | 6% |
+| ₹401 - ₹1,000 | 4% |
+| ₹1,001 - ₹2,000 | 2% |
+| ₹2,001 - ₹4,000 | 1% |
+| Above ₹4,000 | 0% |
+
+The model can be changed later as the business model evolves.
+
+### 5. KYC and manual approval
+
+BiteQue is designed for a local marketplace where trust matters.
+
+Merchants and riders go through manual approval before becoming fully active.
+
+Rider onboarding includes information such as:
+
+- Aadhaar details and documents
+- Driving licence
+- Profile photo
+- Address
+- Bank account information
+
+Restaurant onboarding includes business information such as:
+
+- PAN
+- GSTIN
+- FSSAI information
+- Restaurant details
+- Bank account information
+
+Sensitive documents are not intended to be publicly accessible.
 
 ---
 
-### 3. Multi-Tier Manual Approval & KYC Verification
-In early-stage regional rollouts, risk mitigation and trust outweigh frictionless open onboarding. Every participant must pass manual verification:
-- **Merchants & Restaurants**: Monitored via `is_approved`. Admins verify PAN, GSTIN, and FSSAI credentials before restaurants become visible to consumers.
-- **Riders**: Identity verified through Aadhaar (front and back copies), driving license number, and photo inspection.
-- **Bank Accounts**: Both merchant and rider payout accounts require approval before transfers are executed, preventing fraudulent payout rerouting.
+## 🔐 Security and Production Hardening
 
----
+I have intentionally spent time hardening the application beyond basic Django CRUD functionality.
 
-### 4. Automated Daily Earnings Reset Daemon
-Riders accrue earnings in real time under `today_earnings`. At **midnight (00:00 local time)**, an automated scheduler:
-1. Aggregates the day's earnings and completes an entry in `RiderEarning`.
-2. Automatically transfers the balance into the rider's `current_balance`.
-3. Resets `today_earnings` to ₹0.00.
-4. Logs execution metrics to `logs/earnings_reset.log`.
+Current protections include:
 
-The scheduler runs via a background daemon thread managed by `RiderAppConfig.ready()`, safely bypassing test, migration, and administrative CLI executions.
+- `DEBUG=False` by default
+- Production `SECRET_KEY` validation
+- Configurable `ALLOWED_HOSTS`
+- HTTPS-aware Django configuration
+- Secure session and CSRF cookies in production
+- HSTS and browser security headers
+- Ownership checks for customer, merchant, and rider operations
+- Private access controls for sensitive uploaded files
+- Path traversal protection for media access
+- Database constraints for important uniqueness rules
+- Transactional delivery operations
+- Server-side payment verification
+- Delivery PIN expiry and brute-force protection
+- Environment-based API credentials
+- HTTP timeouts for external services
+- No real credentials committed to the repository
 
----
-
-### 5. Transactional Communications Engine
-Integrated with **MailerSend** via direct REST endpoints and custom SMTP backend handlers:
-- Automated merchant welcome and verification emails.
-- Restaurant onboarding status updates.
-- Rider approval notifications with branded dynamic templates.
-- Password reset workflows for merchants and delivery personnel.
-
----
-
-## 🔒 Security & Production Hardening
-
-- **Secure-by-default settings**: `DEBUG` is off unless explicitly requested, a missing/dev `SECRET_KEY` makes the server refuse to boot, and production responses carry HSTS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and a same-origin referrer policy behind Render's HTTPS proxy.
-- **KYC & financial media are private**: catalogue images (`restaurantImages/`, `menu_images/`, `images/`) are public, profile photos require a signed-in user, and Aadhaar/driving-licence scans, payment screenshots, support attachments, and avatars are only served to their owner (or staff). Path traversal under `/media/` is rejected.
-- **Ownership & authorization**: merchant order actions, reports, and PDF exports are scoped to the logged-in owner's restaurant; rider PIN delivery requires the accepted assignment; anonymous requests are redirected to login.
-- **Concurrency safety**: order acceptance and delivery run inside `transaction.atomic()` with `select_for_update()` row locks, backed by a partial unique constraint (`one accepted assignment per order`), so a double-submit can never credit earnings twice.
-- **Server-authoritative checkout**: the delivery fee is always recomputed server-side from distance (`× ₹10/km`, clamped to 0–50 km, OSRM when coordinates are known) — tampered client values are ignored. Razorpay signature verification gates payment confirmation.
-- **No secret sprawl**: all API keys (Razorpay, Brevo, MailerSend, Fast2SMS, OneSignal, Google Maps) are read from environment variables; the repository and git history contain placeholders only. Outbound HTTP calls all use explicit timeouts and fail soft.
+The goal is not to claim that the application is impossible to break. The goal is to make the important business operations fail safely and keep improving the weak points as the platform grows.
 
 ---
 
 ## 🧪 Testing
 
-The suite covers checkout fee integrity, accept/deliver concurrency, merchant authorization, KYC media access control, and form validation — 46 tests, hermetic (no network, no wall-clock dependence):
+The project currently has **73 automated tests** covering areas including:
+
+- Customer and merchant flows
+- Order creation and checkout
+- Delivery fees
+- Rider assignment
+- Concurrent delivery actions
+- Delivery PIN validation
+- PIN expiry and attempt limits
+- Razorpay payment verification
+- Merchant authorization
+- KYC media access
+- Form validation
+- Configuration-based URLs
+
+Useful commands:
 
 ```bash
 python manage.py test
-python manage.py check          # system checks
-python manage.py check --deploy # deployment checklist (run with production env vars)
-python manage.py makemigrations --check --dry-run  # schema drift guard
+python manage.py check
+python manage.py check --deploy
+python manage.py makemigrations --check --dry-run
 ```
 
 ---
 
 ## 💻 Technology Stack
 
-- **Backend Framework**: [Django 6.1](https://docs.djangoproject.com/) on Python 3.13
-- **Database**: SQLite (local development) / PostgreSQL 18 (production on Render)
-- **Frontend & UI**: HTML5 templates, [Tailwind CSS](https://tailwindcss.com/), [HTMX](https://htmx.org/) (for reactive updates without full page reloads), [Feather Icons](https://feathericons.com/), [Heroicons](https://heroicons.com/)
-- **Geolocation & Mapping**: Google Maps Geocoding API, `geopy`, Haversine distance computation
-- **Email**: Brevo SMTP (transactional) + [MailerSend](https://www.mailersend.com/) API
-- **Payments**: Razorpay (test mode)
-- **Messaging**: Fast2SMS, WhatsApp Cloud API
-- **Deployment**: Docker, Gunicorn, WhiteNoise, [Render](https://render.com) (auto-deploy on push)
-- **Image & File Processing**: [Pillow](https://python-pillow.org/), WeasyPrint (PDF invoices)
+### Backend
+
+- Python 3.13
+- Django 6.1
+- PostgreSQL
+- SQLite for local development
+
+### Frontend
+
+- HTML5
+- Tailwind CSS
+- HTMX
+- JavaScript
+- Feather Icons
+- Heroicons
+
+### Payments and Services
+
+- Razorpay
+- Google Maps Geocoding API
+- Brevo
+- MailerSend
+- Fast2SMS
+- WhatsApp Cloud API
+- OSRM for route/distance support
+
+### Deployment
+
+- Docker
+- Gunicorn
+- WhiteNoise
+- Render
+
+### Other
+
+- Pillow
+- WeasyPrint
+- geopy
 
 ---
 
-## 📁 Project Directory Structure
+## 📁 Project Structure
 
 ```text
 BITEQUE/
-├── BITEQUE/                     # Project configuration root
-│   ├── asgi.py                  # ASGI entrypoint
-│   ├── settings.py              # Application settings & third-party configs
-│   ├── urls.py                  # Root routing table
-│   └── wsgi.py                  # WSGI entrypoint
+├── BITEQUE/
+│   ├── settings.py
+│   ├── urls.py
+│   ├── asgi.py
+│   └── wsgi.py
 │
-├── user_app/                    # Customer-facing application
-│   ├── models.py                # Order, userRegistration, CustomerFeedback, MerchantNotification
-│   ├── views.py                 # Menu browsing, order placement, tracking, feedback
-│   ├── urls.py                  # Customer routes (/user/, /orders/, etc.)
-│   ├── forms.py                 # User signup & feedback forms
-│   ├── signals.py               # Auto-broadcast orders on status='ready'
-│   └── templates/               # User dashboard, menus, legal pages
+├── user_app/
+│   ├── models.py
+│   ├── views.py
+│   ├── forms.py
+│   ├── signals.py
+│   ├── urls.py
+│   └── templates/
 │
-├── merchant_app/                # Restaurant partner portal
-│   ├── models.py                # Restaurant, RestaurantMenu, BankAccount, MerchantEarning, MerchantPayment
-│   ├── views.py                 # Merchant dashboard, menu management, order fulfillment, reports
-│   ├── urls.py                  # Merchant routes (/merchant-dashboard/, /merchant/orders/, etc.)
-│   ├── admin.py                 # Restaurant and KYC verification admin views
-│   ├── signals.py               # Merchant onboarding email triggers
-│   └── templates/               # Merchant management interfaces
+├── merchant_app/
+│   ├── models.py
+│   ├── views.py
+│   ├── forms.py
+│   ├── signals.py
+│   ├── admin.py
+│   ├── urls.py
+│   └── templates/
 │
-├── rider_app/                   # Delivery partner application
-│   ├── models.py                # Rider, OrderAssignment, RiderEarning, RiderBankAccount, Transaction
-│   ├── views.py                 # Rider login, assignment acceptance, delivery fulfillment, earnings
-│   ├── urls.py                  # Rider routes (/dashboard/, /earnings/, etc.)
-│   ├── utils.py                 # Haversine distance calculator & geocoding helper
-│   ├── signals.py               # Double-acceptance prevention & status cascading
-│   ├── mailersend_backend.py    # Custom MailerSend SMTP backend
-│   ├── management/commands/     # reset_earnings midnight worker
-│   └── templates/               # Rider portal templates
+├── rider_app/
+│   ├── models.py
+│   ├── views.py
+│   ├── forms.py
+│   ├── signals.py
+│   ├── utils.py
+│   ├── management/
+│   ├── urls.py
+│   └── templates/
 │
-├── media/                       # Uploaded files (menu items, KYC scans, payment receipts)
-├── static/                      # Static assets (CSS, JS, logos)
-├── logs/                        # Application logs (earnings_reset.log)
-├── Dockerfile                   # Production container image (builds & runs on Render)
-├── .dockerignore                # Keeps secrets & local artifacts out of the image
-├── manage.py                    # Django management script
-├── requirements.txt             # Project Python dependencies
-├── BiteQue_PRD.docx             # Product Requirements Document
-└── db.sqlite3                   # Local development database
+├── media/
+├── static/
+├── logs/
+├── Dockerfile
+├── requirements.txt
+├── manage.py
+└── README.md
 ```
 
 ---
 
-## 🚀 Installation & Local Setup
+## 🚀 Local Setup
 
-### 1. Prerequisites
-- **Python 3.12+** installed on your system
-- **Git** (recommended for version control)
-- **pip** and `venv`
+### 1. Clone the repository
 
-### 2. Clone or Navigate to the Repository
 ```bash
-cd /path/to/BITEQUE
+git clone https://github.com/najaraasif/BiteQue-Hyperlocal-Food-Delivery-Marketplace.git
+cd BiteQue-Hyperlocal-Food-Delivery-Marketplace
 ```
 
-### 3. Create and Activate a Virtual Environment
-- **On Windows (PowerShell):**
-  ```powershell
-  python -m venv venv
-  .\venv\Scripts\Activate.ps1
-  ```
-- **On Linux/macOS:**
-  ```bash
-  python3 -m venv venv
-  source venv/bin/activate
-  ```
+### 2. Create a virtual environment
 
-### 4. Install Dependencies
+Windows PowerShell:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+Linux/macOS:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 3. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5. Apply Database Migrations
+### 4. Configure environment variables
+
+Create a local `.env` file with the required configuration.
+
+At minimum:
+
+```env
+SECRET_KEY=your-secret-key
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+```
+
+For payments, maps, email, SMS, and other integrations, add the relevant credentials from the environment configuration section below.
+
+### 5. Run migrations
+
 ```bash
 python manage.py migrate
 ```
 
-### 6. Create Superuser (Platform Admin)
+### 6. Create an admin account
+
 ```bash
 python manage.py createsuperuser
 ```
-Follow the prompts to configure an administrator username, email, and password.
 
-### 7. Run the Development Server
+### 7. Start Django
+
 ```bash
 python manage.py runserver
 ```
-Visit `http://127.0.0.1:8000/` in your browser.
 
-> Local development can keep its settings in an untracked `.env` file at the repo root — `settings.py` loads it automatically, and real environment variables always take precedence.
+Open:
 
-### 8. Run the Test Suite
+```text
+http://127.0.0.1:8000/
+```
+
+### 8. Run tests
+
 ```bash
 python manage.py test
 ```
-
-### 9. Run with Docker (mirrors production)
-```bash
-docker build -t biteque .
-docker run --rm -p 8000:8000 -e SECRET_KEY=change-me -e DEBUG=True biteque
-```
-The container applies pending migrations on start (`migrate && gunicorn`), exactly like production. Set `DATABASE_URL` to point it at PostgreSQL instead of SQLite.
 
 ---
 
 ## 🔐 Environment Configuration
 
-All secrets are read from environment variables in `BITEQUE/settings.py` — the repository only contains placeholders. In production these are set in the Render dashboard (*Environment* tab); for local development export them or use your shell profile.
+The application reads secrets and service configuration from environment variables.
+
+Example:
 
 ```env
-# Django Core
-SECRET_KEY=your-secure-secret-key
+# Django
+SECRET_KEY=your-secret-key
 DEBUG=False
 ALLOWED_HOSTS=your-domain.onrender.com
 CSRF_TRUSTED_ORIGINS=https://your-domain.onrender.com
+SITE_URL=https://your-domain.onrender.com
 
-# Database (production only — omit to fall back to local SQLite)
-DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
+# Database
+DATABASE_URL=postgresql://user:password@host:5432/dbname
 
-# SMTP / Transactional Email (Brevo)
+# Email
 EMAIL_HOST=smtp-relay.brevo.com
 EMAIL_HOST_USER=your-smtp-user
 EMAIL_HOST_PASSWORD=your-smtp-password
@@ -389,36 +519,85 @@ DEFAULT_FROM_EMAIL=noreply@your-domain.com
 BREVO_API_KEY=your-brevo-api-key
 
 # MailerSend
-MAILERSEND_API_KEY=mlsn.your_api_key
-MAILERSEND_DOMAIN=your-domain.mlsender.net
+MAILERSEND_API_KEY=your-mailersend-api-key
+MAILERSEND_DOMAIN=your-domain
 
-# Maps, Payments & SMS
+# Maps
 GOOGLE_MAPS_API_KEY=your-google-maps-key
+
+# Razorpay
 RAZORPAY_KEY_ID=rzp_test_xxxxxxxx
 RAZORPAY_KEY_SECRET=your-razorpay-secret
+
+# SMS
 FAST2SMS_API_KEY=your-fast2sms-key
 
-# Push notifications (OneSignal)
-ONESIGNAL_REST_API_KEY=your-onesignal-rest-api-key
+# OneSignal
+ONESIGNAL_REST_API_KEY=your-onesignal-key
 ONESIGNAL_APP_ID=your-onesignal-app-id
 ```
 
----
+For local development, keep `.env` untracked.
 
-## 🗺 Product Roadmap & Known Gaps
-
-- [ ] **In-App Cart & Checkout**: Implementation of dynamic session-based or database-backed cart with online payment gateway integration (UPI / Razorpay / Cashfree).
-- [ ] **Acceptance-Rate Performance Bonus**: Payout logic rewarding riders maintaining a high assignment acceptance rate ($> 85\%$) with weekly bonus top-ups.
-- [ ] **Live Rider GPS Tracking**: Real-time Leaflet / Mapbox live location tracking for customers and merchants during `out_for_delivery`.
-- [x] **Settings Hardening**: All API tokens and credentials now read from environment variables via `os.environ` in `settings.py`; the repository contains placeholders only.
-- [ ] **Automated Password Hashing Migration**: Refactor legacy `userRegistration` fields to rely strictly on Django's cryptographic authentication framework.
+Never commit real credentials.
 
 ---
 
-## 👨‍💻 Authors & Team
+## 🗺️ Roadmap
 
-BiteQue was architected and developed by:
+BiteQue already has the core customer, merchant, rider, checkout, payment, and delivery flows in place.
+
+The next improvements are more about scaling the product than building the basic marketplace again.
+
+### Planned
+
+- [ ] Live rider GPS tracking
+- [ ] Better rider acceptance-rate incentives
+- [ ] Improved merchant analytics
+- [ ] More robust payout automation
+- [ ] Better notification and messaging flows
+- [ ] Stronger observability and production monitoring
+- [ ] Further cleanup of older authentication and legacy code
+
+### Already implemented
+
+- [x] Customer ordering flow
+- [x] Merchant onboarding
+- [x] Rider onboarding and KYC
+- [x] Restaurant and menu management
+- [x] Rider order assignments
+- [x] Delivery PIN verification
+- [x] Razorpay checkout
+- [x] Server-side payment verification
+- [x] Rider earnings
+- [x] PDF invoice generation
+- [x] Production deployment on Render
+- [x] Production security hardening
+- [x] Automated test coverage for core flows
+
+---
+
+## 👨‍💻 Team
+
+BiteQue was built by:
+
 - **Mohammad Aasif Najar**
 - **Shakir Meer**
 
-*Covering local market research, merchant & rider onboarding in Kupwara, J&K, and full-stack engineering.*
+The project covers product planning, local market research, merchant and rider onboarding, backend development, frontend development, deployment, and ongoing improvements.
+
+---
+
+## 📌 Why I Built It
+
+BiteQue started with a simple observation: smaller towns also need good local technology, but the solution does not always have to look like a smaller copy of a national platform.
+
+I wanted to build something that could actually work for local restaurants and riders, while also giving me a real project to work through problems like payments, concurrency, KYC, delivery workflows, notifications, deployment, and production security.
+
+There is still a lot I want to improve, but the core marketplace is running and the project has grown far beyond the original idea.
+
+---
+
+## 📄 License
+
+This project is currently maintained as a private project. Contact the repository owner before reusing the code or product assets.
