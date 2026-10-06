@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 def geocode_address(address):
     """Geocode an address using OpenStreetMap Nominatim API."""
     try:
-        headers = {'User-Agent': 'BiteQueApp/1.0 (contact@yourdomain.com)'}
+        headers = {'User-Agent': f'BiteQueApp/1.0 ({settings.SITE_URL})'}
         response = requests.get(
             'https://nominatim.openstreetmap.org/search',
             params={

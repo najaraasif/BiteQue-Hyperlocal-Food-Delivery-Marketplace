@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import os
 from decimal import Decimal
 from unittest import mock
@@ -264,3 +266,204 @@ class MediaAuthTests(TestCase):
     def test_path_traversal_rejected(self):
         resp = self.client.get('/media/../BITEQUE/urls.py')
         self.assertEqual(resp.status_code, 404)
+
+
+PAYMENT_FETCH = 'razorpay.resources.payment.Payment.fetch'
+
+
+class PaymentConfirmationTests(TestCase):
+    """payment_success must never trust the browser: the Razorpay
+    signature, the payment/order linkage and the charged amount and
+    currency all have to check out server-side before is_paid flips."""
+
+    ORDER_ID = 'order_TESTORDERXYZ'
+    OTHER_ORDER_ID = 'order_OTHERORDERXYZ'
+    PAYMENT_ID = 'pay_TESTPAYMENTXYZ'
+
+    def setUp(self):
+        self.customer = User.objects.create_user(
+            username='paybuyer', password='pw12345678'
+        )
+        self.restaurant = make_restaurant('Pay Kitchen')
+        self.order = Order.objects.create(
+            user=self.customer,
+            restaurant=self.restaurant,
+            customer_name='Pay Buyer',
+            customer_contact='9876543210',
+            landmark='',
+            delivery_address='1 Road',
+            special_instructions='',
+            final_total=Decimal('266.00'),
+            razorpay_order_id=self.ORDER_ID,
+        )
+        # Order.save() recomputes final_total from its parts, so pin the
+        # server-created amount explicitly (the checkout flow does this
+        # through the real pricing pipeline).
+        Order.objects.filter(pk=self.order.pk).update(
+            final_total=Decimal('266.00')
+        )
+        self.order.refresh_from_db()
+
+    def sign(self, order_id, payment_id, secret=None):
+        secret = secret or settings.RAZORPAY_KEY_SECRET
+        message = f'{order_id}|{payment_id}'.encode()
+        return hmac.new(secret.encode(), message, hashlib.sha256).hexdigest()
+
+    def post_confirmation(self, order_id=None, payment_id=None,
+                          signature=None, **extra):
+        order_id = order_id if order_id is not None else self.ORDER_ID
+        payment_id = payment_id if payment_id is not None else self.PAYMENT_ID
+        payload = {
+            'razorpay_order_id': order_id,
+            'razorpay_payment_id': payment_id,
+            'razorpay_signature': signature if signature is not None
+            else self.sign(order_id, payment_id),
+        }
+        payload.update(extra)
+        return self.client.post(reverse('payment_success'), payload)
+
+    @staticmethod
+    def fetched_payment(**overrides):
+        data = {
+            'id': PaymentConfirmationTests.PAYMENT_ID,
+            'order_id': PaymentConfirmationTests.ORDER_ID,
+            'amount': 26600,
+            'currency': 'INR',
+            'status': 'captured',
+        }
+        data.update(overrides)
+        return data
+
+    def assert_unpaid(self):
+        self.order.refresh_from_db()
+        self.assertFalse(self.order.is_paid)
+        self.assertIsNone(self.order.razorpay_payment_id)
+        self.assertIsNone(self.order.razorpay_signature)
+
+    def test_valid_payment_marks_paid_and_clears_cart(self):
+        session = self.client.session
+        session['cart'] = {'999': {'quantity': 1}}
+        session.save()
+
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            fetch.return_value = self.fetched_payment()
+            resp = self.post_confirmation()
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            resp.url, reverse('order_confirmation', args=[self.order.id])
+        )
+        fetch.assert_called_once_with(self.PAYMENT_ID)
+
+        self.order.refresh_from_db()
+        self.assertTrue(self.order.is_paid)
+        self.assertEqual(self.order.razorpay_payment_id, self.PAYMENT_ID)
+        self.assertEqual(
+            self.order.razorpay_signature,
+            self.sign(self.ORDER_ID, self.PAYMENT_ID),
+        )
+        self.assertNotIn('cart', self.client.session)
+
+    def test_tampered_amount_rejected(self):
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            fetch.return_value = self.fetched_payment(amount=100)
+            resp = self.post_confirmation()
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('checkout'))
+        fetch.assert_called_once()
+        self.assert_unpaid()
+
+    def test_wrong_order_relationship_rejected(self):
+        # Payment is bound to a different Razorpay order than ours.
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            fetch.return_value = self.fetched_payment(
+                order_id=self.OTHER_ORDER_ID
+            )
+            resp = self.post_confirmation()
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('checkout'))
+        self.assert_unpaid()
+
+    def test_unknown_razorpay_order_rejected_without_fetch(self):
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            resp = self.post_confirmation(order_id='order_NO_SUCH_ORDER')
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('checkout'))
+        fetch.assert_not_called()
+        self.assert_unpaid()
+
+    def test_currency_mismatch_rejected(self):
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            fetch.return_value = self.fetched_payment(currency='USD')
+            resp = self.post_confirmation()
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('checkout'))
+        self.assert_unpaid()
+
+    def test_duplicate_callback_is_idempotent(self):
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            fetch.return_value = self.fetched_payment()
+            first = self.post_confirmation()
+            second = self.post_confirmation()
+
+        self.assertEqual(
+            first.url, reverse('order_confirmation', args=[self.order.id])
+        )
+        self.assertEqual(
+            second.url, reverse('order_confirmation', args=[self.order.id])
+        )
+        # The repeat short-circuits before touching Razorpay again.
+        fetch.assert_called_once()
+
+        self.order.refresh_from_db()
+        self.assertTrue(self.order.is_paid)
+        self.assertEqual(self.order.razorpay_payment_id, self.PAYMENT_ID)
+
+    def test_second_payment_for_paid_order_rejected(self):
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            fetch.return_value = self.fetched_payment()
+            self.post_confirmation()
+
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            resp = self.post_confirmation(payment_id='pay_SOMETHINGELSE')
+            fetch.assert_not_called()
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('checkout'))
+        self.order.refresh_from_db()
+        self.assertTrue(self.order.is_paid)
+        self.assertEqual(self.order.razorpay_payment_id, self.PAYMENT_ID)
+
+    def test_invalid_signature_rejected_without_fetch(self):
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            resp = self.post_confirmation(signature='0' * 64)
+            fetch.assert_not_called()
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('checkout'))
+        self.assert_unpaid()
+
+    def test_missing_params_rejected_without_fetch(self):
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            resp = self.client.post(reverse('payment_success'), {
+                'razorpay_order_id': self.ORDER_ID,
+            })
+            fetch.assert_not_called()
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('checkout'))
+        self.assert_unpaid()
+
+    def test_paid_flag_from_client_is_ignored(self):
+        with mock.patch(PAYMENT_FETCH) as fetch:
+            resp = self.post_confirmation(
+                signature='0' * 64, is_paid='true'
+            )
+            fetch.assert_not_called()
+
+        self.assertEqual(resp.status_code, 302)
+        self.assert_unpaid()

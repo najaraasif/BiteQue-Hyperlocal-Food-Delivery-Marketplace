@@ -3,10 +3,13 @@ import random
 import secrets
 import string
 import threading
+from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
@@ -14,6 +17,11 @@ from django.utils import timezone
 from user_app.utils import send_sms, send_whatsapp
 
 logger = logging.getLogger(__name__)
+
+# Number of wrong PIN submissions accepted before the PIN is invalidated
+# outright. A 4-digit space is 10 000 possibilities; five guesses per issued
+# PIN keeps brute force infeasible.
+DELIVERY_PIN_MAX_ATTEMPTS = 5
 
 
 class Order(models.Model):
@@ -34,6 +42,7 @@ class Order(models.Model):
     commission = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     total_earning = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     delivery_pin = models.CharField(max_length=6, blank=True, null=True)
+    delivery_pin_attempts = models.PositiveSmallIntegerField(default=0)
     packaging_charges = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('10.00'))
     item_gst = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     delivery_pin_generated_at = models.DateTimeField(null=True, blank=True)
@@ -155,16 +164,57 @@ class Order(models.Model):
     def generate_delivery_pin(self, length=4):
         self.delivery_pin = ''.join(secrets.choice(string.digits) for _ in range(length))
         self.delivery_pin_generated_at = timezone.now()
+        self.delivery_pin_attempts = 0
         return self.delivery_pin
 
     def clear_delivery_pin(self):
         self.delivery_pin = None
         self.delivery_pin_generated_at = None
+        self.delivery_pin_attempts = 0
+
+    def delivery_pin_is_expired(self):
+        """True when the issued PIN is missing or past its validity window."""
+        if not self.delivery_pin_generated_at:
+            return True
+        ttl = timedelta(minutes=getattr(settings, 'DELIVERY_PIN_TTL_MINUTES', 30))
+        return timezone.now() - self.delivery_pin_generated_at > ttl
+
+    def register_delivery_pin_failure(self):
+        """Count one wrong guess. When the cap is reached the PIN is
+        invalidated (cleared) so further guessing gains nothing.
+
+        Returns True when this failure invalidated the PIN.
+        The increment happens in the database so concurrent attempts
+        cannot lose a count.
+        """
+        Order.objects.filter(pk=self.pk).update(
+            delivery_pin_attempts=F('delivery_pin_attempts') + 1
+        )
+        self.refresh_from_db(fields=['delivery_pin_attempts'])
+        if self.delivery_pin_attempts < DELIVERY_PIN_MAX_ATTEMPTS:
+            return False
+        Order.objects.filter(pk=self.pk).update(
+            delivery_pin=None,
+            delivery_pin_generated_at=None,
+            delivery_pin_attempts=0,
+        )
+        self.delivery_pin = None
+        self.delivery_pin_generated_at = None
+        self.delivery_pin_attempts = 0
+        logger.warning(
+            "Delivery PIN invalidated after %s failed attempts for order %s.",
+            DELIVERY_PIN_MAX_ATTEMPTS, self.pk,
+        )
+        return True
 
     def is_delivery_pin_valid(self, entered_pin):
         if not self.delivery_pin or not self.delivery_pin_generated_at:
             return False
-        return self.delivery_pin == entered_pin
+        if self.status != 'out_for_delivery':
+            return False
+        if self.delivery_pin_is_expired():
+            return False
+        return secrets.compare_digest(str(self.delivery_pin), str(entered_pin))
 
     def __str__(self):
         return f"Order #{self.id} - {self.customer_name}"

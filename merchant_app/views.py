@@ -250,7 +250,7 @@ def send_push_to_merchant(player_id, order_id):
         "include_player_ids": [player_id],
         "headings": {"en": "New Order Received"},
         "contents": {"en": f"You have a new order #{order_id}"},
-        "url": f"https://yourdomain.com/merchant/orders/{order_id}/"
+        "url": f"{settings.SITE_URL}{reverse('merchant_orders')}"
     }
     try:
         response = requests.post(

@@ -11,7 +11,7 @@ from .models import Order, CustomerFeedback, MerchantNotification
 from .forms import userRegistrationForm
 from rider_app.utils import calculate_osrm_distance
 from django.contrib.auth.models import User
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate, login
 from merchant_app.models import Restaurant, RestaurantMenu, SizeCategory
@@ -351,26 +351,70 @@ def checkout(request):
 
 @csrf_exempt
 def payment_success(request):
+    """Confirm a Razorpay payment.
+
+    The browser only relays (order_id, payment_id, signature); nothing it
+    posts is trusted. Confirmation requires all of:
+      1. a valid Razorpay signature (HMAC over "order_id|payment_id" keyed
+         with our secret),
+      2. an order that actually holds this razorpay_order_id,
+      3. payment details fetched back from Razorpay whose order_id, currency
+         and amount match the server-created order.
+    is_paid is only written inside a row lock after all three pass, and a
+    repeat of the same callback redirects without re-processing.
+    """
     if request.method == 'POST':
         params_dict = {
-            'razorpay_order_id': request.POST.get('razorpay_order_id'),
-            'razorpay_payment_id': request.POST.get('razorpay_payment_id'),
-            'razorpay_signature': request.POST.get('razorpay_signature')
+            'razorpay_order_id': (request.POST.get('razorpay_order_id') or '').strip(),
+            'razorpay_payment_id': (request.POST.get('razorpay_payment_id') or '').strip(),
+            'razorpay_signature': (request.POST.get('razorpay_signature') or '').strip(),
         }
+        if not all(params_dict.values()):
+            messages.error(request, "Payment verification failed. Please contact support.")
+            return redirect('checkout')
 
         try:
             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
             client.utility.verify_payment_signature(params_dict)
 
-            order = Order.objects.get(razorpay_order_id=params_dict['razorpay_order_id'])
-            if order.is_paid:
-                return redirect('order_confirmation', order_id=order.id)
+            with transaction.atomic():
+                order = Order.objects.select_for_update().get(
+                    razorpay_order_id=params_dict['razorpay_order_id']
+                )
 
-            # Update order
-            order.razorpay_payment_id = params_dict['razorpay_payment_id']
-            order.razorpay_signature = params_dict['razorpay_signature']
-            order.is_paid = True
-            order.save(update_fields=['razorpay_payment_id', 'razorpay_signature', 'is_paid'])
+                if order.is_paid:
+                    # Duplicate callback: the same payment already confirmed
+                    # this order, so it is a no-op. A *different* payment id
+                    # arriving for an already-paid order is refused.
+                    if order.razorpay_payment_id == params_dict['razorpay_payment_id']:
+                        return redirect('order_confirmation', order_id=order.id)
+                    logger.warning(
+                        "Second payment %s posted for already-paid order %s.",
+                        params_dict['razorpay_payment_id'], order.id,
+                    )
+                    messages.error(request, "Payment verification failed. Please contact support.")
+                    return redirect('checkout')
+
+                # Authoritative payment record from Razorpay: binds the
+                # payment to our order and shows what was actually charged.
+                payment = client.payment.fetch(params_dict['razorpay_payment_id'])
+                expected_amount = int(order.final_total * 100)
+                if (
+                    payment.get('order_id') != order.razorpay_order_id
+                    or payment.get('currency') != 'INR'
+                    or int(payment.get('amount') or 0) != expected_amount
+                ):
+                    logger.warning(
+                        "Razorpay payment %s failed amount/currency/order checks for order %s.",
+                        params_dict['razorpay_payment_id'], order.id,
+                    )
+                    messages.error(request, "Payment verification failed. Please contact support.")
+                    return redirect('checkout')
+
+                order.razorpay_payment_id = params_dict['razorpay_payment_id']
+                order.razorpay_signature = params_dict['razorpay_signature']
+                order.is_paid = True
+                order.save(update_fields=['razorpay_payment_id', 'razorpay_signature', 'is_paid'])
 
             if 'cart' in request.session:
                 del request.session['cart']
@@ -378,6 +422,10 @@ def payment_success(request):
             return redirect('order_confirmation', order_id=order.id)
 
         except razorpay.errors.SignatureVerificationError:
+            logger.warning(
+                "Razorpay signature verification failed for order id %s.",
+                params_dict['razorpay_order_id'],
+            )
             messages.error(request, "Invalid payment signature.")
         except Order.DoesNotExist:
             messages.error(request, "Order not found.")
@@ -513,6 +561,21 @@ def order_detail(request, order_id):
         id=order_id,
         user=request.user
     )
+
+    # The delivery PIN expires after DELIVERY_PIN_TTL_MINUTES and is cleared
+    # after too many wrong guesses. Re-issue it only when the owner opens
+    # this page, so the customer always has a shareable PIN while the rider
+    # can never mint a new one themselves.
+    if order.status == 'out_for_delivery' and (
+        not order.delivery_pin or order.delivery_pin_is_expired()
+    ):
+        order.generate_delivery_pin()
+        Order.objects.filter(pk=order.pk).update(
+            delivery_pin=order.delivery_pin,
+            delivery_pin_generated_at=order.delivery_pin_generated_at,
+            delivery_pin_attempts=0,
+        )
+        logger.info("Delivery PIN re-issued for order %s.", order.id)
 
     # Calculate subtotal from OrderMenuItem entries
     unique_items = []

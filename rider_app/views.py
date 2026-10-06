@@ -315,7 +315,17 @@ def mark_delivered(request, order_id):
             if form.is_valid():
                 entered_otp = form.cleaned_data['otp']
 
-                if order.is_delivery_pin_valid(entered_otp):
+                if order.delivery_pin_is_expired():
+                    message = ("This PIN has expired. Ask the customer to open "
+                               "their order page for a new PIN.")
+                    logger.warning(
+                        "Expired delivery PIN presented for order %s by rider %s.",
+                        order.id, rider.id,
+                    )
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': message, 'field_errors': {'otp': [message]}}, status=400)
+                    messages.error(request, message)
+                elif order.is_delivery_pin_valid(entered_otp):
                     try:
                         with transaction.atomic():
                             # Lock the assignment so a double-submitted request
@@ -399,8 +409,15 @@ def mark_delivered(request, order_id):
                     messages.success(request, f"Order #{order.id} marked as delivered successfully!")
                     return redirect('rider:dashboard')
                 else:
-                    message = "Incorrect PIN. Please confirm with the customer and try again."
-                    logger.warning(f"Failed PIN attempt for order {order.id} by rider {rider.id}.")
+                    if order.register_delivery_pin_failure():
+                        message = ("Too many incorrect PIN attempts. Ask the "
+                                   "customer for a new PIN.")
+                    else:
+                        message = "Incorrect PIN. Please confirm with the customer and try again."
+                    logger.warning(
+                        "Failed PIN attempt for order %s by rider %s.",
+                        order.id, rider.id,
+                    )
                     if is_ajax:
                         return JsonResponse({'status': 'error', 'message': message, 'field_errors': {'otp': [message]}}, status=400)
                     messages.error(request, message)

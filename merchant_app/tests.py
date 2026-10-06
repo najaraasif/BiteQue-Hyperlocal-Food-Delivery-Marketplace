@@ -1,8 +1,12 @@
+import json
+import os
 from decimal import Decimal
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
+from django.template.loader import render_to_string
 from django.urls import reverse
 
 from rider_app.models import OrderAssignment, Rider
@@ -10,6 +14,7 @@ from user_app.models import Order
 
 from .forms import MerchantRegistrationForm
 from .models import Restaurant
+from .signals import send_merchant_verification_email
 
 
 def make_user(username, **kwargs):
@@ -236,3 +241,54 @@ class MerchantPhoneValidationTests(TestCase):
         form = self.form('987654321')
         self.assertFalse(form.is_valid())
         self.assertIn('number', form.errors)
+
+
+class ConfiguredUrlTests(TestCase):
+    """Out-of-request links (e-mails, push payloads) must be built from
+    configuration, never from hard-coded localhost or placeholder domains."""
+
+    PROD = 'https://biteque.onrender.com'
+
+    def test_verification_email_uses_configured_site_url(self):
+        merchant = mock.Mock()
+        merchant.name = 'Link Merchant'
+        merchant.username.email = 'links@example.com'
+
+        with mock.patch.object(settings, 'SITE_URL', self.PROD):
+            with mock.patch(
+                'merchant_app.signals.emails.NewEmail'
+            ) as mailer_cls:
+                send_merchant_verification_email(merchant)
+
+        html = mailer_cls.return_value.send.call_args[0][0]['html']
+        self.assertIn(f'{self.PROD}/merchant-login/', html)
+        self.assertNotIn('127.0.0.1', html)
+        self.assertNotIn('yourdomain', html)
+
+    def test_push_payload_uses_configured_site_url(self):
+        from .views import send_push_to_merchant
+
+        with mock.patch.dict(
+            os.environ, {'ONESIGNAL_REST_API_KEY': 'test-key'}
+        ):
+            with mock.patch.object(settings, 'SITE_URL', self.PROD):
+                with mock.patch('merchant_app.views.requests.post') as post:
+                    post.return_value.ok = True
+                    sent = send_push_to_merchant('player-1', 42)
+
+        self.assertTrue(sent)
+        payload = json.loads(post.call_args.kwargs['data'])
+        self.assertEqual(payload['url'], f'{self.PROD}/merchant/orders/')
+        self.assertNotIn('yourdomain', payload['url'])
+        self.assertNotIn('127.0.0.1', payload['url'])
+
+    def test_email_verification_template_uses_configured_site_url(self):
+        request = RequestFactory().get('/')
+        with mock.patch.object(settings, 'SITE_URL', self.PROD):
+            html = render_to_string(
+                'email_verification.html',
+                {'restaurant_name': 'Link Kitchen'},
+                request=request,
+            )
+        self.assertIn(f'{self.PROD}/merchant-login/', html)
+        self.assertNotIn('127.0.0.1', html)

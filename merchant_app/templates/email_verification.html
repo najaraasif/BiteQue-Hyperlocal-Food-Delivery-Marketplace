@@ -31,7 +31,7 @@
     <h1>Hello,</h1>
     <p>Congratulations! Your restaurant <strong>{{ restaurant_name }}</strong> has been <strong>approved</strong> on <strong>BiteQue</strong>.</p>
     <p>You can now log in to your merchant dashboard to start managing your listings, view bookings, and grow your business.</p>
-    <a href="http://127.0.0.1:8000/merchant/login/" class="button">Log in Now</a>
+    <a href="{{ site_url }}{% url 'merchant_login' %}" class="button">Log in Now</a>
     <p style="margin-top: 40px;">Thank you for being a part of BiteQue!</p>
   </div>
 </body>

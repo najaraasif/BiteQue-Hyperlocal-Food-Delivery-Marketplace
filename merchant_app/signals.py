@@ -2,6 +2,7 @@ import logging
 
 from mailersend import emails
 from django.conf import settings
+from django.urls import reverse
 import requests
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ def send_merchant_verification_email(merchant):
         <h1>Welcome, {merchant.name}!</h1>
         <p>Your merchant account has been <strong>approved</strong>.</p>
         <p>You can now log in to add your restaurant, start managing your listings and booast sales.</p>
-        <a href="http://127.0.0.1:8000/merchant/login/" class="button">Log in Now</a>
+        <a href="{settings.SITE_URL}{reverse('merchant_login')}" class="button">Log in Now</a>
         <p style="margin-top: 40px;">Thank you for choosing <strong>BiteQue</strong>!</p>
       </div>
     </body>
@@ -138,7 +139,7 @@ def send_merchant_restaurant_email(restaurant):
           <p>
             You now have access to your personalized merchant dashboard where you can manage listings, update menus, track orders, and more.
           </p>
-          <a href="http://127.0.0.1:8000/merchant/login/" class="btn">Log in to Your Dashboard</a>
+          <a href="{settings.SITE_URL}{reverse('merchant_login')}" class="btn">Log in to Your Dashboard</a>
           <p class="footer">
             This is an automated email from BiteQue. If you have any questions, feel free to contact our support team.
           </p>

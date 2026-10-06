@@ -68,6 +68,20 @@ if (
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 
+# Absolute base URL for links that are built outside a request cycle
+# (order e-mails, OneSignal push payloads). Priority order:
+#   1. explicit SITE_URL env var
+#   2. first configured trusted origin (production sets
+#      CSRF_TRUSTED_ORIGINS=https://biteque.onrender.com)
+#   3. the Django dev server
+SITE_URL = (
+    os.environ.get('SITE_URL')
+    or (CSRF_TRUSTED_ORIGINS[0] if CSRF_TRUSTED_ORIGINS else 'http://localhost:8000')
+).rstrip('/')
+
+# Delivery PIN validity window (minutes) and wrong-guess budget.
+DELIVERY_PIN_TTL_MINUTES = int(os.environ.get('DELIVERY_PIN_TTL_MINUTES', '30'))
+
 # HTTPS / browser hardening (skipped in local dev and during `manage.py test`,
 # where the test client issues plain HTTP requests).
 _TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
