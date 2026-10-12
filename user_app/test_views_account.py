@@ -458,3 +458,70 @@ class PasswordChangeTests(TestCase):
         self.assertTrue(resp.context['form'].errors)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('pw12345678'))
+
+
+class UpdateProfileAliasTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='aliasuser', password='pw12345678',
+            first_name='Ann', last_name='Lee',
+        )
+        self.client.force_login(self.user)
+
+    def test_alias_reverses_to_the_profile_update_path(self):
+        self.assertEqual(reverse('update_profile'), '/profile/update/')
+
+    def test_login_required(self):
+        self.client.logout()
+        resp = self.client.get(reverse('update_profile'))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('next=', resp.url)
+
+    def test_get_prefills_current_names_on_alias_path(self):
+        resp = self.client.get(reverse('update_profile'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTemplateUsed(resp, 'profile_section.html')
+        self.assertEqual(
+            resp.context['form'].fields['first_name'].initial, 'Ann'
+        )
+        self.assertEqual(
+            resp.context['form'].fields['last_name'].initial, 'Lee'
+        )
+
+    def test_post_on_alias_updates_names_and_profile_fields(self):
+        resp = self.client.post(reverse('update_profile'), {
+            'first_name': 'Anne',
+            'last_name': 'Li',
+            'phone_number': '9111222333',
+            'address': '9 Alias Road',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('profile'))
+        self.user.refresh_from_db()
+        self.user.userprofile.refresh_from_db()
+        self.assertEqual(self.user.first_name, 'Anne')
+        self.assertEqual(self.user.last_name, 'Li')
+        self.assertEqual(
+            self.user.userprofile.phone_number, '9111222333'
+        )
+        self.assertEqual(self.user.userprofile.address, '9 Alias Road')
+        self.assertIn(
+            'Profile updated successfully!', messages_of(resp)
+        )
+
+    def test_invalid_post_on_alias_renders_with_errors(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        resp = self.client.post(reverse('update_profile'), {
+            'first_name': 'Anne',
+            'last_name': 'Li',
+            'phone_number': '',
+            'address': '',
+            'avatar': SimpleUploadedFile(
+                'bad.txt', b'plain', content_type='text/plain'
+            ),
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('avatar', resp.context['form'].errors)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, 'Ann')
