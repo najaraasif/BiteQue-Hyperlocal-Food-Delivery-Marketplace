@@ -85,6 +85,11 @@ DELIVERY_PIN_TTL_MINUTES = int(os.environ.get('DELIVERY_PIN_TTL_MINUTES', '30'))
 # HTTPS / browser hardening (skipped in local dev and during `manage.py test`,
 # where the test client issues plain HTTP requests).
 _TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
+
+# Tests only: swap in the lightweight MD5 hasher so fixture passwords do not
+# cost ~6s of PBKDF2 each. Production keeps the default iterated hashers.
+if _TESTING:
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG

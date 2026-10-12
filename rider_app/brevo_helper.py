@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
@@ -7,6 +8,11 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 def send_brevo_email(subject, html_content, recipient_email, recipient_name):
+    # Never hit the Brevo API from `manage.py test` runs (same pattern as
+    # geocode_address_google): tests must be hermetic and offline-safe.
+    if 'test' in sys.argv:
+        return None
+
     # Configure API key authorization
     configuration = sib_api_v3_sdk.Configuration()
     configuration.api_key['api-key'] = settings.BREVO_API_KEY
