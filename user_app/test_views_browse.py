@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 from django.contrib.auth.models import User
-from django.template import TemplateDoesNotExist
 from django.test import TestCase
 from django.urls import reverse
 
@@ -166,9 +165,10 @@ class CategoryItemsViewTests(TestCase):
         self.assertTemplateUsed(resp, 'category_items.html')
         self.assertEqual(resp.context['category_name'], 'Burgers')
 
-    def test_unknown_category_slug_raises_missing_template(self):
-        with self.assertRaises(TemplateDoesNotExist):
-            self.client.get(self.url('no-such-category'))
+    def test_unknown_category_slug_renders_not_found_page(self):
+        resp = self.client.get(self.url('no-such-category'))
+        self.assertEqual(resp.status_code, 404)
+        self.assertTemplateUsed(resp, '404.html')
 
     def test_lists_only_items_of_that_category(self):
         resp = self.client.get(self.url())
