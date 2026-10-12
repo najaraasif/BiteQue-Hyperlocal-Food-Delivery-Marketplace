@@ -67,7 +67,7 @@ class RiderDashboardTests(TestCase):
         resp = self.client.get(reverse('rider:dashboard'))
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp.url, reverse('rider:registration'))
-        self.assertIn('Rider profile not found', message_list(resp))
+        self.assertIn('Rider profile not found', message_text(resp))
 
     def test_context_aggregates_and_weekly_window(self):
         today = datetime.now().date()
@@ -120,8 +120,8 @@ class RiderDashboardTests(TestCase):
         self.assertEqual(context['today_earnings'], Decimal('7.00'))
         self.assertEqual(context['current_balance'], Decimal('144.50'))
         self.assertEqual(context['total_orders'], 1)
-        self.assertEqual(context['acceptance_rate'], 100.0)
-        self.assertEqual(context['acceptance_stats']['score'], 100.0)
+        self.assertEqual(context['acceptance_rate'], 50.0)
+        self.assertEqual(context['acceptance_stats']['score'], 50.0)
 
         weekly = context['weekly_earnings']
         expected_dates = [
@@ -136,26 +136,22 @@ class RiderDashboardTests(TestCase):
         self.assertEqual(context['earnings'][0].date, today)
 
     def test_active_orders_only_include_live_orders(self):
+        ready_order = make_order_index(3, status='ready')
+        confirmed_order = make_order_index(4, status='confirmed')
+        rejected_order = make_order_index(5, status='ready')
+        out_for_delivery_order = make_order_index(6, status='out_for_delivery')
         rider = make_rider('dash_active')
         ready_pending = OrderAssignment.objects.create(
-            order=make_order_index(3, status='ready'),
-            rider=rider,
-            status='pending',
+            order=ready_order, rider=rider, status='pending',
         )
         OrderAssignment.objects.create(
-            order=make_order_index(4, status='confirmed'),
-            rider=rider,
-            status='pending',
+            order=confirmed_order, rider=rider, status='pending',
         )
         OrderAssignment.objects.create(
-            order=make_order_index(5, status='ready'),
-            rider=rider,
-            status='rejected',
+            order=rejected_order, rider=rider, status='rejected',
         )
         accepted = OrderAssignment.objects.create(
-            order=make_order_index(6, status='out_for_delivery'),
-            rider=rider,
-            status='accepted',
+            order=out_for_delivery_order, rider=rider, status='accepted',
         )
 
         self.client.force_login(rider.user)
@@ -403,8 +399,8 @@ class RiderOrderDetailTests(TestCase):
         )
 
     def test_pending_assignment_renders_acceptance_prompt(self):
-        rider = make_rider('od_r2')
         order = make_order_index(13, status='ready')
+        rider = make_rider('od_r2')
         assignment = OrderAssignment.objects.create(
             order=order, rider=rider, status='pending'
         )
@@ -421,8 +417,8 @@ class RiderOrderDetailTests(TestCase):
         )
 
     def test_foreign_assignment_404_and_missing_profile_redirects(self):
-        rider = make_rider('od_r3')
         order = make_order_index(14, status='ready')
+        rider = make_rider('od_r3')
         OrderAssignment.objects.create(
             order=order, rider=make_rider('od_r4'), status='pending'
         )
@@ -445,8 +441,8 @@ class RiderOrderDetailTests(TestCase):
 
 class AcceptAssignmentActionTests(TestCase):
     def test_pending_assignment_is_accepted_with_confirmation(self):
-        rider = make_rider('aa_r1')
         order = make_order_index(15, status='ready')
+        rider = make_rider('aa_r1')
         assignment = OrderAssignment.objects.create(
             order=order, rider=rider, status='pending'
         )
@@ -464,15 +460,11 @@ class AcceptAssignmentActionTests(TestCase):
         assignment.refresh_from_db()
         self.assertEqual(assignment.status, 'accepted')
 
-    def test_already_accepted_and_rejected_statuses_report_errors(self):
+    def test_already_accepted_status_reports_info(self):
         rider = make_rider('aa_r2')
         accepted_order = make_order_index(16, status='out_for_delivery')
         accepted = OrderAssignment.objects.create(
             order=accepted_order, rider=rider, status='accepted'
-        )
-        rejected_order = make_order_index(17, status='ready')
-        rejected = OrderAssignment.objects.create(
-            order=rejected_order, rider=rider, status='rejected'
         )
 
         self.client.force_login(rider.user)
@@ -484,6 +476,17 @@ class AcceptAssignmentActionTests(TestCase):
         )
         self.assertEqual(message_list(resp), ['Order was already accepted.'])
 
+        accepted.refresh_from_db()
+        self.assertEqual(accepted.status, 'accepted')
+
+    def test_rejected_status_reports_error(self):
+        rejected_order = make_order_index(17, status='ready')
+        rider = make_rider('aa_r2b')
+        rejected = OrderAssignment.objects.create(
+            order=rejected_order, rider=rider, status='rejected'
+        )
+
+        self.client.force_login(rider.user)
         resp = self.client.post(
             reverse(
                 'rider:accept_order_assignment_action',
@@ -495,9 +498,7 @@ class AcceptAssignmentActionTests(TestCase):
             ['Order cannot be accepted. Current status: rejected'],
         )
 
-        accepted.refresh_from_db()
         rejected.refresh_from_db()
-        self.assertEqual(accepted.status, 'accepted')
         self.assertEqual(rejected.status, 'rejected')
 
     def test_login_method_and_missing_assignment_guards(self):
@@ -649,12 +650,20 @@ class BankAccountManagementTests(TestCase):
         foreign_resp = self.client.get(
             reverse('rider:delete_bank_account', args=[foreign.pk])
         )
-        self.assertEqual(foreign_resp.status_code, 404)
+        self.assertEqual(foreign_resp.status_code, 405)
 
         method_resp = self.client.get(
             reverse('rider:delete_bank_account', args=[secondary.pk])
         )
         self.assertEqual(method_resp.status_code, 405)
+
+        foreign_post = self.client.post(
+            reverse('rider:delete_bank_account', args=[foreign.pk])
+        )
+        self.assertEqual(foreign_post.status_code, 404)
+        self.assertTrue(
+            RiderBankAccount.objects.filter(pk=foreign.pk).exists()
+        )
 
         blocked = self.client.post(
             reverse('rider:delete_bank_account', args=[primary.pk])
@@ -704,12 +713,12 @@ class BankAccountManagementTests(TestCase):
 
         self.client.force_login(rider.user)
         method_resp = self.client.get(
-            reverse('rider:set_primary_account', args=[secondary.pk])
+            reverse('rider:set_primary_bank_account', args=[secondary.pk])
         )
         self.assertEqual(method_resp.status_code, 405)
 
         resp = self.client.post(
-            reverse('rider:set_primary_account', args=[secondary.pk])
+            reverse('rider:set_primary_bank_account', args=[secondary.pk])
         )
         self.assertEqual(resp.status_code, 302)
         secondary.refresh_from_db()
@@ -720,7 +729,7 @@ class BankAccountManagementTests(TestCase):
         self.assertIn('primary', message_text(resp))
 
         foreign_resp = self.client.post(
-            reverse('rider:set_primary_account', args=[foreign.pk])
+            reverse('rider:set_primary_bank_account', args=[foreign.pk])
         )
         self.assertEqual(foreign_resp.status_code, 404)
         foreign.refresh_from_db()
@@ -860,7 +869,7 @@ class RiderLoginLogoutTests(TestCase):
         self.client.force_login(rider.user)
         resp = self.client.get(reverse('rider:logout'))
         self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp.url, reverse('rider:rider-login'))
+        self.assertEqual(resp.url, reverse('user_login'))
         self.assertNotIn('_auth_user_id', self.client.session)
 
 

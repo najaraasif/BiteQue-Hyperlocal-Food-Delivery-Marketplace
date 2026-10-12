@@ -79,7 +79,7 @@ class Command(BaseCommand):
 
                             riders_processed += 1
                         else:
-                            logger.info(f"Rider {rider.id} skipped (₹0 earnings)")
+                            logger.info(f"Rider {rider.id} skipped (Rs0 earnings)")
                     except Exception as rider_exc:
                         logger.error(f"Error processing rider {rider.id}: {str(rider_exc)}")
                         continue  # Continue with next rider

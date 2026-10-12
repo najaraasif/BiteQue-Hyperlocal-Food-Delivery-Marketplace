@@ -40,7 +40,10 @@ class ApprovalEmailTests(TestCase):
                 kwargs['recipient_email'], 'mail_rider@example.com'
             )
             self.assertEqual(kwargs['recipient_name'], 'mail_rider')
-            self.assertIn('mail_rider', kwargs['html_content'])
+            self.assertIn(
+                'Your rider account has been approved.',
+                kwargs['html_content'],
+            )
 
             rider.is_available = True
             rider.save()
