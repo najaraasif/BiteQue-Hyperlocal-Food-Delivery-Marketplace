@@ -310,15 +310,52 @@ class RuntimeConfigTests(SimpleTestCase):
                 'django.db.backends.sqlite3',
             )
 
-    def test_logging_targets_the_earnings_log(self):
-        self.assertEqual(
-            settings.LOGGING['loggers']['rider_app']['handlers'], ['file']
-        )
-        handler = settings.LOGGING['handlers']['file']
+    def test_earnings_reset_logger_targets_the_earnings_log(self):
+        logger = settings.LOGGING['loggers'][
+            'rider_app.management.commands.reset_earnings'
+        ]
+        self.assertIn('earnings_reset_file', logger['handlers'])
+        handler = settings.LOGGING['handlers']['earnings_reset_file']
         self.assertEqual(
             Path(handler['filename']).name, 'earnings_reset.log'
         )
         self.assertTrue(Path(handler['filename']).parent.is_dir())
+
+    def test_rider_app_logger_targets_its_own_log(self):
+        logger = settings.LOGGING['loggers']['rider_app']
+        self.assertIn('rider_app_file', logger['handlers'])
+        handler = settings.LOGGING['handlers']['rider_app_file']
+        self.assertEqual(
+            Path(handler['filename']).name, 'rider_app.log'
+        )
+        self.assertTrue(Path(handler['filename']).parent.is_dir())
+
+    def test_loggers_do_not_share_a_file(self):
+        handlers = settings.LOGGING['handlers']
+        self.assertNotEqual(
+            handlers['earnings_reset_file']['filename'],
+            handlers['rider_app_file']['filename'],
+        )
+
+    def test_reset_and_application_logs_reach_the_console(self):
+        # Render only keeps the service log stream, so the important records
+        # must also go to stdout.
+        for logger_name in ('rider_app.earnings', 'rider_app'):
+            with self.subTest(logger=logger_name):
+                self.assertIn(
+                    'console', settings.LOGGING['loggers'][logger_name]['handlers']
+                )
+        console = settings.LOGGING['handlers']['console']
+        self.assertEqual(console['class'], 'logging.StreamHandler')
+
+    def test_reset_command_does_not_double_print(self):
+        # The command writes its summary to stdout, so its logger must not
+        # also write to the console.
+        logger = settings.LOGGING['loggers'][
+            'rider_app.management.commands.reset_earnings'
+        ]
+        self.assertNotIn('console', logger['handlers'])
+        self.assertIn('earnings_reset_file', logger['handlers'])
 
 
 class UrlResolutionTests(SimpleTestCase):

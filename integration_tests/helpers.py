@@ -28,7 +28,9 @@ def make_rider(username, approved=True, available=True, **rider_kwargs):
     aadhar = str(10_000_000_000 + zlib.crc32(username.encode()) % 10**11)
     defaults = dict(
         phone='9876543210',
-        gender='Male',
+        # Rider.gender is a max_length=1 choice field (M/F/O). 'Male' is
+        # only tolerated by SQLite; PostgreSQL rejects it.
+        gender='M',
         aadhar_number=aadhar,
         driving_license=f'DL-{username}'[:20],
         address='1 Test Street',

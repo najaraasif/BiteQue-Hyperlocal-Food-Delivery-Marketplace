@@ -256,20 +256,60 @@ MAILERSEND_DOMAIN = os.environ.get('MAILERSEND_DOMAIN', 'your-mailersend-domain'
 _LOG_DIR = BASE_DIR / 'logs'
 _LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+# The in-process earnings reset scheduler is a development convenience. In
+# production the reset must run from a scheduled job
+# (`python manage.py reset_earnings --once`), because every gunicorn worker
+# would otherwise start its own scheduler and they would race each other.
+EARNINGS_RESET_SCHEDULER_ENABLED = os.environ.get(
+    'EARNINGS_RESET_SCHEDULER_ENABLED',
+    '1' if DEBUG else '0',
+).lower() in ('1', 'true', 'yes')
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'file': {
+        # The earnings reset job keeps its own file so a scheduler failure can
+        # be told apart from an application error.
+        'earnings_reset_file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': str(_LOG_DIR / 'earnings_reset.log'),
         },
+        # Everything else in rider_app (views, signals, helpers) goes here.
+        'rider_app_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': str(_LOG_DIR / 'rider_app.log'),
+        },
+        # Console output is what a Render Cron Job and the web service show in
+        # their log stream; the log files above are ephemeral on Render.
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+        },
     },
     'loggers': {
-        'rider_app': {
-            'handlers': ['file'],
+        # The reset service logs the operational detail (business date, rows
+        # credited, warnings). It goes to the reset file and to the console,
+        # which is the log stream a Render Cron Job and the web service show.
+        'rider_app.earnings': {
+            'handlers': ['earnings_reset_file', 'console'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        # The command writes its own summary to stdout, so it only needs the
+        # file here - otherwise every summary would appear twice.
+        'rider_app.management.commands.reset_earnings': {
+            'handlers': ['earnings_reset_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'rider_app': {
+            'handlers': ['rider_app_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }

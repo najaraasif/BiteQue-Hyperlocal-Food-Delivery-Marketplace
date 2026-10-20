@@ -18,6 +18,7 @@ from django.db.models import Sum,F
 from merchant_app.models import Restaurant 
 from user_app.models import Order
 from django.utils import timezone
+from .earnings import business_date
 from django.views.generic import TemplateView
 from django.contrib.auth.views import (
     PasswordResetView as BasePasswordResetView,
@@ -333,6 +334,13 @@ def mark_delivered(request, order_id):
                             locked = OrderAssignment.objects.select_for_update().get(
                                 pk=assignment.pk, status='accepted'
                             )
+                            # Lock the rider row as well. The daily reset
+                            # moves today_earnings into the balance under the
+                            # same lock, so the two cannot interleave and
+                            # credit the same earnings twice.
+                            rider = Rider.objects.select_for_update().get(
+                                pk=rider.pk
+                            )
                             order.refresh_from_db(fields=['status'])
                             if order.status != 'out_for_delivery':
                                 raise ValueError("order_not_out_for_delivery")
@@ -368,7 +376,10 @@ def mark_delivered(request, order_id):
                             rider.today_earnings += total_earning
                             rider.save(update_fields=['today_earnings'])
 
-                            today = timezone.now().date()
+                            # The ledger row belongs to the business day the
+                            # delivery happened in (local time), the same day
+                            # the daily reset closes.
+                            today = business_date()
                             rider_earning, created = RiderEarning.objects.get_or_create(
                                 rider=rider,
                                 date=today,
@@ -381,6 +392,12 @@ def mark_delivered(request, order_id):
                                 }
                             )
                             if not created:
+                                # Lock the day's ledger row so two concurrent
+                                # deliveries cannot lose an increment.
+                                rider_earning = (
+                                    RiderEarning.objects.select_for_update()
+                                    .get(pk=rider_earning.pk)
+                                )
                                 rider_earning.total_earnings += total_earning
                                 rider_earning.orders_completed += 1
                                 rider_earning.distance_km += distance_km

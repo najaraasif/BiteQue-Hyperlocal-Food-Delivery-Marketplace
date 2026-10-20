@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models import Sum, Count, Q
 from datetime import timedelta
+from decimal import Decimal
 from django.utils import timezone
 
 class Rider(models.Model):
@@ -95,11 +96,54 @@ class RiderEarning(models.Model):
 
     class Meta:
         ordering = ['-date']
-        verbose_name = 'Rider Earning'
-        verbose_name_plural = 'Rider Earnings'
+        verbose_name = "Rider Earning"
+        verbose_name_plural = "Rider Earnings"
+        constraints = [
+            # One ledger row per rider per business day. The delivery path
+            # already keeps a single row per day, and the daily reset must
+            # not add a second one: two rows for the same day would be
+            # counted twice by Rider.get_total_earnings().
+            models.UniqueConstraint(
+                fields=['rider', 'date'],
+                name='unique_earning_per_rider_and_date',
+            ),
+        ]
 
     def __str__(self):
         return f"Earnings on {self.date} - ₹{self.total_earnings}"
+
+
+class EarningsResetRun(models.Model):
+    """Ledger of completed daily earnings resets.
+
+    ``business_date`` is unique, so a business day can be closed exactly
+    once. The row is written in the same transaction as the balance updates,
+    so a crashed reset leaves the day open and it can simply be repeated.
+    """
+
+    SOURCES = [
+        ('cron', 'Scheduled job'),
+        ('manual', 'Manual run'),
+        ('thread', 'In-process scheduler'),
+    ]
+
+    business_date = models.DateField(unique=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    riders_processed = models.PositiveIntegerField(default=0)
+    total_credited = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal('0.00')
+    )
+    source = models.CharField(max_length=20, choices=SOURCES, default='cron')
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-business_date']
+        verbose_name = "Earnings reset run"
+        verbose_name_plural = "Earnings reset runs"
+
+    def __str__(self):
+        return f"Reset for {self.business_date} - {self.total_credited}"
 
 
 class OrderAssignment(models.Model):
