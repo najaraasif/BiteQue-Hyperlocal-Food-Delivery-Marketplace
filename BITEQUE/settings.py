@@ -265,6 +265,16 @@ EARNINGS_RESET_SCHEDULER_ENABLED = os.environ.get(
     '1' if DEBUG else '0',
 ).lower() in ('1', 'true', 'yes')
 
+# Catch-up window for the earnings reset. A business date that a reset
+# missed has to be closed later, so the window is bounded but never silently
+# truncating: business dates outside it are reported by the command.
+EARNINGS_RESET_MAX_DAYS = int(os.environ.get('EARNINGS_RESET_MAX_DAYS', '31'))
+
+# Earliest business date the deployment may close. Without it the anchor is
+# the earliest date with recorded activity, and a business date that was
+# never recorded cannot be reconstructed.
+EARNINGS_RESET_START_DATE = os.environ.get('EARNINGS_RESET_START_DATE', '').strip()
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

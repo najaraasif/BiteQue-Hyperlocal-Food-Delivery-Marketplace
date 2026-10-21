@@ -25,7 +25,9 @@ from django.utils import timezone
 from rider_app import earnings
 from rider_app.earnings import (
     business_date,
+    catch_up_plan,
     close_business_date,
+    close_due_business_dates,
     due_business_dates,
     next_business_date_to_close,
 )
@@ -343,6 +345,158 @@ class CatchUpTests(TestCase):
         self.assertEqual(len(due), 4)
 
 
+class MissedBusinessDateTests(TestCase):
+    """A business date that no reset closed must not be skipped."""
+
+    def test_missed_dates_are_all_closed_in_one_run_chronologically(self):
+        rider = make_rider('missed_rider', today_earnings=Decimal('30.00'))
+        # A reset closed the 10th, the 11th and the 12th were missed.
+        EarningsResetRun.objects.create(business_date=date(2026, 3, 10))
+
+        with frozen_now():
+            outcome = close_due_business_dates()
+
+        self.assertEqual(
+            outcome['closed_dates'],
+            [date(2026, 3, 11), date(2026, 3, 12), date(2026, 3, 13),
+             YESTERDAY],
+        )
+        self.assertEqual(
+            EarningsResetRun.objects.count(), 5,
+        )
+        self.assertEqual(
+            sorted(
+                EarningsResetRun.objects.values_list('business_date', flat=True)
+            ),
+            [date(2026, 3, 10), date(2026, 3, 11), date(2026, 3, 12),
+             date(2026, 3, 13), YESTERDAY],
+        )
+        # the accumulator is credited once, against the oldest open date
+        rider.refresh_from_db()
+        self.assertEqual(rider.current_balance, Decimal('30.00'))
+        self.assertEqual(rider.today_earnings, Decimal('0.00'))
+
+    def test_a_gap_between_closed_dates_is_caught_up(self):
+        EarningsResetRun.objects.create(business_date=date(2026, 3, 10))
+        EarningsResetRun.objects.create(business_date=date(2026, 3, 12))
+
+        with frozen_now():
+            due = due_business_dates()
+
+        self.assertIn(date(2026, 3, 11), due)
+        self.assertNotIn(date(2026, 3, 12), due)
+
+    def test_the_first_close_is_not_limited_to_yesterday(self):
+        # With an empty ledger the anchor is the earliest recorded date.
+        RiderEarning.objects.create(
+            rider=make_rider('anchor_rider'),
+            date=date(2026, 3, 11),
+            total_earnings=Decimal('5.00'),
+            orders_completed=1,
+        )
+
+        with frozen_now():
+            due = due_business_dates()
+
+        self.assertEqual(due[0], date(2026, 3, 11))
+        self.assertIn(YESTERDAY, due)
+
+    def test_configured_start_date_anchors_the_catch_up(self):
+        with self.settings(EARNINGS_RESET_START_DATE='2026-03-11'):
+            with frozen_now():
+                due = due_business_dates()
+
+        self.assertEqual(due[0], date(2026, 3, 11))
+        self.assertEqual(due[-1], YESTERDAY)
+
+    def test_a_malformed_start_date_is_rejected(self):
+        from django.core.exceptions import ImproperlyConfigured
+
+        with self.settings(EARNINGS_RESET_START_DATE='2026-13-99'):
+            with self.assertRaises(ImproperlyConfigured):
+                due_business_dates()
+
+    def test_catch_up_is_bounded_and_the_overflow_is_reported(self):
+        EarningsResetRun.objects.create(business_date=date(2026, 3, 1))
+
+        with frozen_now():
+            plan = catch_up_plan(max_days=3)
+
+        self.assertEqual(len(plan['due']), 3)
+        self.assertEqual(plan['overdue'], 13)   # 3rd .. 14th
+        self.assertEqual(plan['skipped'], 10)
+
+    def test_bounded_catch_up_never_drops_a_date_silently(self):
+        EarningsResetRun.objects.create(business_date=date(2026, 3, 1))
+        rider = make_rider('bounded_rider', today_earnings=Decimal('9.00'))
+
+        with frozen_now():
+            outcome = close_due_business_dates(max_days=2)
+
+        self.assertEqual(len(outcome['closed_dates']), 2)
+        # 13 business dates are outstanding (2nd..14th); 2 fit in the window
+        self.assertEqual(outcome['plan']['overdue'], 13)
+        self.assertEqual(outcome['plan']['skipped'], 11)
+        # the dates that did not fit stay open
+        self.assertEqual(EarningsResetRun.objects.count(), 3)
+        rider.refresh_from_db()
+        self.assertEqual(rider.current_balance, Decimal('9.00'))
+
+    def test_repeated_catch_up_runs_close_the_remaining_dates(self):
+        EarningsResetRun.objects.create(business_date=date(2026, 3, 1))
+        rider = make_rider('repeat_catchup_rider', today_earnings=Decimal('9.00'))
+
+        with frozen_now():
+            close_due_business_dates(max_days=5)
+        with frozen_now():
+            close_due_business_dates(max_days=5)
+        with frozen_now():
+            outcome = close_due_business_dates(max_days=5)
+
+        # every outstanding business date is closed exactly once
+        with frozen_now():
+            self.assertEqual(due_business_dates(), [])
+        self.assertEqual(len(outcome['closed_dates']), 3)
+        self.assertEqual(EarningsResetRun.objects.count(), 14)
+        self.assertEqual(
+            len(
+                set(
+                    EarningsResetRun.objects.values_list(
+                        'business_date', flat=True
+                    )
+                )
+            ),
+            14,
+        )
+        rider.refresh_from_db()
+        # the accumulator is credited exactly once across the retries
+        self.assertEqual(rider.current_balance, Decimal('9.00'))
+        self.assertEqual(rider.today_earnings, Decimal('0.00'))
+
+    def test_a_failed_catch_up_leaves_every_date_open_for_a_retry(self):
+        EarningsResetRun.objects.create(business_date=date(2026, 3, 1))
+        rider = make_rider('failed_catchup_rider', today_earnings=Decimal('9.00'))
+
+        with mock.patch.object(
+            earnings, 'close_business_date', side_effect=RuntimeError('boom')
+        ):
+            with self.assertRaises(RuntimeError):
+                close_due_business_dates()
+
+        self.assertEqual(EarningsResetRun.objects.count(), 1)
+        rider.refresh_from_db()
+        self.assertEqual(rider.current_balance, Decimal('0.00'))
+        self.assertEqual(rider.today_earnings, Decimal('9.00'))
+
+        # the retry closes everything
+        with frozen_now():
+            outcome = close_due_business_dates()
+
+        self.assertEqual(len(outcome['closed_dates']), 13)
+        rider.refresh_from_db()
+        self.assertEqual(rider.current_balance, Decimal('9.00'))
+
+
 class CommandTests(TestCase):
     def run_command(self, *args, **kwargs):
         from django.core.management import call_command
@@ -381,6 +535,35 @@ class CommandTests(TestCase):
         self.assertEqual(
             EarningsResetRun.objects.get().business_date, date(2026, 3, 10)
         )
+
+    def test_explicit_date_closes_exactly_that_date_and_is_idempotent(self):
+        """The backfill path: one named business date, once, and only once."""
+        rider = make_rider('cmd_backfill_rider', today_earnings=Decimal('9.00'))
+        RiderEarning.objects.create(
+            rider=rider, date=date(2026, 3, 10), total_earnings=Decimal('9.00'),
+            orders_completed=1,
+        )
+
+        self.run_command('--date', '2026-03-10')
+        self.run_command('--date', '2026-03-10')
+
+        # only the named business date is closed
+        self.assertEqual(
+            list(
+                EarningsResetRun.objects.values_list('business_date', flat=True)
+            ),
+            [date(2026, 3, 10)],
+        )
+        # the day's ledger row is not duplicated
+        self.assertEqual(
+            RiderEarning.objects.filter(rider=rider, date=date(2026, 3, 10)).count(),
+            1,
+        )
+        # and the rider is credited exactly once
+        rider.refresh_from_db()
+        self.assertEqual(rider.current_balance, Decimal('9.00'))
+        self.assertEqual(rider.today_earnings, Decimal('0.00'))
+        self.assertEqual(rider.get_total_earnings(), Decimal('9.00'))
 
     def test_explicit_date_rejects_a_bogus_value(self):
         from django.core.management.base import CommandError

@@ -28,6 +28,7 @@ from django.utils import timezone
 
 from rider_app.earnings import (
     close_business_date,
+    close_due_business_dates,
     current_business_date,
     due_business_dates,
 )
@@ -56,10 +57,19 @@ class Command(BaseCommand):
         parser.add_argument(
             '--max-days',
             type=int,
-            default=7,
+            default=None,
             help=(
-                'Maximum number of overdue business days considered when '
-                'catching up (default: 7).'
+                'Maximum number of unclosed business dates closed in one run '
+                '(default: settings.EARNINGS_RESET_MAX_DAYS). Business dates '
+                'outside the window are reported, never dropped silently.'
+            ),
+        )
+        parser.add_argument(
+            '--start-date',
+            dest='start_date',
+            help=(
+                'Earliest business date the catch-up may close (YYYY-MM-DD). '
+                'Overrides settings.EARNINGS_RESET_START_DATE.'
             ),
         )
         parser.add_argument(
@@ -80,6 +90,17 @@ class Command(BaseCommand):
             self.result = self.run_scheduler(options)
 
     # -- one shot --------------------------------------------------------
+    def _start_date(self, options):
+        raw = options.get('start_date')
+        if not raw:
+            return None
+        try:
+            return datetime.strptime(raw, '%Y-%m-%d').date()
+        except ValueError:
+            raise CommandError(
+                f'--start-date must be a date in YYYY-MM-DD format, got {raw!r}'
+            )
+
     def run_specific_date(self, options):
         raw = options['business_date']
         try:
@@ -100,29 +121,51 @@ class Command(BaseCommand):
 
     def run_once(self, options):
         today = current_business_date()
-        due = due_business_dates(today=today, max_days=options['max_days'])
-        if not due:
+        outcome = close_due_business_dates(
+            today=today,
+            max_days=options['max_days'],
+            start_date=self._start_date(options),
+            source=options.get('source', 'cron'),
+        )
+        plan = outcome['plan']
+
+        if not outcome['results']:
             message = f'No business date is due (today is {today})'
             logger.info(message)
             self.stdout.write(self.style.SUCCESS(message))
-            return {'status': 'nothing_due', 'business_date': None}
+            return outcome
 
-        target = due[0]
-        if len(due) > 1:
-            # Never close several days in one run: the accumulator holds the
-            # earnings of every overdue day, so it is credited against the
-            # oldest due date and the remaining dates are closed by the
-            # following runs (with an empty accumulator).
+        if plan['skipped']:
+            # Never drop a business date silently.
+            message = (
+                f"{plan['skipped']} unclosed business date(s) are outside the "
+                f"catch-up window of {plan['max_days']} days and were NOT "
+                f"closed. Raise EARNINGS_RESET_MAX_DAYS or close them with "
+                f"--date."
+            )
+            logger.error(message)
+            self.stdout.write(self.style.ERROR(message))
+
+        if len(plan['due']) > 1:
             logger.warning(
-                'Business dates %s are overdue; closing the oldest one (%s) now. '
-                'The earnings accumulated since the last close are credited '
-                'against %s; the remaining dates are closed by later runs.',
-                ', '.join(str(day) for day in due), target, target,
+                'Business dates %s were overdue; closing them in chronological '
+                'order. The earnings accumulated since the last close are '
+                'credited against %s; the later dates close with nothing to '
+                'credit because the accumulator is emptied by the first close.',
+                ', '.join(str(day) for day in plan['due']), plan['due'][0],
             )
 
-        summary = close_business_date(target, source=options.get('source', 'cron'))
-        self.report(summary)
-        return summary
+        for summary in outcome['results']:
+            self.report(summary)
+
+        message = (
+            f"Closed {len(outcome['closed_dates'])} business date(s): "
+            f"{', '.join(str(day) for day in outcome['closed_dates']) or 'none'}; "
+            f"{outcome['total_credited']} credited"
+        )
+        logger.info(message)
+        self.stdout.write(self.style.SUCCESS(message))
+        return outcome
 
     # -- in process scheduler (development) ------------------------------
     def run_scheduler(self, options):
@@ -146,14 +189,25 @@ class Command(BaseCommand):
                     time.sleep(wait_seconds)
 
                     today = current_business_date()
-                    due = due_business_dates(today=today, max_days=options['max_days'])
-                    if not due:
+                    outcome = close_due_business_dates(
+                        today=today,
+                        max_days=options['max_days'],
+                        start_date=self._start_date(options),
+                        source=options.get('source', 'thread'),
+                    )
+                    if not outcome['results']:
                         logger.info('No business date is due at %s', today)
                     else:
-                        summary = close_business_date(
-                            due[0], source=options.get('source', 'thread')
-                        )
-                        self.report(summary)
+                        if outcome['plan']['skipped']:
+                            logger.error(
+                                '%s unclosed business date(s) are outside the '
+                                'catch-up window of %s days and were NOT '
+                                'closed.',
+                                outcome['plan']['skipped'],
+                                outcome['plan']['max_days'],
+                            )
+                        for summary in outcome['results']:
+                            self.report(summary)
 
                 except Exception as exc:  # pragma: no cover - defensive
                     logger.error('Error in scheduler loop: %s', exc)

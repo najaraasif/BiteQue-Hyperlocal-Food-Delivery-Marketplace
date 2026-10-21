@@ -30,9 +30,11 @@ Money rules
 """
 import logging
 from contextlib import contextmanager
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
 
@@ -68,35 +70,107 @@ def closed_business_dates():
     )
 
 
-def due_business_dates(today=None, max_days=7):
-    """Business dates that still need to be closed, oldest first.
+def earliest_recorded_business_date():
+    """The earliest business date that carries any recorded activity.
 
-    A business date is due when it is in the past (relative to the local
-    business day) and no reset has closed it yet. The search starts at the day
-    after the last closed business date, so a reset that has been running
-    normally closes one day per run instead of falling back to the oldest
-    possible date. The list is capped at ``max_days`` entries so a long
-    outage cannot turn a single run into a silent multi-day reset.
+    Either a daily earning row or a reset-run record. It is the anchor for
+    the catch-up window: a business date that was never recorded cannot be
+    reconstructed, but a recorded one must not be skipped silently.
+    """
+    from django.db.models import Min
+
+    from rider_app.models import EarningsResetRun, RiderEarning
+
+    candidates = [
+        RiderEarning.objects.aggregate(first=Min('date'))['first'],
+        EarningsResetRun.objects.aggregate(
+            first=Min('business_date')
+        )['first'],
+    ]
+    candidates = [day for day in candidates if day is not None]
+    return min(candidates) if candidates else None
+
+
+def configured_start_date():
+    """The configured catch-up anchor, or ``None``.
+
+    ``EARNINGS_RESET_START_DATE`` pins the earliest business date the
+    deployment will ever close. It is what makes a missed night recoverable:
+    without it the anchor moves forward with "yesterday" and the missed
+    business date would be skipped forever.
+    """
+    raw = (getattr(settings, 'EARNINGS_RESET_START_DATE', None) or '').strip()
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, '%Y-%m-%d').date()
+    except ValueError:
+        raise ImproperlyConfigured(
+            'EARNINGS_RESET_START_DATE must be a date in YYYY-MM-DD format, '
+            f'got {raw!r}'
+        )
+
+
+def catch_up_plan(today=None, max_days=None, start_date=None):
+    """Plan which business dates still have to be closed.
+
+    Returns a dict with:
+
+    * ``due`` - the business dates to close, oldest first, never including
+      the current (still open) business day;
+    * ``window_start`` - the first business date that was considered;
+    * ``overdue`` - how many unclosed business dates exist in total;
+    * ``skipped`` - how many of them are *not* in this run because of the
+      bound. A non-zero value is always reported, never dropped silently.
     """
     today = today or current_business_date()
+    if max_days is None:
+        max_days = getattr(settings, 'EARNINGS_RESET_MAX_DAYS', 31)
     closed = closed_business_dates()
-    if not closed:
-        # Nothing has ever been closed: the day that just ended is due.
-        return [today - timedelta(days=1)]
 
-    candidates = []
-    candidate = max(closed) + timedelta(days=1)
-    while candidate < today and len(candidates) < max_days:
-        if candidate not in closed:
-            candidates.append(candidate)
-        candidate += timedelta(days=1)
-    return candidates
+    start = start_date or configured_start_date() or earliest_recorded_business_date()
+    if start is None:
+        # Nothing has ever been recorded: the only date that can be closed is
+        # the day that just ended.
+        start = today - timedelta(days=1)
+
+    unclosed = []
+    day = start
+    while day < today:
+        if day not in closed:
+            unclosed.append(day)
+        day += timedelta(days=1)
+
+    due = unclosed[:max_days]
+    return {
+        'due': due,
+        'window_start': start,
+        'overdue': len(unclosed),
+        'skipped': len(unclosed) - len(due),
+        'max_days': max_days,
+    }
 
 
-def next_business_date_to_close(today=None, max_days=7):
-    """The single business date the next run should close, or ``None``."""
-    due = due_business_dates(today=today, max_days=max_days)
+def due_business_dates(today=None, max_days=None, start_date=None):
+    """Business dates that still need to be closed, oldest first.
+
+    Every business date between the catch-up anchor and yesterday that no
+    reset has closed yet is due, so a missed night is caught up instead of
+    being skipped. The list is bounded by ``max_days``; the overflow is
+    reported by :func:`catch_up_plan` and never dropped silently.
+    """
+    return catch_up_plan(
+        today=today, max_days=max_days, start_date=start_date
+    )['due']
+
+
+def next_business_date_to_close(today=None, max_days=None, start_date=None):
+    """The single business date the next run should close first, or ``None``."""
+    due = due_business_dates(
+        today=today, max_days=max_days, start_date=start_date
+    )
     return due[0] if due else None
+
 
 
 @contextmanager
@@ -292,3 +366,45 @@ def close_business_date(day, source='cron'):
             summary['message'] = 'business date closed concurrently'
             return summary
         raise
+
+
+def close_due_business_dates(today=None, max_days=None, start_date=None,
+                             source='cron'):
+    """Close every business date that is due, oldest first.
+
+    The dates are processed in chronological order so the audit trail reads
+    naturally and the accumulated earnings are credited against the oldest
+    outstanding business date - the only attribution the single accumulator
+    allows. The per-day detail stays correct because the delivery path writes
+    one earning row per rider per business day.
+
+    A run that finds the advisory lock held by another process stops at once
+    and leaves the remaining dates open for the next run.
+    """
+    plan = catch_up_plan(
+        today=today, max_days=max_days, start_date=start_date
+    )
+    results = []
+    for day in plan['due']:
+        summary = close_business_date(day, source=source)
+        results.append(summary)
+        if summary['status'] == 'locked':
+            logger.warning(
+                'Stopping the catch-up: another reset holds the lock; %s '
+                'business date(s) stay open',
+                len(plan['due']) - len(results),
+            )
+            break
+    return {
+        'status': 'closed' if results else 'nothing_due',
+        'plan': plan,
+        'results': results,
+        'closed_dates': [
+            item['business_date'] for item in results
+            if item['status'] == 'closed'
+        ],
+        'total_credited': sum(
+            (item.get('total_credited', Decimal('0.00')) for item in results),
+            Decimal('0.00'),
+        ),
+    }
